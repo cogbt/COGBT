@@ -101,6 +101,10 @@
 #define assert_memory_lock() tcg_debug_assert(have_mmap_lock())
 #endif
 
+#ifdef CONFIG_COGBT
+#include "cogbt.h"
+#endif
+
 #define SMC_BITMAP_USE_THRESHOLD 10
 
 typedef struct PageDesc {
@@ -242,6 +246,7 @@ static void page_table_config_init(void)
 
 /* Encode VAL as a signed leb128 sequence at P.
    Return P incremented past the encoded value.  */
+#ifndef CONFIG_COGBT
 static uint8_t *encode_sleb128(uint8_t *p, target_long val)
 {
     int more, byte;
@@ -259,6 +264,7 @@ static uint8_t *encode_sleb128(uint8_t *p, target_long val)
 
     return p;
 }
+#endif
 
 /* Decode a signed leb128 sequence at *PP; increment *PP past the
    decoded value.  Return the decoded value.  */
@@ -292,7 +298,7 @@ static target_long decode_sleb128(const uint8_t **pp)
    line.  The seed for the first line is { tb->pc, 0..., tb->tc.ptr }.
    That is, the first column is seeded with the guest pc, the last column
    with the host pc, and the middle columns with zeros.  */
-
+#ifndef CONFIG_COGBT
 static int encode_search(TranslationBlock *tb, uint8_t *block)
 {
     uint8_t *highwater = tcg_ctx->code_gen_highwater;
@@ -324,6 +330,7 @@ static int encode_search(TranslationBlock *tb, uint8_t *block)
 
     return p - block;
 }
+#endif
 
 /* The cpu state corresponding to 'searched_pc' is restored.
  * When reset_icount is true, current TB will be interrupted and
@@ -1409,7 +1416,9 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
     }
     QEMU_BUILD_BUG_ON(CF_COUNT_MASK + 1 != TCG_MAX_INSNS);
 
+#ifndef CONFIG_COGBT
  buffer_overflow:
+#endif
     tb = tcg_tb_alloc(tcg_ctx);
     if (unlikely(!tb)) {
         /* flush must be done */
@@ -1428,8 +1437,11 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
     tb->cflags = cflags;
     tb->trace_vcpu_dstate = *cpu->trace_dstate;
     tcg_ctx->tb_cflags = cflags;
+#ifndef CONFIG_COGBT
  tb_overflow:
+#endif
 
+#ifndef CONFIG_COGBT
 #ifdef CONFIG_PROFILER
     /* includes aborted translations because of exceptions */
     qatomic_set(&prof->tb_count1, prof->tb_count1 + 1);
@@ -1450,6 +1462,7 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
     max_insns = tb->icount;
 
     trace_translate_block(tb, tb->pc, tb->tc.ptr);
+#endif
 
     /* generate machine code */
     tb->jmp_reset_offset[0] = TB_JMP_RESET_OFFSET_INVALID;
@@ -1463,6 +1476,7 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
         tcg_ctx->tb_jmp_target_addr = tb->jmp_target_arg;
     }
 
+#ifndef CONFIG_COGBT
 #ifdef CONFIG_PROFILER
     qatomic_set(&prof->tb_count, prof->tb_count + 1);
     qatomic_set(&prof->interm_time,
@@ -1597,6 +1611,12 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
             qemu_log_unlock(logfile);
         }
     }
+#endif
+
+#else /* CONFIG_COGBT */
+    /* gen_code_size =  cogbt_gen_code(tb, max_insns); */
+    gen_code_size = search_size = 0;
+    cppprint(); //debug
 #endif
 
     qatomic_set(&tcg_ctx->code_gen_ptr, (void *)

@@ -3,6 +3,7 @@ softmmu_ss.add(files('accel-softmmu.c'))
 user_ss.add(files('accel-user.c'))
 
 subdir('tcg')
+subdir('cogbt')
 if have_system
   subdir('hvf')
   subdir('qtest')

@@ -316,6 +316,7 @@ ninja=""
 bindir="bin"
 skip_meson=no
 vfio_user_server="disabled"
+cogbt="no"
 
 # The following Meson options are handled manually (still they
 # are included in the automatically generated help message)
@@ -933,6 +934,8 @@ for opt do
   --enable-tcmalloc) meson_option_parse --enable-malloc=tcmalloc tcmalloc
   ;;
   --enable-jemalloc) meson_option_parse --enable-malloc=jemalloc jemalloc
+  ;;
+  --enable-cogbt) cogbt="yes"
   ;;
   # everything else has the same name in configure and meson
   --*) meson_option_parse "$opt" "$optarg"
@@ -2434,6 +2437,9 @@ echo "GIT_SUBMODULES_ACTION=$git_submodules_action" >> $config_host_mak
 
 if test "$debug_tcg" = "yes" ; then
   echo "CONFIG_DEBUG_TCG=y" >> $config_host_mak
+fi
+if test "$cogbt" = "yes" ; then
+  echo "CONFIG_COGBT=y" >> $config_host_mak
 fi
 if test "$mingw32" = "yes" ; then
   echo "CONFIG_WIN32=y" >> $config_host_mak

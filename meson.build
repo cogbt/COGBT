@@ -1,4 +1,4 @@
-project('qemu', ['c'], meson_version: '>=0.59.3',
+project('qemu', ['c', 'cpp'], meson_version: '>=0.59.3',
         default_options: ['warning_level=1', 'c_std=gnu11', 'cpp_std=gnu++11', 'b_colorout=auto',
                           'b_staticpic=false', 'stdsplit=false', 'optimization=2', 'b_pie=true'],
         version: files('VERSION'))
@@ -3430,6 +3430,9 @@ foreach target : target_dirs
     endif
     if 'CONFIG_LINUX_USER' in config_target
       base_dir = 'linux-user'
+      if 'CONFIG_COGBT' in config_target
+        target_inc += include_directories('accel/cogbt/include')
+      endif
     endif
     if 'CONFIG_BSD_USER' in config_target
       base_dir = 'bsd-user'
