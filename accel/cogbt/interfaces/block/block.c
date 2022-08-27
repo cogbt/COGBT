@@ -57,7 +57,7 @@ int block_gen_code(uint64_t pc, void *code_cache, int max_insns,
 
     /* Free all cs_insn allocated by capstone */
     for (int i = 0; i < *insn_cnt; i++) {
-        cs_free(insns[0], *insn_cnt);
+        cs_free(insns[i], 1);
     }
     free(insns);
     return 0;

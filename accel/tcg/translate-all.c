@@ -1622,7 +1622,6 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
                                    max_insns, &guest_inst_cnt);
     tb->tc.size = gen_code_size;
     tb->icount = guest_inst_cnt;
-    cppprint(); //debug
 #endif
 
     qatomic_set(&tcg_ctx->code_gen_ptr, (void *)
