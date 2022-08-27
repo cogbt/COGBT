@@ -5,7 +5,9 @@
 extern "C" {
 #endif
 
+/* For test */
 void cppprint(void);
+
 
 #ifdef __cplusplus
 }

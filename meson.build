@@ -3432,6 +3432,7 @@ foreach target : target_dirs
       base_dir = 'linux-user'
       if 'CONFIG_COGBT' in config_target
         target_inc += include_directories('accel/cogbt/include')
+        target_inc += include_directories('accel/cogbt/interfaces/include')
       endif
     endif
     if 'CONFIG_BSD_USER' in config_target

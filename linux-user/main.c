@@ -58,6 +58,10 @@
 #include "semihosting/semihost.h"
 #endif
 
+#ifdef CONFIG_COGBT
+#include "block.h"
+#endif
+
 #ifndef AT_FLAGS_PRESERVE_ARGV0
 #define AT_FLAGS_PRESERVE_ARGV0_BIT 0
 #define AT_FLAGS_PRESERVE_ARGV0 (1 << AT_FLAGS_PRESERVE_ARGV0_BIT)
@@ -894,6 +898,9 @@ int main(int argc, char **argv, char **envp)
     target_set_brk(info->brk);
     syscall_init();
     signal_init();
+#ifdef CONFIG_COGBT
+    cogbt_block_init();
+#endif
 
     /* Now that we've loaded the binary, GUEST_BASE is fixed.  Delay
        generating the prologue until now so that the prologue can take

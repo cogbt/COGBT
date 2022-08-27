@@ -103,6 +103,7 @@
 
 #ifdef CONFIG_COGBT
 #include "cogbt.h"
+#include "block.h"
 #endif
 
 #define SMC_BITMAP_USE_THRESHOLD 10
@@ -1615,7 +1616,12 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
 
 #else /* CONFIG_COGBT */
     /* gen_code_size =  cogbt_gen_code(tb, max_insns); */
-    gen_code_size = search_size = 0;
+    search_size = 0;
+    int guest_inst_cnt = 0;
+    gen_code_size = block_gen_code(tb->pc, tcg_splitwx_to_rw(tb->tc.ptr),
+                                   max_insns, &guest_inst_cnt);
+    tb->tc.size = gen_code_size;
+    tb->icount = guest_inst_cnt;
     cppprint(); //debug
 #endif
 
