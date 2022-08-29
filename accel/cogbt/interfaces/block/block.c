@@ -20,8 +20,11 @@ void cogbt_block_init(void) {
 static bool guest_inst_is_terminator(cs_insn *insn) {
     return cs_insn_group(handle, insn, CS_GRP_JUMP) ||
            cs_insn_group(handle, insn, CS_GRP_RET) ||
+           cs_insn_group(handle, insn, CS_GRP_CALL);
+#if 0
            cs_insn_group(handle, insn, CS_GRP_CALL) ||
            cs_insn_group(handle, insn, CS_GRP_BRANCH_RELATIVE);
+#endif
 }
 
 int block_gen_code(uint64_t pc, void *code_cache, int max_insns,
