@@ -4,5 +4,6 @@ cogbt_ss.add(files(
 ))
 
 subdir('interfaces')
+subdir('translator')
 
 specific_ss.add_all(when: 'CONFIG_COGBT', if_true: cogbt_ss)
