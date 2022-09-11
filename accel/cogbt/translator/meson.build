@@ -3,5 +3,5 @@ cogbt_ss.add(files(
 ))
 
 subdir('X86')
-subdir('MIPS')
-subdir('ARM')
+# subdir('MIPS')
+# subdir('ARM')

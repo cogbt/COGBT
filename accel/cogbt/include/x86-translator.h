@@ -30,7 +30,7 @@ private:
     };
 
     /// Guest registers name
-    const static char *GuestRegsName[NumX64MappedRegs];
+    const static char *GuestRegNames[NumX64MappedRegs];
 
     /// Guest registers -> Host registers mapping table
     const static int GuestRegsToHost[NumX64MappedRegs];
@@ -42,6 +42,10 @@ private:
     /// This function implements the initialization of the X86 guest translation
     /// function.
     virtual void InitializeFunction(StringRef FuncName) override;
+
+    virtual void GenPrologue() override;
+
+    virtual void GenEpilogue() override;
 
 };
 

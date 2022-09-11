@@ -28,27 +28,44 @@ public:
               CodeCachePtr((uint8_t *)CodeCacheBegin) {}
     };
 
-    ///
+    /// Constructor of LLVM Translator with given translation unit \p TU to
+    /// handle and code cache to fill in.
     LLVMTranslator(TranslationUnit *TU, uintptr_t CacheBegin, size_t CacheSize)
         : Mod(new Module("cogbt", Context)), TU(TU), Builder(Context),
           CodeCache(CacheBegin, CacheSize) {}
     virtual ~LLVMTranslator() = default;
 
-    ///
-    bool compile();
+    /// GenPrologue - Generates context switching IR instructions to switch
+    /// translator to translation code.
+    virtual void GenPrologue() = 0;
+    /// GenEpilogue - Generates context switching IR instructions to switch
+    /// translation code to translator.
+    virtual void GenEpilogue() = 0;
+    /// Compile - Compile LLVM IR instructions into host machine code. If \p
+    /// UseOptimizer is true, optimizations will be performed first.
+    uint8_t *Compile(bool UseOptimizer);
 
 protected:
-    /// @name Core Member Variables
+    /// Core Member Variables
     LLVMContext Context;
     std::unique_ptr<Module> Mod; ///< Container of all translated IR.
     TranslationUnit *TU;         ///< Guest translation unit to handle.
 
-    /// @name Guest->IR converter submodule
-    Function *Func;              ///< Translation function.
+    /// Guest->IR converter submodule
+    Function *TransFunc;         ///< Translation function.
     IRBuilder<> Builder;         ///< Utility for creating IR instructions.
-    SmallVector<Value *> GuestStates; ///< Stack objects for each guest GPRs.
+    SmallVector<Value *> GuestStates;  ///< Stack objects for each guest GPRs.
+    SmallVector<Value *, 32> HostRegValues; ///< Host physical regs values. 
     BasicBlock *EntryBB;         ///< Entry block of Translation Function.
     BasicBlock *ExitBB;          ///< Exit block of Translation Function.
+
+    /// Basic types that are frequently used.
+    Type *Int64Ty, *VoidTy, *Int8PtrTy;
+
+    /// InitializeTypes - Cache some basic types that are frequently used in
+    /// translator.
+    void InitializeTypes();
+
     /// InitializeModule - Initialize necessary Module infomation, like
     /// DataLayout, TargetTriple.
     void InitializeModule();
@@ -56,11 +73,19 @@ protected:
     /// InitializeFunction - Initialize the basic framework of the translation
     /// function, such as `entry` block(binding physical register to IR value),
     /// `exit` block(sync modified guest register state into physical register).
+    ///
+    /// NOTE! `entry` and `exit` blocks are not complete in this function. They
+    /// are missing termination instructions and leave them up to to client to
+    /// implement, like jumping to `epilogue` or return translator.
     virtual void InitializeFunction(StringRef FuncName) = 0;
 
-    /// @name IR optimization submodule
+    Value *GetPhysicalRegValue(const char *RegName);
 
-    /// @name JIT Submodule Of Translator
+    void SetPhysicalRegValue(const char *RegName, Value *RegValue);
+
+    /// IR optimization submodule
+
+    /// JIT Submodule Of Translator
     ExecutionEngine *EE;
     CodeCacheInfo CodeCache;     ///< Per-translator code cache.
 
@@ -68,8 +93,7 @@ protected:
     /// various attributes of ExecutionEngine, IR Module and MemoryManager.
     void CreateSession();
 
-    /// DeleteSession - Finalize the JIT session. Free all resources this
-    /// session occupies(e.g EE).
+    /// DeleteSession - Finalize the JIT session.
     void DeleteSession();
 };
 

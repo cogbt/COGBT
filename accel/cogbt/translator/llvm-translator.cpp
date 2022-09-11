@@ -1,6 +1,7 @@
 #include "llvm/IR/InlineAsm.h"
 #include "llvm-translator.h"
 #include "memory-manager.h"
+#include "host-info.h"
 #include <memory>
 #include <string>
 
@@ -28,4 +29,25 @@ void LLVMTranslator::CreateSession() {
     // EE->RegisterJITEventListener(Listener);
 
     // Bind addresses to external symbols.
+}
+
+Value *LLVMTranslator::GetPhysicalRegValue(const char *RegName) {
+    // Prepare inline asm type.
+    FunctionType *InlineAsmTy =
+        FunctionType::get(Type::getInt64Ty(Context), false);
+    // Prepare inline asm constraints.
+    std::string Constraints(std::string("={") + RegName + "}");
+
+    // Create corresponding inline asm IR.
+    InlineAsm *IA = InlineAsm::get(InlineAsmTy, "", Constraints, true);
+    Value *HostRegValue = Builder.CreateCall(InlineAsmTy, IA);
+    return HostRegValue;
+}
+
+void LLVMTranslator::SetPhysicalRegValue(const char *RegName, Value *RegValue) {
+    FunctionType *InlineAsmTy = FunctionType::get(
+            Type::getVoidTy(Context), {Type::getInt64Ty(Context)}, false);
+    std::string Constraints = std::string("{") + RegName + "}";
+    InlineAsm *IA = InlineAsm::get(InlineAsmTy, "", Constraints, true);
+    Builder.CreateCall(InlineAsmTy, IA, {RegValue});
 }
