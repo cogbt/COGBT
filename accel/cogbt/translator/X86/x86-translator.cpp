@@ -97,8 +97,13 @@ void X86Translator::GenPrologue() {
     // Load guest state into mapped registers
     Value *GuestVals[NumX64MappedRegs];
     for (int i = 0; i < NumX64MappedRegs; i++) {
-        Value *Ptr = Builder.CreateGEP(
-            nullptr, ENV, ConstantInt::get(Int64Ty, GuestStateOffset(i)));
+        int Off = 0;
+        if (i <= EFLAG)
+            Off = GuestStateOffset(i);
+        else
+            Off = GuestEflagOffset();
+        Value *Ptr =
+            Builder.CreateGEP(nullptr, ENV, ConstantInt::get(Int64Ty, Off));
         GuestVals[i] = Builder.CreateLoad(Int64Ty, Ptr);
     }
 
@@ -113,4 +118,8 @@ void X86Translator::GenPrologue() {
     CodeEntry = GetPhysicalRegValue("r4");
     CodeEntry = Builder.CreateIntToPtr(CodeEntry, FuncTy);
     Builder.CreateCall(FuncTy, CodeEntry);
+}
+
+void X86Translator::GenEpilogue() {
+
 }

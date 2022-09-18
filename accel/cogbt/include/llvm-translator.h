@@ -32,7 +32,9 @@ public:
     /// handle and code cache to fill in.
     LLVMTranslator(TranslationUnit *TU, uintptr_t CacheBegin, size_t CacheSize)
         : Mod(new Module("cogbt", Context)), TU(TU), Builder(Context),
-          CodeCache(CacheBegin, CacheSize) {}
+          CodeCache(CacheBegin, CacheSize) {
+        InitializeTypes();
+    }
     virtual ~LLVMTranslator() = default;
 
     /// GenPrologue - Generates context switching IR instructions to switch

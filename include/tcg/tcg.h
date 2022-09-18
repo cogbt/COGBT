@@ -35,6 +35,10 @@
 #include "tcg-target.h"
 #include "tcg/tcg-cond.h"
 
+#ifdef CONFIG_COGBT
+#include "cogbt.h"
+#endif
+
 /* XXX: make safe guess about sizes */
 #define MAX_OP_PER_INSTR 266
 
@@ -581,6 +585,9 @@ struct TCGContext {
     /* Threshold to flush the translated code buffer.  */
     void *code_gen_highwater;
 
+#ifdef CONFIG_COGBT
+    LLVMTranslator *translator;
+#endif
     /* Track which vCPU triggers events */
     CPUState *cpu;                      /* *_trans */
 

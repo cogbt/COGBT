@@ -66,10 +66,16 @@
 #include <ffi.h>
 #endif
 
+#ifdef CONFIG_COGBT
+#include "cogbt.h"
+#endif
+
 /* Forward declarations for functions declared in tcg-target.c.inc and
    used here. */
 static void tcg_target_init(TCGContext *s);
+#ifndef CONFIG_COGBT
 static void tcg_target_qemu_prologue(TCGContext *s);
+#endif
 static bool patch_reloc(tcg_insn_unit *code_ptr, int type,
                         intptr_t value, intptr_t addend);
 
@@ -728,7 +734,14 @@ void tcg_prologue_init(TCGContext *s)
     s->code_buf = s->code_gen_ptr;
     s->data_gen_ptr = NULL;
 
-#ifndef CONFIG_TCG_INTERPRETER
+#ifdef CONFIG_COGBT
+    size_t llvm_cache_size = s->code_gen_buffer_size >> 1;
+    s->translator =
+        create_llvm_translator(NULL, (uintptr_t)s->code_buf, llvm_cache_size);
+    s->code_ptr += (llvm_cache_size + 3) & ~3;
+#endif
+
+#if (!defined (CONFIG_TCG_INTERPRETER) && !defined (CONFIG_COGBT))
     tcg_qemu_tb_exec = (tcg_prologue_fn *)tcg_splitwx_to_rx(s->code_ptr);
 #endif
 
@@ -738,7 +751,12 @@ void tcg_prologue_init(TCGContext *s)
 
     qemu_thread_jit_write();
     /* Generate the prologue.  */
+#ifndef CONFIG_COGBT
     tcg_target_qemu_prologue(s);
+#else
+    gen_prologue(s->translator);
+    tcg_qemu_tb_exec = (tcg_prologue_fn *)llvm_compile(s->translator, true);
+#endif
 
 #ifdef TCG_TARGET_NEED_POOL_LABELS
     /* Allow the prologue to put e.g. guest_base into a pool entry.  */

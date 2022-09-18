@@ -31,10 +31,15 @@ void LLVMTranslator::CreateSession() {
     // Bind addresses to external symbols.
 }
 
+void LLVMTranslator::InitializeTypes() {
+    Int64Ty = Type::getInt64Ty(Context);
+    VoidTy = Type::getVoidTy(Context);
+    Int8PtrTy = Type::getInt8PtrTy(Context);
+};
+
 Value *LLVMTranslator::GetPhysicalRegValue(const char *RegName) {
     // Prepare inline asm type.
-    FunctionType *InlineAsmTy =
-        FunctionType::get(Type::getInt64Ty(Context), false);
+    FunctionType *InlineAsmTy = FunctionType::get(Int64Ty, false);
     // Prepare inline asm constraints.
     std::string Constraints(std::string("={") + RegName + "}");
 
@@ -45,9 +50,13 @@ Value *LLVMTranslator::GetPhysicalRegValue(const char *RegName) {
 }
 
 void LLVMTranslator::SetPhysicalRegValue(const char *RegName, Value *RegValue) {
-    FunctionType *InlineAsmTy = FunctionType::get(
-            Type::getVoidTy(Context), {Type::getInt64Ty(Context)}, false);
+    FunctionType *InlineAsmTy = FunctionType::get(VoidTy, Int64Ty, false);
     std::string Constraints = std::string("{") + RegName + "}";
     InlineAsm *IA = InlineAsm::get(InlineAsmTy, "", Constraints, true);
     Builder.CreateCall(InlineAsmTy, IA, {RegValue});
+}
+
+uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
+    assert(TransFunc && "No translation function in module.");
+    return (uint8_t *)EE->getPointerToFunction(TransFunc);
 }
