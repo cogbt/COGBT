@@ -36,7 +36,7 @@ void X86Translator::InitializeFunction(StringRef Name) {
     // Bind all host physical registers to llvm value.
     for (int i = 0; i < NumHostRegs; i++) {
         Value *HostRegValue = GetPhysicalRegValue(HostRegNames[i]);
-        HostRegValues.push_back(HostRegValue);
+        HostRegValues[i] = HostRegValue;
     }
 
     // Store physical register value(a.k.a guest state) into stack object.
@@ -83,7 +83,7 @@ void X86Translator::GenPrologue() {
 
     // Save Callee-Saved-Registers, including $s0-$s8, $fp and $ra
     Type *CSRArrayTy = ArrayType::get(Int64Ty, NumHostCSRs);
-    Value *CSRPtrs = Builder.CreateIntToPtr(NewSP, CSRArrayTy);
+    Value *CSRPtrs = Builder.CreateIntToPtr(NewSP, CSRArrayTy->getPointerTo());
     for (int i = 0; i < NumHostCSRs; i++) {
         Value *CurrCSRPtr = Builder.CreateGEP(CSRArrayTy, CSRPtrs,
                                               ConstantInt::get(Int64Ty, i));
@@ -98,19 +98,20 @@ void X86Translator::GenPrologue() {
     Value *GuestVals[NumX64MappedRegs];
     for (int i = 0; i < NumX64MappedRegs; i++) {
         int Off = 0;
-        if (i <= EFLAG)
+        if (i < EFLAG)
             Off = GuestStateOffset(i);
         else
             Off = GuestEflagOffset();
         Value *Ptr =
-            Builder.CreateGEP(nullptr, ENV, ConstantInt::get(Int64Ty, Off));
+            Builder.CreateGEP(Int8Ty, ENV, ConstantInt::get(Int64Ty, Off));
         GuestVals[i] = Builder.CreateLoad(Int64Ty, Ptr);
     }
 
-    // Sync GuestVals, ENV, CodeEntry to mapped regs
-    for (int i = 0; i < NumX64MappedRegs; i++) {
+    // Sync GuestVals, EFLAG, ENV, CodeEntry to mapped regs
+    for (int i = 0; i < EFLAG; i++) {
         SetPhysicalRegValue(HostRegNames[GuestRegsToHost[i]], GuestVals[i]);
     }
+    SetPhysicalRegValue("r22", GuestVals[EFLAG]);
     SetPhysicalRegValue("r25", HostRegValues[HostA1]);
     SetPhysicalRegValue("r4", CodeEntry); // $r4 maybe modified, sync it.
 
@@ -118,6 +119,10 @@ void X86Translator::GenPrologue() {
     CodeEntry = GetPhysicalRegValue("r4");
     CodeEntry = Builder.CreateIntToPtr(CodeEntry, FuncTy);
     Builder.CreateCall(FuncTy, CodeEntry);
+    Builder.CreateUnreachable();
+
+    //debug
+    Mod->print(outs(), nullptr);
 }
 
 void X86Translator::GenEpilogue() {

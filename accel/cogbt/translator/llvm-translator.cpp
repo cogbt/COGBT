@@ -32,15 +32,15 @@ void LLVMTranslator::CreateSession() {
 }
 
 void LLVMTranslator::InitializeTypes() {
+    Int8Ty = Type::getInt8Ty(Context);
     Int64Ty = Type::getInt64Ty(Context);
     VoidTy = Type::getVoidTy(Context);
     Int8PtrTy = Type::getInt8PtrTy(Context);
 };
 
 Value *LLVMTranslator::GetPhysicalRegValue(const char *RegName) {
-    // Prepare inline asm type.
+    // Prepare inline asm type and inline constraints.
     FunctionType *InlineAsmTy = FunctionType::get(Int64Ty, false);
-    // Prepare inline asm constraints.
     std::string Constraints(std::string("={") + RegName + "}");
 
     // Create corresponding inline asm IR.

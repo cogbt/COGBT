@@ -7,6 +7,7 @@
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
 #include "translation-unit.h"
+#include "host-info.h"
 
 using namespace llvm;
 
@@ -34,6 +35,7 @@ public:
         : Mod(new Module("cogbt", Context)), TU(TU), Builder(Context),
           CodeCache(CacheBegin, CacheSize) {
         InitializeTypes();
+        HostRegValues.resize(NumHostRegs);
     }
     virtual ~LLVMTranslator() = default;
 
@@ -62,7 +64,7 @@ protected:
     BasicBlock *ExitBB;          ///< Exit block of Translation Function.
 
     /// Basic types that are frequently used.
-    Type *Int64Ty, *VoidTy, *Int8PtrTy;
+    Type *Int8Ty, *Int64Ty, *VoidTy, *Int8PtrTy;
 
     /// InitializeTypes - Cache some basic types that are frequently used in
     /// translator.
