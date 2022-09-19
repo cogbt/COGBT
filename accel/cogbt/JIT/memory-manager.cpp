@@ -31,9 +31,7 @@ uint8_t *COGBTMemoryManager::allocateDataSection(uintptr_t Size,
                                                  unsigned SectionID,
                                                  StringRef SectionName,
                                                  bool IsReadOnly) {
-    // COGBT should never generate data section.
-    assert(0);
-    return nullptr;
+    return allocateCodeSection(Size, Alignment, SectionID, SectionName);
 }
 
 bool COGBTMemoryManager::finalizeMemory(std::string *ErrMsg) {
