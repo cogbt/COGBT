@@ -1,5 +1,7 @@
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm-translator.h"
@@ -70,21 +72,29 @@ void LLVMTranslator::SetPhysicalRegValue(const char *RegName, Value *RegValue) {
 }
 
 uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
-    assert(TransFunc && "No translation function in module.");
-    CreateSession();
     if (UseOptmizer) {
         Optimize();
     }
+    //debug
+    Mod->print(outs(), nullptr); //debug
+    assert(TransFunc && "No translation function in module.");
+    CreateSession();
     return (uint8_t *)EE->getPointerToFunction(TransFunc);
 }
 
 void LLVMTranslator::Optimize() {
     legacy::FunctionPassManager FPM(Mod.get());
+    legacy::PassManager MPM;
+
     PassManagerBuilder Builder;
     Builder.OptLevel = 2;
-    Builder.SizeLevel = 0;
     Builder.LoopVectorize = true;
     Builder.SLPVectorize = true;
     Builder.populateFunctionPassManager(FPM);
+    Builder.populateModulePassManager(MPM);
+    FPM.doInitialization();
     FPM.run(*TransFunc);
+    FPM.doFinalization();
+
+    MPM.run(*Mod.get());
 }

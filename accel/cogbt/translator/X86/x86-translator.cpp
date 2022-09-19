@@ -63,6 +63,9 @@ void X86Translator::GenPrologue() {
     FunctionType *FuncTy = FunctionType::get(VoidTy, false);
     TransFunc = Function::Create(FuncTy, Function::ExternalLinkage,
                                  "prologue", *Mod);
+    TransFunc->setCallingConv(CallingConv::C);
+    TransFunc->addFnAttr(Attribute::NoReturn);
+    TransFunc->addFnAttr("cogbt");
 
     EntryBB = BasicBlock::Create(Context, "entry", TransFunc);
     Builder.SetInsertPoint(EntryBB);
