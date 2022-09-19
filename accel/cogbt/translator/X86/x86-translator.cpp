@@ -113,13 +113,13 @@ void X86Translator::GenPrologue() {
     for (int i = 0; i < EFLAG; i++) {
         SetPhysicalRegValue(HostRegNames[GuestRegsToHost[i]], GuestVals[i]);
     }
-    SetPhysicalRegValue("r22", GuestVals[EFLAG]);
-    SetPhysicalRegValue("r25", HostRegValues[HostA1]);
-    SetPhysicalRegValue("r4", CodeEntry); // $r4 maybe modified, sync it.
-    SetPhysicalRegValue("r3", NewSP);
+    SetPhysicalRegValue("$r22", GuestVals[EFLAG]);
+    SetPhysicalRegValue("$r25", HostRegValues[HostA1]);
+    SetPhysicalRegValue("$r4", CodeEntry); // $r4 maybe modified, sync it.
+    SetPhysicalRegValue("$r3", NewSP);
 
     // Jump to CodeEntry
-    CodeEntry = GetPhysicalRegValue("r4");
+    CodeEntry = GetPhysicalRegValue("$r4");
     CodeEntry = Builder.CreateIntToPtr(CodeEntry, FuncTy->getPointerTo());
     Builder.CreateCall(FuncTy, CodeEntry);
     Builder.CreateUnreachable();
