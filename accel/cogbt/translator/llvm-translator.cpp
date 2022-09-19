@@ -36,6 +36,7 @@ void LLVMTranslator::InitializeTypes() {
     Int64Ty = Type::getInt64Ty(Context);
     VoidTy = Type::getVoidTy(Context);
     Int8PtrTy = Type::getInt8PtrTy(Context);
+    Int64PtrTy = Type::getInt64PtrTy(Context);
 };
 
 Value *LLVMTranslator::GetPhysicalRegValue(const char *RegName) {

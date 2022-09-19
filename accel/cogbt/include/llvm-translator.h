@@ -64,7 +64,7 @@ protected:
     BasicBlock *ExitBB;          ///< Exit block of Translation Function.
 
     /// Basic types that are frequently used.
-    Type *Int8Ty, *Int64Ty, *VoidTy, *Int8PtrTy;
+    Type *Int8Ty, *Int64Ty, *VoidTy, *Int8PtrTy, *Int64PtrTy;
 
     /// InitializeTypes - Cache some basic types that are frequently used in
     /// translator.

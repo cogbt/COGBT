@@ -85,14 +85,15 @@ void X86Translator::GenPrologue() {
     Type *CSRArrayTy = ArrayType::get(Int64Ty, NumHostCSRs);
     Value *CSRPtrs = Builder.CreateIntToPtr(NewSP, CSRArrayTy->getPointerTo());
     for (int i = 0; i < NumHostCSRs; i++) {
-        Value *CurrCSRPtr = Builder.CreateGEP(CSRArrayTy, CSRPtrs,
-                                              ConstantInt::get(Int64Ty, i));
+        Value *CurrCSRPtr = Builder.CreateGEP(
+            CSRArrayTy, CSRPtrs,
+            {ConstantInt::get(Int64Ty, 0), ConstantInt::get(Int64Ty, i)});
         Builder.CreateStore(HostRegValues[HostCSRs[i]], CurrCSRPtr);
     }
 
     // Get transalted code entry and ENV value
     Value *CodeEntry = HostRegValues[HostA0];
-    Value *ENV = Builder.CreateBitCast(HostRegValues[HostA1], Int8PtrTy);
+    Value *ENV = Builder.CreateIntToPtr(HostRegValues[HostA1], Int8PtrTy);
 
     // Load guest state into mapped registers
     Value *GuestVals[NumX64MappedRegs];
@@ -102,8 +103,9 @@ void X86Translator::GenPrologue() {
             Off = GuestStateOffset(i);
         else
             Off = GuestEflagOffset();
-        Value *Ptr =
+        Value *Addr =
             Builder.CreateGEP(Int8Ty, ENV, ConstantInt::get(Int64Ty, Off));
+        Value *Ptr = Builder.CreateBitCast(Addr, Int64PtrTy);
         GuestVals[i] = Builder.CreateLoad(Int64Ty, Ptr);
     }
 
