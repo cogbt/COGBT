@@ -88,6 +88,9 @@ protected:
     void SetPhysicalRegValue(const char *RegName, Value *RegValue);
 
     /// IR optimization submodule
+    /// Optimize - Add all standard or custom passes into function pass manager
+    /// and run them.
+    void Optimize();
 
     /// JIT Submodule Of Translator
     ExecutionEngine *EE;
