@@ -58,7 +58,7 @@ protected:
     /// Guest->IR converter submodule
     Function *TransFunc;         ///< Translation function.
     IRBuilder<> Builder;         ///< Utility for creating IR instructions.
-    SmallVector<Value *> GuestStates;  ///< Stack objects for each guest GPRs.
+    SmallVector<Value *, 32> GuestStates;  ///< Stack objects for each guest GPRs.
     SmallVector<Value *, 32> HostRegValues; ///< Host physical regs values. 
     BasicBlock *EntryBB;         ///< Entry block of Translation Function.
     BasicBlock *ExitBB;          ///< Exit block of Translation Function.
