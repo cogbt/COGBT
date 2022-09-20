@@ -32,8 +32,8 @@ public:
     /// Constructor of LLVM Translator with given translation unit \p TU to
     /// handle and code cache to fill in.
     LLVMTranslator(TranslationUnit *TU, uintptr_t CacheBegin, size_t CacheSize)
-        : Mod(new Module("cogbt", Context)), TU(TU), Builder(Context),
-          CodeCache(CacheBegin, CacheSize) {
+        : Mod(std::make_unique<Module>("cogbt", Context)), RawMod(Mod.get()),
+          TU(TU), Builder(Context), CodeCache(CacheBegin, CacheSize) {
         InitializeTypes();
         HostRegValues.resize(NumHostRegs);
     }
@@ -53,6 +53,7 @@ protected:
     /// Core Member Variables
     LLVMContext Context;
     std::unique_ptr<Module> Mod; ///< Container of all translated IR.
+    Module *RawMod;              ///< Raw pointer of Mod.
     TranslationUnit *TU;         ///< Guest translation unit to handle.
 
     /// Guest->IR converter submodule
@@ -92,16 +93,16 @@ protected:
     /// and run them.
     void Optimize();
 
-    /// JIT Submodule Of Translator
+    /// @name JIT Submodule Of Translator
     ExecutionEngine *EE;
     CodeCacheInfo CodeCache;     ///< Per-translator code cache.
 
-    /// CreateSession - Initialize the JIT session for current translator. Set
+    /// CreateJIT - Initialize the JIT session for current translator. Set
     /// various attributes of ExecutionEngine, IR Module and MemoryManager.
-    void CreateSession();
+    void CreateJIT();
 
     /// DeleteSession - Finalize the JIT session.
-    void DeleteSession();
+    void DeleteJIT();
 };
 
 #endif

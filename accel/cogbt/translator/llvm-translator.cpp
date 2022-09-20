@@ -10,6 +10,14 @@
 #include <memory>
 #include <string>
 
+void LLVMTranslator::InitializeTypes() {
+    Int8Ty = Type::getInt8Ty(Context);
+    Int64Ty = Type::getInt64Ty(Context);
+    VoidTy = Type::getVoidTy(Context);
+    Int8PtrTy = Type::getInt8PtrTy(Context);
+    Int64PtrTy = Type::getInt64PtrTy(Context);
+};
+
 void LLVMTranslator::InitializeModule() {
 #ifdef CONFIG_HOST_X86
     Mod->setTargetTriple("x86_64-pc-linux-gnu");
@@ -19,39 +27,12 @@ void LLVMTranslator::InitializeModule() {
     Mod->setTargetTriple("loongarch64-unknown-linux-gnu");
     Mod->setDataLayout("e-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128");
 #endif
-}
 
-
-void LLVMTranslator::CreateSession() {
+    // Some initialization about JIT.
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     InitializeNativeTargetAsmParser();
-
-    std::string ErrorMessage;
-
-    // Set all attributes of an ExecutionEngine.
-    EngineBuilder builder(std::move(Mod));
-    builder.setErrorStr(&ErrorMessage);
-    builder.setEngineKind(EngineKind::JIT);
-    std::unique_ptr<COGBTMemoryManager> MM(new COGBTMemoryManager(CodeCache));
-    builder.setMCJITMemoryManager(std::move(MM));
-
-    // Create an ExecutionEngine.
-    EE = builder.create();
-    assert(EE && "ExecutionEngine build error.");
-
-    /// TODO! Register JITEventListener to handle some post-JITed events. EE->RegisterJITEventListener(Listener);
-
-    // Bind addresses to external symbols.
 }
-
-void LLVMTranslator::InitializeTypes() {
-    Int8Ty = Type::getInt8Ty(Context);
-    Int64Ty = Type::getInt64Ty(Context);
-    VoidTy = Type::getVoidTy(Context);
-    Int8PtrTy = Type::getInt8PtrTy(Context);
-    Int64PtrTy = Type::getInt64PtrTy(Context);
-};
 
 Value *LLVMTranslator::GetPhysicalRegValue(const char *RegName) {
     // Prepare inline asm type and inline constraints.
@@ -71,17 +52,6 @@ void LLVMTranslator::SetPhysicalRegValue(const char *RegName, Value *RegValue) {
     Builder.CreateCall(InlineAsmTy, IA, {RegValue});
 }
 
-uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
-    if (UseOptmizer) {
-        Optimize();
-    }
-    //debug
-    Mod->print(outs(), nullptr); //debug
-    assert(TransFunc && "No translation function in module.");
-    CreateSession();
-    return (uint8_t *)EE->getPointerToFunction(TransFunc);
-}
-
 void LLVMTranslator::Optimize() {
     legacy::FunctionPassManager FPM(Mod.get());
     legacy::PassManager MPM;
@@ -97,4 +67,43 @@ void LLVMTranslator::Optimize() {
     FPM.doFinalization();
 
     MPM.run(*Mod.get());
+}
+
+void LLVMTranslator::CreateJIT() {
+    std::string ErrorMessage;
+
+    // Set all attributes of an ExecutionEngine.
+    EngineBuilder builder(std::move(Mod));
+    builder.setErrorStr(&ErrorMessage);
+    builder.setEngineKind(EngineKind::JIT);
+    std::unique_ptr<COGBTMemoryManager> MM(
+        std::make_unique<COGBTMemoryManager>(CodeCache));
+    builder.setMCJITMemoryManager(std::move(MM));
+
+    // Create an ExecutionEngine.
+    EE = builder.create();
+    assert(EE && "ExecutionEngine build error.");
+
+    /// TODO! Register JITEventListener to handle some post-JITed events.
+    /// EE->RegisterJITEventListener(Listener);
+
+    // Bind addresses to external symbols.
+}
+
+void LLVMTranslator::DeleteJIT() {
+    EE->removeModule(RawMod);
+    delete EE;
+}
+
+uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
+    if (UseOptmizer) {
+        Optimize();
+    }
+    //debug
+    Mod->print(outs(), nullptr); //debug
+    assert(TransFunc && "No translation function in module.");
+    CreateJIT();
+    uint8_t * FuncAddr = (uint8_t *)EE->getPointerToFunction(TransFunc);
+    DeleteJIT();
+    return FuncAddr;
 }
