@@ -29,34 +29,51 @@ public:
               CodeCachePtr((uint8_t *)CodeCacheBegin) {}
     };
 
-    /// Constructor of LLVM Translator with given translation unit \p TU to
-    /// handle and code cache to fill in.
-    LLVMTranslator(TranslationUnit *TU, uintptr_t CacheBegin, size_t CacheSize)
-        : Mod(std::make_unique<Module>("cogbt", Context)), RawMod(Mod.get()),
-          TU(TU), Builder(Context), CodeCache(CacheBegin, CacheSize) {
+    /// Constructor of LLVM Translator with given code cache to fill in.
+    LLVMTranslator(uintptr_t CacheBegin, size_t CacheSize)
+        : Builder(Context), CodeCache(CacheBegin, CacheSize) {
         InitializeTypes();
         HostRegValues.resize(NumHostRegs);
     }
     virtual ~LLVMTranslator() = default;
 
+    /// InitializeModule - Initialize necessary Module infomation, like
+    /// DataLayout, TargetTriple, DataStructures of converter.
+    void InitializeModule();
+
+    /// AddTU - Add a TU to translator.
+    ///
+    /// In original design, translator can only compile one TU at a time. This
+    /// constraint makes it hard to compile multiple functions offline and store
+    /// them into a ELF image. A good choice is to use a TU vector to cache
+    /// them.
+    ///
+    /// Clients should guarantee InitializeModule is called before using this
+    /// function.
+    void AddTU(TranslationUnit *TU) {
+        TUs.push_back(TU);
+    }
+
     /// GenPrologue - Generates context switching IR instructions to switch
     /// translator to translation code.
     virtual void GenPrologue() = 0;
+
     /// GenEpilogue - Generates context switching IR instructions to switch
     /// translation code to translator.
     virtual void GenEpilogue() = 0;
+
     /// Compile - Compile LLVM IR instructions into host machine code. If \p
     /// UseOptimizer is true, optimizations will be performed first.
     uint8_t *Compile(bool UseOptimizer);
 
 protected:
-    /// Core Member Variables
+    /// @name Core Member Variables
     LLVMContext Context;
     std::unique_ptr<Module> Mod; ///< Container of all translated IR.
     Module *RawMod;              ///< Raw pointer of Mod.
-    TranslationUnit *TU;         ///< Guest translation unit to handle.
+    SmallVector<TranslationUnit *>TUs; ///< Guest translation units to handle.
 
-    /// Guest->IR converter submodule
+    /// @name Guest->IR converter submodule
     Function *TransFunc;         ///< Translation function.
     IRBuilder<> Builder;         ///< Utility for creating IR instructions.
     SmallVector<Value *, 32> GuestStates;  ///< Stack objects for each guest GPRs.
@@ -71,10 +88,6 @@ protected:
     /// translator.
     void InitializeTypes();
 
-    /// InitializeModule - Initialize necessary Module infomation, like
-    /// DataLayout, TargetTriple.
-    void InitializeModule();
-
     /// InitializeFunction - Initialize the basic framework of the translation
     /// function, such as `entry` block(binding physical register to IR value),
     /// `exit` block(sync modified guest register state into physical register).
@@ -88,7 +101,7 @@ protected:
 
     void SetPhysicalRegValue(const char *RegName, Value *RegValue);
 
-    /// IR optimization submodule
+    /// @name IR optimization submodule
     /// Optimize - Add all standard or custom passes into function pass manager
     /// and run them.
     void Optimize();

@@ -3,9 +3,8 @@
 #include "cogbt.h"
 #include "x86-translator.h"
 
-LLVMTranslator *create_llvm_translator(TranslationUnit *tu,
-                                       uintptr_t CacheBegin, size_t CacheSize) {
-    return new X86Translator(tu, CacheBegin, CacheSize);
+LLVMTranslator *create_llvm_translator(uintptr_t CacheBegin, size_t CacheSize) {
+    return new X86Translator(CacheBegin, CacheSize);
 }
 
 void gen_prologue(LLVMTranslator *translator) {

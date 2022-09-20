@@ -19,6 +19,9 @@ void LLVMTranslator::InitializeTypes() {
 };
 
 void LLVMTranslator::InitializeModule() {
+    Mod.reset(new Module("cogbt", Context));
+    RawMod = Mod.get();
+
 #ifdef CONFIG_HOST_X86
     Mod->setTargetTriple("x86_64-pc-linux-gnu");
     Mod->setDataLayout("e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-"
@@ -32,6 +35,15 @@ void LLVMTranslator::InitializeModule() {
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     InitializeNativeTargetAsmParser();
+
+    // Initialize data structure of converter
+    TUs.clear();
+    TransFunc = nullptr;
+    for (auto &V : GuestStates)
+        V = nullptr;
+    for (auto &V : HostRegValues)
+        V = nullptr;
+    ExitBB = EntryBB = nullptr;
 }
 
 Value *LLVMTranslator::GetPhysicalRegValue(const char *RegName) {
@@ -76,8 +88,7 @@ void LLVMTranslator::CreateJIT() {
     EngineBuilder builder(std::move(Mod));
     builder.setErrorStr(&ErrorMessage);
     builder.setEngineKind(EngineKind::JIT);
-    std::unique_ptr<COGBTMemoryManager> MM(
-        std::make_unique<COGBTMemoryManager>(CodeCache));
+    std::unique_ptr<COGBTMemoryManager> MM(new COGBTMemoryManager(CodeCache));
     builder.setMCJITMemoryManager(std::move(MM));
 
     // Create an ExecutionEngine.

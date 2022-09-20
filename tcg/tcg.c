@@ -737,7 +737,7 @@ void tcg_prologue_init(TCGContext *s)
 #ifdef CONFIG_COGBT
     size_t llvm_cache_size = s->code_gen_buffer_size >> 1;
     s->translator =
-        create_llvm_translator(NULL, (uintptr_t)s->code_buf, llvm_cache_size);
+        create_llvm_translator((uintptr_t)s->code_buf, llvm_cache_size);
     s->code_ptr += (llvm_cache_size + 3) & ~3;
 #endif
 

@@ -5,8 +5,8 @@
 
 class X86Translator final : public LLVMTranslator {
 public:
-    X86Translator(TranslationUnit *TU, uintptr_t CacheBegin, size_t CacheSize)
-        : LLVMTranslator(TU, CacheBegin, CacheSize) {}
+    X86Translator(uintptr_t CacheBegin, size_t CacheSize)
+        : LLVMTranslator(CacheBegin, CacheSize) {}
 
 private:
     /// Guest registers that will be mapped
