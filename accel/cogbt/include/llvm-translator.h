@@ -71,7 +71,7 @@ protected:
     LLVMContext Context;
     std::unique_ptr<Module> Mod; ///< Container of all translated IR.
     Module *RawMod;              ///< Raw pointer of Mod.
-    SmallVector<TranslationUnit *>TUs; ///< Guest translation units to handle.
+    SmallVector<TranslationUnit *, 1> TUs; ///< Guest translation units to handle.
 
     /// @name Guest->IR converter submodule
     Function *TransFunc;         ///< Translation function.
