@@ -37,3 +37,11 @@ TranslationUnit *tu_get(void) {
 void tu_init(TranslationUnit *TU) {
     TU->~TranslationUnit();
 }
+
+void guest_block_add_inst(GuestBlock *Block, GuestInst *Inst) {
+    Block->AddGuestInst(Inst);
+}
+
+GuestBlock *guest_tu_create_block(TranslationUnit *TU) {
+    return  TU->CreateAndAddGuestBlock();
+}

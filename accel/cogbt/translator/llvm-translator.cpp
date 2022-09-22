@@ -37,7 +37,7 @@ void LLVMTranslator::InitializeModule() {
     InitializeNativeTargetAsmParser();
 
     // Initialize data structure of converter
-    TUs.clear();
+    TU = nullptr;
     TransFunc = nullptr;
     for (auto &V : GuestStates)
         V = nullptr;
@@ -117,4 +117,8 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
     uint8_t * FuncAddr = (uint8_t *)EE->getPointerToFunction(TransFunc);
     DeleteJIT();
     return FuncAddr;
+}
+
+void LLVMTranslator::Translate() {
+    dbgs() << "Welcome to COGBT translation module!\n";
 }

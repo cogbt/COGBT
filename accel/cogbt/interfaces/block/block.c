@@ -27,8 +27,8 @@ static bool guest_inst_is_terminator(cs_insn *insn) {
 #endif
 }
 
-int block_gen_code(uint64_t pc, void *code_cache, int max_insns,
-                   int *insn_cnt) {
+int block_gen_code(uint64_t pc, int max_insns, LLVMTranslator *translator,
+                   void **code_cache, int *insn_cnt) {
     cs_insn **insns = calloc(max_insns + 1, sizeof(cs_insn *));
     *insn_cnt = 0;
 
@@ -55,13 +55,25 @@ int block_gen_code(uint64_t pc, void *code_cache, int max_insns,
     }
 
     /* Register all guest instruction to TranslationUnit */
+    TranslationUnit *tu = tu_get();
+    tu_init(tu);
+    GuestBlock *block = guest_tu_create_block(tu);
+    for (int i = 0; i < *insn_cnt; i++) {
+        guest_block_add_inst(block, insns[i]);
+    }
 
     /* Compile this TranslationUnit */
+    size_t llvm_code_size_before = llvm_get_code_size(translator);
+    llvm_initialize(translator);
+    llvm_set_tu(translator, tu);
+    llvm_translate(translator);
+    llvm_compile(translator, true);
+    size_t llvm_code_size_after = llvm_get_code_size(translator);
 
     /* Free all cs_insn allocated by capstone */
     for (int i = 0; i < *insn_cnt; i++) {
         cs_free(insns[i], 1);
     }
     free(insns);
-    return 0;
+    return llvm_code_size_after - llvm_code_size_before;
 }

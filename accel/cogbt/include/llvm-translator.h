@@ -41,17 +41,9 @@ public:
     /// DataLayout, TargetTriple, DataStructures of converter.
     void InitializeModule();
 
-    /// AddTU - Add a TU to translator.
-    ///
-    /// In original design, translator can only compile one TU at a time. This
-    /// constraint makes it hard to compile multiple functions offline and store
-    /// them into a ELF image. A good choice is to use a TU vector to cache
-    /// them.
-    ///
-    /// Clients should guarantee InitializeModule is called before using this
-    /// function.
-    void AddTU(TranslationUnit *TU) {
-        TUs.push_back(TU);
+    /// SetTU - Commit TU to be processed to the translator.
+    void SetTU(TranslationUnit *TU) {
+        this->TU = TU;
     }
 
     /// GenPrologue - Generates context switching IR instructions to switch
@@ -62,16 +54,24 @@ public:
     /// translation code to translator.
     virtual void GenEpilogue() = 0;
 
+    /// Translate - Translate guest TU into IRs and append them to Mod.
+    void Translate();
+
     /// Compile - Compile LLVM IR instructions into host machine code. If \p
     /// UseOptimizer is true, optimizations will be performed first.
     uint8_t *Compile(bool UseOptimizer);
+
+    /// GetCurrentCodeSize - Get the currently used code cache size.
+    size_t GetCurrentCodeSize() {
+        return CodeCache.CodeCachePtr - CodeCache.CodeCacheBegin;
+    }
 
 protected:
     /// @name Core Member Variables
     LLVMContext Context;
     std::unique_ptr<Module> Mod; ///< Container of all translated IR.
     Module *RawMod;              ///< Raw pointer of Mod.
-    SmallVector<TranslationUnit *, 1> TUs; ///< Guest translation units to handle.
+    TranslationUnit *TU;         ///< Guest translation unit to handle.
 
     /// @name Guest->IR converter submodule
     Function *TransFunc;         ///< Translation function.

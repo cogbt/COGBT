@@ -1430,8 +1430,10 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
         cpu_loop_exit(cpu);
     }
 
+#ifndef COGBT
     gen_code_buf = tcg_ctx->code_gen_ptr;
     tb->tc.ptr = tcg_splitwx_to_rx(gen_code_buf);
+#endif
     tb->pc = pc;
     tb->cs_base = cs_base;
     tb->flags = flags;
@@ -1618,8 +1620,10 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
     /* gen_code_size =  cogbt_gen_code(tb, max_insns); */
     search_size = 0;
     int guest_inst_cnt = 0;
-    gen_code_size = block_gen_code(tb->pc, tcg_splitwx_to_rw(tb->tc.ptr),
-                                   max_insns, &guest_inst_cnt);
+    void *host_code_ptr = NULL;
+    gen_code_size = block_gen_code(tb->pc, max_insns, tcg_ctx->translator,
+                                   host_code_ptr, &guest_inst_cnt);
+    tb->tc.ptr = tcg_splitwx_to_rx(host_code_ptr);
     tb->tc.size = gen_code_size;
     tb->icount = guest_inst_cnt;
 #endif
