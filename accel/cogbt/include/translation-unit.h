@@ -5,14 +5,16 @@
 
 #include <vector>
 #include <cstdint>
+#include <cstddef>
+#include "capstone.h"
 using std::vector;
-using GuestInst = void;
+using GuestInst = cs_insn;
 using GuestPC = uint64_t;
 
 #else
 
 #include <stdint.h>
-typedef void GuestInst;
+typedef struct cs_insn GuestInst;
 typedef uint64_t GuestPC;
 
 #endif // include headfile
@@ -27,6 +29,16 @@ class GuestBlock {
 public:
     void AddGuestInst(GuestInst *Inst);
 
+    /// @name All APIs about iterators.
+    using iteraotr = vector<GuestInst *>::iterator;
+    using reverse_iterator = vector<GuestInst *>::reverse_iterator;
+
+    iteraotr begin() { return GuestInsts.begin(); }
+    iteraotr end() { return GuestInsts.end(); }
+    reverse_iterator rbegin() { return GuestInsts.rbegin(); }
+    reverse_iterator rend() { return GuestInsts.rend(); }
+    size_t size() { return GuestInsts.size(); }
+    bool empty() { return GuestInsts.empty(); }
 };
 #else
 typedef struct GuestBlock GuestBlock;
@@ -41,8 +53,24 @@ class TranslationUnit {
 
 public:
     ~TranslationUnit();
+
+    /// CreateAndAddGuestBlock - Create a GuestBlock in this TU and return its
+    /// address.
     GuestBlock *CreateAndAddGuestBlock();
+
+    /// dump - Show all GuestInstructions in this TU.
     void dump(void);
+
+    /// @name All interfaces about iterators.
+    using iterator = vector<GuestBlock>::iterator;
+    using reverse_iterator = vector<GuestBlock>::reverse_iterator;
+
+    iterator begin() { return GuestBlocks.begin(); }
+    iterator end() { return GuestBlocks.end(); }
+    reverse_iterator rbegin() { return GuestBlocks.rbegin(); }
+    reverse_iterator rend() { return GuestBlocks.rend(); }
+    size_t size() { return GuestBlocks.size(); }
+    bool empty() { return GuestBlocks.empty(); }
 };
 #else
 typedef struct TranslationUnit TranslationUnit;
