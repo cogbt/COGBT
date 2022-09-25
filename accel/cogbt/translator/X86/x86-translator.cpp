@@ -37,11 +37,13 @@ void X86Translator::InitializeFunction(StringRef Name) {
     }
 
     // Binds all mapped host physical registers to llvm value.
-    for (int i = 0; i < NumX64MappedRegs; i++) {
+    for (int i = 0; i < EFLAG; i++) {
         Value *HostRegValue =
             GetPhysicalRegValue(HostRegNames[GuestRegsToHost[i]]);
-        HostRegValues[i] = HostRegValue;
+        HostRegValues[GuestRegsToHost[i]] = HostRegValue;
     }
+    HostRegValues[GuestRegsToHost[EFLAG]] =
+        GetPhysicalRegValue(HostRegNames[GuestRegsToHost[EFLAG]]);
 
     // Store physical register value(a.k.a guest state) into stack object.
     for (int i = 0; i < NumX64MappedRegs; i++) {
