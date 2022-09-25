@@ -119,12 +119,3 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
     return FuncAddr;
 }
 
-void LLVMTranslator::Translate() {
-    dbgs() << "Welcome to COGBT translation module!\n";
-    for (auto &block : *TU) {
-        for (auto &inst : block) {
-            printf("0x%lx  %s\t%s\n", inst->address, inst->mnemonic,
-                    inst->op_str); // debug
-        }
-    }
-}

@@ -61,6 +61,14 @@ public:
     /// dump - Show all GuestInstructions in this TU.
     void dump(void);
 
+    /// GetTUEntry - Get the first pc of TU.
+    uint64_t GetTUEntry() {
+        if (GuestBlocks.empty()) {
+            exit(-1);
+        }
+        return (*GuestBlocks[0].begin())->address;
+    }
+
     /// @name All interfaces about iterators.
     using iterator = vector<GuestBlock>::iterator;
     using reverse_iterator = vector<GuestBlock>::reverse_iterator;

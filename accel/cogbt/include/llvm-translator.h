@@ -55,7 +55,7 @@ public:
     virtual void GenEpilogue() = 0;
 
     /// Translate - Translate guest TU into IRs and append them to Mod.
-    void Translate();
+    virtual void Translate() = 0;
 
     /// Compile - Compile LLVM IR instructions into host machine code. If \p
     /// UseOptimizer is true, optimizations will be performed first.

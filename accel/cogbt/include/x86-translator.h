@@ -50,6 +50,13 @@ private:
 
     virtual void GenEpilogue() override;
 
+    virtual void Translate() override;
+
+    /// @name X86 translate functions.
+#define HANDLE_X86_INST(opcode, name) void translate_##name();
+#include "x86-inst.def"
+#undef HANDLE_X86_INST
+
 };
 
 #endif

@@ -6,11 +6,13 @@
 const char *X86Translator::GuestRegNames[NumX64MappedRegs] = {
     "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi",
     "r8",  "r9",  "r10", "r11", "r12", "r13", "r14", "r15",
+    "eflag",
 };
 
 const int X86Translator::GuestRegsToHost[NumX64MappedRegs] = {
     T3, T6, T7, S3, S4, S5, S6, S7,
     S1, S8, A6, A7, T0, T1, T2, S0,
+    FP,
 };
 void X86Translator::InitializeFunction(StringRef Name) {
     // Create translation function with (void (*)()) type, C calling convention,
@@ -28,14 +30,16 @@ void X86Translator::InitializeFunction(StringRef Name) {
     Builder.SetInsertPoint(EntryBB);
 
     // Allocate stack objects for guest mapped registers.
+    GuestStates.resize(NumX64MappedRegs);
     for (int i = 0; i < NumX64MappedRegs; i++) {
-        GuestStates.push_back(Builder.CreateAlloca(
-            Int64Ty, nullptr, StringRef(GuestRegNames[i])));
+        GuestStates[i] =
+            Builder.CreateAlloca(Int64Ty, nullptr, StringRef(GuestRegNames[i]));
     }
 
-    // Bind all host physical registers to llvm value.
-    for (int i = 0; i < NumHostRegs; i++) {
-        Value *HostRegValue = GetPhysicalRegValue(HostRegNames[i]);
+    // Binds all mapped host physical registers to llvm value.
+    for (int i = 0; i < NumX64MappedRegs; i++) {
+        Value *HostRegValue =
+            GetPhysicalRegValue(HostRegNames[GuestRegsToHost[i]]);
         HostRegValues[i] = HostRegValue;
     }
 
@@ -133,4 +137,24 @@ void X86Translator::GenPrologue() {
 
 void X86Translator::GenEpilogue() {
 
+}
+
+void X86Translator::Translate() {
+    dbgs() << "Welcome to COGBT translation module!\n";
+    InitializeFunction(std::to_string(TU->GetTUEntry()));
+    for (auto &block : *TU) {
+        for (auto &inst : block) {
+            switch (inst->id) {
+            default:
+                assert(0 && "Unknown x86 opcode!");
+#define HANDLE_X86_INST(opcode, name)     \
+            case opcode:                  \
+                translate_##name();       \
+                break;
+#include "x86-inst.def"
+            }
+            /* printf("0x%lx  %s\t%s\n", inst->address, inst->mnemonic, */
+            /*         inst->op_str); // debug */
+        }
+    }
 }
