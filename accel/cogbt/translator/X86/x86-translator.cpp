@@ -3,17 +3,6 @@
 #include "host-info.h"
 #include "emulator.h"
 
-const char *X86Translator::GuestRegNames[NumX64MappedRegs] = {
-    "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi",
-    "r8",  "r9",  "r10", "r11", "r12", "r13", "r14", "r15",
-    "eflag",
-};
-
-const int X86Translator::GuestRegsToHost[NumX64MappedRegs] = {
-    T3, T6, T7, S3, S4, S5, S6, S7,
-    S1, S8, A6, A7, T0, T1, T2, S0,
-    FP,
-};
 void X86Translator::InitializeFunction(StringRef Name) {
     // Create translation function with (void (*)()) type, C calling convention,
     // and cogbt attribute.
@@ -30,34 +19,36 @@ void X86Translator::InitializeFunction(StringRef Name) {
     Builder.SetInsertPoint(EntryBB);
 
     // Allocate stack objects for guest mapped registers.
-    GuestStates.resize(NumX64MappedRegs);
-    for (int i = 0; i < NumX64MappedRegs; i++) {
+    GuestStates.resize(GetNumGMRs());
+    for (int i = 0; i < GetNumGMRs(); i++) {
         GuestStates[i] =
-            Builder.CreateAlloca(Int64Ty, nullptr, StringRef(GuestRegNames[i]));
+            Builder.CreateAlloca(Int64Ty, nullptr, GetGMRName(i));
     }
 
-    // Binds all mapped host physical registers to llvm value.
-    for (int i = 0; i < NumX64MappedRegs; i++) {
+    // Binds all mapped host physical registers with llvm value.
+    for (int i = 0; i < GetNumGMRs(); i++) {
         Value *HostRegValue =
-            GetPhysicalRegValue(HostRegNames[GuestRegsToHost[i]]);
+            GetPhysicalRegValue(HostRegNames[GMRToHMR(i)]);
         HostRegValues[i] = HostRegValue;
     }
+    CPUEnv = GetPhysicalRegValue(HostRegNames[ENVReg]);
+    CPUEnv = Builder.CreateIntToPtr(CPUEnv, Int8PtrTy);
 
     // Store physical register value(a.k.a guest state) into stack object.
-    for (int i = 0; i < NumX64MappedRegs; i++) {
-        Builder.CreateStore(HostRegValues[GuestRegsToHost[i]], GuestStates[i]);
+    for (int i = 0; i < GetNumGMRs(); i++) {
+        Builder.CreateStore(HostRegValues[GMRToHMR(i)], GuestStates[i]);
     }
 
     // Create exit Block. This block loads values in stack object and sync these
     // values into physical registers.
     ExitBB = BasicBlock::Create(Context, "exit", TransFunc);
     Builder.SetInsertPoint(ExitBB);
-    for (int i = 0; i < NumX64MappedRegs; i++) {
+    for (int i = 0; i < GetNumGMRs(); i++) {
         // Load latest guest state values.
         Value *GuestState = Builder.CreateLoad(Int64Ty, GuestStates[i]);
 
         // Sync these values into mapped host physical registers.
-        SetPhysicalRegValue(GuestRegNames[i], GuestState);
+        SetPhysicalRegValue(GetGMRName(i), GuestState);
     }
 }
 
@@ -103,8 +94,8 @@ void X86Translator::GenPrologue() {
     Value *ENV = Builder.CreateIntToPtr(HostRegValues[HostA1], Int8PtrTy);
 
     // Load guest state into mapped registers
-    Value *GuestVals[NumX64MappedRegs];
-    for (int i = 0; i < NumX64MappedRegs; i++) {
+    vector<Value *> GuestVals(GetNumGMRs());
+    for (int i = 0; i < GetNumGMRs(); i++) {
         int Off = 0;
         if (i < EFLAG)
             Off = GuestStateOffset(i);
@@ -118,7 +109,7 @@ void X86Translator::GenPrologue() {
 
     // Sync GuestVals, EFLAG, ENV, CodeEntry, HostSp to mapped regs
     for (int i = 0; i < EFLAG; i++) {
-        SetPhysicalRegValue(HostRegNames[GuestRegsToHost[i]], GuestVals[i]);
+        SetPhysicalRegValue(HostRegNames[GMRToHMR(i)], GuestVals[i]);
     }
     SetPhysicalRegValue("$r22", GuestVals[EFLAG]);
     SetPhysicalRegValue("$r25", HostRegValues[HostA1]);
@@ -137,6 +128,74 @@ void X86Translator::GenPrologue() {
 
 void X86Translator::GenEpilogue() {
 
+}
+
+Type *X86Translator::GetOpndLLVMType(X86Operand *Opnd) {
+    switch (Opnd->size) {
+    case 1:
+        return Int8Ty;
+    case 2:
+        return Int16Ty;
+    case 4:
+        return Int32Ty;
+    case 8:
+        return Int64Ty;
+    default:
+        llvm_unreachable("Unexpected operand size(not 1,2,4,8 bytes)");
+    }
+}
+
+Value *X86Translator::LoadOperand(X86Operand *Opnd) {
+    Type *LLVMTy = GetOpndLLVMType(Opnd);
+    X86OperandHandler OpndHdl(Opnd);
+
+    Value *Res = nullptr, *Seg = nullptr, *Base = nullptr, *Index = nullptr;
+
+    switch (Opnd->type) {
+    case X86_OP_IMM:
+        Res = Builder.CreateAdd(ConstantInt::get(LLVMTy, 0),
+                                ConstantInt::get(LLVMTy, Opnd->imm));
+        break;
+    case X86_OP_REG:
+        Res = Builder.CreateLoad(LLVMTy, GuestStates[OpndHdl.GetGMRID()]);
+        break;
+    case X86_OP_MEM:
+        if (Opnd->mem.segment != X86_REG_INVALID) {
+            Value *Addr = Builder.CreateGEP(
+                LLVMTy, CPUEnv,
+                ConstantInt::get(LLVMTy, GuestSegOffset(Opnd->mem.segment)));
+            Seg = Builder.CreateLoad(LLVMTy, Addr);
+            Res = Seg;
+        }
+        if (Opnd->mem.base != X86_REG_INVALID) {
+            int baseReg = OpndHdl.GetGMRID();
+            Base = Builder.CreateLoad(LLVMTy, GuestStates[baseReg]);
+            if (!Res)
+                Res = Base;
+            else {
+                Res = Builder.CreateAdd(Res, Base);
+            }
+        }
+        if (Opnd->mem.index != X86_REG_INVALID) {
+            int indexReg = OpndHdl.GetGMRID();
+            int scale = Opnd->mem.scale;
+            Index = Builder.CreateLoad(LLVMTy, GuestStates[indexReg]);
+            Index = Builder.CreateShl(Index, ConstantInt::get(LLVMTy, scale));
+            if (!Res)
+                Res = Index;
+            else
+                Res = Builder.CreateAdd(Res, Index);
+        }
+        if (Opnd->mem.disp) {
+            Res = Builder.CreateAdd(Res,
+                                    ConstantInt::get(LLVMTy, Opnd->mem.disp));
+        }
+        break;
+    default:
+        llvm_unreachable("Unknown X86 operand type!\n");
+        break;
+    }
+    return Res;
 }
 
 void X86Translator::Translate() {

@@ -7,6 +7,7 @@ extern "C" {
 
 int GuestStateOffset(int Idx);
 int GuestEflagOffset(void);
+int GuestSegOffset(int SegIdx);
 
 #ifdef __cplusplus
 }

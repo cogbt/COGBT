@@ -80,9 +80,11 @@ protected:
     SmallVector<Value *, 32> HostRegValues; ///< Host physical regs values. 
     BasicBlock *EntryBB;         ///< Entry block of Translation Function.
     BasicBlock *ExitBB;          ///< Exit block of Translation Function.
+    Value *CPUEnv;               ///< Pointer to CPUX86State.
 
     /// Basic types that are frequently used.
-    Type *Int8Ty, *Int64Ty, *VoidTy, *Int8PtrTy, *Int64PtrTy;
+    Type *Int8Ty, *Int16Ty, *Int32Ty, *Int64Ty, *VoidTy, *Int8PtrTy,
+        *Int64PtrTy;
 
     /// InitializeTypes - Cache some basic types that are frequently used in
     /// translator.

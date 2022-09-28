@@ -12,6 +12,8 @@
 
 void LLVMTranslator::InitializeTypes() {
     Int8Ty = Type::getInt8Ty(Context);
+    Int16Ty = Type::getInt16Ty(Context);
+    Int32Ty = Type::getInt32Ty(Context);
     Int64Ty = Type::getInt64Ty(Context);
     VoidTy = Type::getVoidTy(Context);
     Int8PtrTy = Type::getInt8PtrTy(Context);
