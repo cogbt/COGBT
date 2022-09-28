@@ -26,11 +26,13 @@ void X86Translator::InitializeFunction(StringRef Name) {
     }
 
     // Binds all mapped host physical registers with llvm value.
-    for (int i = 0; i < GetNumGMRs(); i++) {
+    for (int i = 0; i < GetNumGMRs() - GetNumSpecialGMRs(); i++) {
         Value *HostRegValue =
             GetPhysicalRegValue(HostRegNames[GMRToHMR(i)]);
-        HostRegValues[i] = HostRegValue;
+        HostRegValues[GMRToHMR(i)] = HostRegValue;
     }
+    HostRegValues[GMRToHMR(EFLAG)] =
+        GetPhysicalRegValue(HostRegNames[GMRToHMR(EFLAG)]);
     CPUEnv = GetPhysicalRegValue(HostRegNames[ENVReg]);
     CPUEnv = Builder.CreateIntToPtr(CPUEnv, Int8PtrTy);
 

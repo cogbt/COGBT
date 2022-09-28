@@ -9,6 +9,10 @@ public:
         return NumX64MappedRegs;
     }
 
+    virtual int GetNumSpecialGMRs() override {
+        return NumX64MappedRegs - NumX64NormalMappedRegs;
+    }
+
     virtual const char *GetGMRName(int id) override {
         return X86RegName[id];
     }
@@ -19,9 +23,12 @@ public:
 
     /// X86 registers that will be mapped
     enum X86MappedRegs {
-        /// X86_64 mapped registers.
+        /// X86_64 normal mapped registers.
         RAX = 0, RCX, RDX, RBX, RSP, RBP, RSI, RDI,
-        R8, R9, R10, R11, R12, R13, R14, R15, EFLAG,
+        R8, R9, R10, R11, R12, R13, R14, R15, NumX64NormalMappedRegs,
+
+        /// X86_64 special mapped registers.
+        EFLAG = NumX64NormalMappedRegs,
 
         /// Numbers of X86_64 mapped registers.
         NumX64MappedRegs,

@@ -12,6 +12,8 @@ public:
     /// llvm stack object is allocated to cache its state.
     virtual int GetNumGMRs() = 0;
 
+    virtual int GetNumSpecialGMRs() = 0;
+
     /// GetGMRName - Get the name of the GMR.
     virtual const char *GetGMRName(int id) = 0;
 
