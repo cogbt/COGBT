@@ -151,15 +151,18 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd) {
 
     Value *Res = nullptr, *Seg = nullptr, *Base = nullptr, *Index = nullptr;
 
-    switch (Opnd->type) {
-    case X86_OP_IMM:
+    if (OpndHdl.isImm()) {
         Res = Builder.CreateAdd(ConstantInt::get(LLVMTy, 0),
                                 ConstantInt::get(LLVMTy, Opnd->imm));
-        break;
-    case X86_OP_REG:
-        Res = Builder.CreateLoad(LLVMTy, GuestStates[OpndHdl.GetGMRID()]);
-        break;
-    case X86_OP_MEM:
+    } else if (OpndHdl.isReg()) {
+        if (OpndHdl.isGPR()) {
+            Res = Builder.CreateLoad(LLVMTy, GuestStates[OpndHdl.GetGMRID()]);
+        } else {
+            llvm_unreachable("Unhandled register operand type!");
+        }
+    } else {
+        assert(OpndHdl.isMem() && "Opnd type is illegal!");
+        // Memory operand has segment register, load its segment base addr.
         if (Opnd->mem.segment != X86_REG_INVALID) {
             Value *Addr = Builder.CreateGEP(
                 LLVMTy, CPUEnv,
@@ -167,6 +170,7 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd) {
             Seg = Builder.CreateLoad(LLVMTy, Addr);
             Res = Seg;
         }
+        // Base field is valid, calculate base.
         if (Opnd->mem.base != X86_REG_INVALID) {
             int baseReg = OpndHdl.GetGMRID();
             Base = Builder.CreateLoad(LLVMTy, GuestStates[baseReg]);
@@ -176,6 +180,7 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd) {
                 Res = Builder.CreateAdd(Res, Base);
             }
         }
+        // Index field is valid, caculate index*scale.
         if (Opnd->mem.index != X86_REG_INVALID) {
             int indexReg = OpndHdl.GetGMRID();
             int scale = Opnd->mem.scale;
@@ -186,14 +191,11 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd) {
             else
                 Res = Builder.CreateAdd(Res, Index);
         }
+        // Disp field is valud, add this offset.
         if (Opnd->mem.disp) {
             Res = Builder.CreateAdd(Res,
                                     ConstantInt::get(LLVMTy, Opnd->mem.disp));
         }
-        break;
-    default:
-        llvm_unreachable("Unknown X86 operand type!\n");
-        break;
     }
     return Res;
 }
