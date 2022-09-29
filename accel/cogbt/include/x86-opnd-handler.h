@@ -18,20 +18,22 @@ public:
     /// return -1.
     int GetGMRID();
 
-    /// isImmediate - Return true if Opnd is an immmediate.
+    /// isImmediate - Judge if Opnd is an immmediate operand.
     bool isImm() {
         return Opnd->type == X86_OP_IMM;
     }
 
-    /// isRegister - Return true if Opnd is a register
+    /// isRegister - Judge if Opnd is a register operand.
     bool isReg() {
         return Opnd->type == X86_OP_REG;
     }
 
+    /// isMem - Judge if Opnd is a memory operand.
     bool isMem() {
         return Opnd->type == X86_OP_MEM;
     }
 
+    /// isGPR - Judge if Opnd is a GPR register.
     bool isGPR();
 private:
     X86Operand *Opnd;

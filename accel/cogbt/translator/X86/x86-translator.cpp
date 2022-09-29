@@ -168,14 +168,14 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd) {
         if (Opnd->mem.segment != X86_REG_INVALID) {
             Value *Addr = Builder.CreateGEP(
                 LLVMTy, CPUEnv,
-                ConstantInt::get(LLVMTy, GuestSegOffset(Opnd->mem.segment)));
-            Seg = Builder.CreateLoad(LLVMTy, Addr);
+                ConstantInt::get(Int64Ty, GuestSegOffset(Opnd->mem.segment)));
+            Seg = Builder.CreateLoad(Int64Ty, Addr);
             Res = Seg;
         }
         // Base field is valid, calculate base.
         if (Opnd->mem.base != X86_REG_INVALID) {
             int baseReg = OpndHdl.GetGMRID();
-            Base = Builder.CreateLoad(LLVMTy, GuestStates[baseReg]);
+            Base = Builder.CreateLoad(Int64Ty, GuestStates[baseReg]);
             if (!Res)
                 Res = Base;
             else {
@@ -186,8 +186,8 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd) {
         if (Opnd->mem.index != X86_REG_INVALID) {
             int indexReg = OpndHdl.GetGMRID();
             int scale = Opnd->mem.scale;
-            Index = Builder.CreateLoad(LLVMTy, GuestStates[indexReg]);
-            Index = Builder.CreateShl(Index, ConstantInt::get(LLVMTy, scale));
+            Index = Builder.CreateLoad(Int64Ty, GuestStates[indexReg]);
+            Index = Builder.CreateShl(Index, ConstantInt::get(Int64Ty, scale));
             if (!Res)
                 Res = Index;
             else
@@ -196,7 +196,7 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd) {
         // Disp field is valud, add this offset.
         if (Opnd->mem.disp) {
             Res = Builder.CreateAdd(Res,
-                                    ConstantInt::get(LLVMTy, Opnd->mem.disp));
+                                    ConstantInt::get(Int64Ty, Opnd->mem.disp));
         }
     }
     return Res;
