@@ -50,8 +50,15 @@ void X86Translator::InitializeFunction(StringRef Name) {
         Value *GuestState = Builder.CreateLoad(Int64Ty, GuestStates[i]);
 
         // Sync these values into mapped host physical registers.
-        SetPhysicalRegValue(GetGMRName(i), GuestState);
+        SetPhysicalRegValue(HostRegNames[GMRToHMR(i)], GuestState);
     }
+
+    // Insert a default branch of EntryBB to ExitBB.
+    Builder.SetInsertPoint(EntryBB);
+    Builder.CreateBr(ExitBB);
+
+    // Debug
+    Mod->print(outs(), nullptr);
 }
 
 void X86Translator::GenPrologue() {
