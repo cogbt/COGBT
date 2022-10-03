@@ -2,6 +2,7 @@
 #define X86_INST_HANDLER_H
 
 #include "translation-unit.h"
+#include "x86-opnd-handler.h"
 
 #define CF_BIT (1ULL << 0)
 #define PF_BIT (1ULL << 2)
@@ -32,6 +33,11 @@ public:
 
     static uint64_t getPFTable() {
         return (uint64_t)PFTable;
+    }
+
+    X86Operand *getOpnd(int idx) {
+        assert(idx < (int)Inst->detail->x86.op_count);
+        return &Inst->detail->x86.operands[idx];
     }
 private:
     GuestInst *Inst;
