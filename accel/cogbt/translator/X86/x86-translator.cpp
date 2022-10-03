@@ -344,8 +344,9 @@ void X86Translator::Translate() {
     dbgs() << "Welcome to COGBT translation module!\n";
     InitializeFunction(std::to_string(TU->GetTUEntry()));
     for (auto &block : *TU) {
+        dbgs() << "TU->size = " << TU->size() << "\n";
+        InitializeBlock(block);
         for (auto &inst : block) {
-            InitializeBlock(block);
             switch (inst->id) {
             default:
                 assert(0 && "Unknown x86 opcode!");
