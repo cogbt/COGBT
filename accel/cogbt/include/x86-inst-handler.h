@@ -1,0 +1,40 @@
+#ifndef X86_INST_HANDLER_H
+#define X86_INST_HANDLER_H
+
+#include "translation-unit.h"
+
+#define CF_BIT (1ULL << 0)
+#define PF_BIT (1ULL << 2)
+#define AF_BIT (1ULL << 4)
+#define ZF_BIT (1ULL << 6)
+#define SF_BIT (1ULL << 7)
+#define OF_BIT (1ULL << 11)
+#define DF_BIT (1ULL << 10)
+
+class X86InstHandler {
+public:
+    X86InstHandler(GuestInst *Inst) : Inst(Inst) {}
+
+    bool CFisDefined();
+    bool OFisDefined();
+    bool ZFisDefined();
+    bool AFisDefined();
+    bool PFisDefined();
+    bool SFisDefined();
+
+    uint64_t getCFMask() { return ~CF_BIT; }
+    uint64_t getPFMask() { return ~PF_BIT; }
+    uint64_t getAFMask() { return ~AF_BIT; }
+    uint64_t getZFMask() { return ~ZF_BIT; }
+    uint64_t getSFMask() { return ~SF_BIT; }
+    uint64_t getOFMask() { return ~OF_BIT; }
+    uint64_t getDFMask() { return ~DF_BIT; }
+
+    static uint64_t getPFTable() {
+        return (uint64_t)PFTable;
+    }
+private:
+    GuestInst *Inst;
+    static const char PFTable[256];
+};
+#endif

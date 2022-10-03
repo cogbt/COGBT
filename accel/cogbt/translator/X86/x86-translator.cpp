@@ -3,6 +3,10 @@
 #include "host-info.h"
 #include "emulator.h"
 
+void X86Translator::DeclareExternalSymbols() {
+    Mod->getOrInsertGlobal("PFTable", ArrayType::get(Int8Ty, 256));
+}
+
 void X86Translator::InitializeFunction(StringRef Name) {
     // Create translation function with (void (*)()) type, C calling convention,
     // and cogbt attribute.
@@ -19,9 +23,10 @@ void X86Translator::InitializeFunction(StringRef Name) {
     Builder.SetInsertPoint(EntryBB);
 
     // Allocate stack objects for guest mapped registers.
-    GuestStates.resize(GetNumGMRs());
+    GMRStates.resize(GetNumGMRs());
+    GMRVals.resize(GetNumGMRs());
     for (int i = 0; i < GetNumGMRs(); i++) {
-        GuestStates[i] =
+        GMRStates[i] =
             Builder.CreateAlloca(Int64Ty, nullptr, GetGMRName(i));
     }
 
@@ -38,7 +43,7 @@ void X86Translator::InitializeFunction(StringRef Name) {
 
     // Store physical register value(a.k.a guest state) into stack object.
     for (int i = 0; i < GetNumGMRs(); i++) {
-        Builder.CreateStore(HostRegValues[GMRToHMR(i)], GuestStates[i]);
+        Builder.CreateStore(HostRegValues[GMRToHMR(i)], GMRStates[i]);
     }
 
     // Create exit Block. This block loads values in stack object and sync these
@@ -47,10 +52,10 @@ void X86Translator::InitializeFunction(StringRef Name) {
     Builder.SetInsertPoint(ExitBB);
     for (int i = 0; i < GetNumGMRs(); i++) {
         // Load latest guest state values.
-        Value *GuestState = Builder.CreateLoad(Int64Ty, GuestStates[i]);
+        Value *GMRVal = Builder.CreateLoad(Int64Ty, GMRStates[i]);
 
         // Sync these values into mapped host physical registers.
-        SetPhysicalRegValue(HostRegNames[GMRToHMR(i)], GuestState);
+        SetPhysicalRegValue(HostRegNames[GMRToHMR(i)], GMRVal);
     }
 
     // Insert a default branch of EntryBB to ExitBB.
@@ -154,59 +159,185 @@ Type *X86Translator::GetOpndLLVMType(X86Operand *Opnd) {
     }
 }
 
+Value *X86Translator::LoadGMRValue(Type *Ty, int GMRId) {
+    assert(Ty->isIntegerTy() && "Type is not a integer type!");
+    if (GMRVals[GMRId].hasValue()) {
+        Value *V = GMRVals[GMRId].getValue();
+        if (V->getType()->isIntegerTy(Ty->getIntegerBitWidth())) {
+            return V;
+        } else {
+            V = Builder.CreateBitCast(V, Ty);
+            return V;
+        }
+    }
+    assert(GMRVals.size() > (unsigned)GMRId);
+
+    auto CurrBB = Builder.GetInsertBlock();
+    Builder.SetInsertPoint(EntryBB);
+
+    Value *V = Builder.CreateLoad(Int64Ty, GMRStates[GMRId]);
+    GMRVals[GMRId].setValue(V);
+    GMRVals[GMRId].setDirty(false);
+
+    Builder.SetInsertPoint(CurrBB);
+    return V;
+}
+
+void X86Translator::StoreGMRValue(Value *V, int GMRId) {
+    assert(V->getType()->isIntegerTy() && "V is not a interger type!");
+    assert((unsigned)GMRId < GMRVals.size() && "GMRId is too large!");
+    if (V->getType()->isIntegerTy(64)) {
+        GMRVals[GMRId].set(V, true);
+    } else {
+        if (GMRVals[GMRId].hasValue()) {
+            uint64_t mask = ~((1ULL << V->getType()->getIntegerBitWidth()) - 1);
+            Value *OldV = Builder.CreateAnd(GMRVals[GMRId].getValue(),
+                                            ConstantInt::get(Int64Ty, mask));
+            Value *Res = Builder.CreateOr(OldV, Builder.CreateZExt(V, Int64Ty));
+            GMRVals[GMRId].set(Res, true);
+        } else {
+            // GMRVals haven't cached GMRId, so store V into GMRStates directly.
+            Value *Addr = Builder.CreateBitCast(GMRStates[GMRId], V->getType());
+            Builder.CreateStore(V, Addr);
+        }
+    }
+}
+
+Value *X86Translator::CalcMemAddr(X86Operand *Opnd) {
+    X86OperandHandler OpndHdl(Opnd);
+    assert(OpndHdl.isMem() && "CalcMemAddr should handle memory operand!");
+
+    Type *LLVMTy = GetOpndLLVMType(Opnd);
+    Value *MemAddr = nullptr, *Seg = nullptr, *Base = nullptr, *Index = nullptr;
+
+    // Memory operand has segment register, load its segment base addr.
+    if (Opnd->mem.segment != X86_REG_INVALID) {
+        Value *Addr = Builder.CreateGEP(
+            LLVMTy, CPUEnv,
+            ConstantInt::get(Int64Ty, GuestSegOffset(Opnd->mem.segment)));
+        Seg = Builder.CreateLoad(Int64Ty, Addr);
+        MemAddr = Seg;
+    }
+    // Base field is valid, calculate base.
+    if (Opnd->mem.base != X86_REG_INVALID) {
+        int baseReg = OpndHdl.GetGMRID();
+        Base = LoadGMRValue(Int64Ty, baseReg);
+        if (!MemAddr)
+            MemAddr = Base;
+        else {
+            MemAddr = Builder.CreateAdd(MemAddr, Base);
+        }
+    }
+    // Index field is valid, caculate index*scale.
+    if (Opnd->mem.index != X86_REG_INVALID) {
+        int indexReg = OpndHdl.GetGMRID();
+        int scale = Opnd->mem.scale;
+        Index = LoadGMRValue(Int64Ty, indexReg);
+        Index = Builder.CreateShl(Index, ConstantInt::get(Int64Ty, scale));
+        if (!MemAddr)
+            MemAddr = Index;
+        else
+            MemAddr = Builder.CreateAdd(MemAddr, Index);
+    }
+    // Disp field is valud, add this offset.
+    if (Opnd->mem.disp) {
+        MemAddr = Builder.CreateAdd(MemAddr,
+                                    ConstantInt::get(Int64Ty, Opnd->mem.disp));
+    }
+
+    return MemAddr;
+}
+
 Value *X86Translator::LoadOperand(X86Operand *Opnd) {
     Type *LLVMTy = GetOpndLLVMType(Opnd);
     X86OperandHandler OpndHdl(Opnd);
 
-    Value *Res = nullptr, *Seg = nullptr, *Base = nullptr, *Index = nullptr;
+    Value *Res = nullptr;
 
     if (OpndHdl.isImm()) {
         Res = Builder.CreateAdd(ConstantInt::get(LLVMTy, 0),
                                 ConstantInt::get(LLVMTy, Opnd->imm));
     } else if (OpndHdl.isReg()) {
         if (OpndHdl.isGPR()) {
-            Res = Builder.CreateLoad(LLVMTy, GuestStates[OpndHdl.GetGMRID()]);
+            Res = LoadGMRValue(LLVMTy, OpndHdl.GetGMRID());
         } else {
             llvm_unreachable("Unhandled register operand type!");
         }
     } else {
         assert(OpndHdl.isMem() && "Opnd type is illegal!");
-        // Memory operand has segment register, load its segment base addr.
-        if (Opnd->mem.segment != X86_REG_INVALID) {
-            Value *Addr = Builder.CreateGEP(
-                LLVMTy, CPUEnv,
-                ConstantInt::get(Int64Ty, GuestSegOffset(Opnd->mem.segment)));
-            Seg = Builder.CreateLoad(Int64Ty, Addr);
-            Res = Seg;
-        }
-        // Base field is valid, calculate base.
-        if (Opnd->mem.base != X86_REG_INVALID) {
-            int baseReg = OpndHdl.GetGMRID();
-            Base = Builder.CreateLoad(Int64Ty, GuestStates[baseReg]);
-            if (!Res)
-                Res = Base;
-            else {
-                Res = Builder.CreateAdd(Res, Base);
-            }
-        }
-        // Index field is valid, caculate index*scale.
-        if (Opnd->mem.index != X86_REG_INVALID) {
-            int indexReg = OpndHdl.GetGMRID();
-            int scale = Opnd->mem.scale;
-            Index = Builder.CreateLoad(Int64Ty, GuestStates[indexReg]);
-            Index = Builder.CreateShl(Index, ConstantInt::get(Int64Ty, scale));
-            if (!Res)
-                Res = Index;
-            else
-                Res = Builder.CreateAdd(Res, Index);
-        }
-        // Disp field is valud, add this offset.
-        if (Opnd->mem.disp) {
-            Res = Builder.CreateAdd(Res,
-                                    ConstantInt::get(Int64Ty, Opnd->mem.disp));
-        }
+        Res = CalcMemAddr(Opnd);
+        Res = Builder.CreateLoad(LLVMTy, Res);
     }
     return Res;
+}
+
+void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
+    assert(!ResVal && "StoreOperand stores an empty value!");
+    X86OperandHandler OpndHdl(DestOpnd);
+    if (OpndHdl.isGPR()) {
+        StoreGMRValue(ResVal, OpndHdl.GetGMRID());
+    } else if (OpndHdl.isMem()) {
+        Value *MemAddr = CalcMemAddr(DestOpnd);
+        if (!ResVal->getType()->isIntegerTy(64)) {
+            MemAddr = Builder.CreateIntToPtr(MemAddr, ResVal->getType());
+        }
+        Builder.CreateStore(ResVal, MemAddr);
+    } else {
+        llvm_unreachable("Unhandled StoreOperand type!");
+    }
+}
+
+void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src1,
+                              Value *Src2) {
+    X86InstHandler InstHdl(Inst);
+    if (InstHdl.CFisDefined()) {
+        llvm_unreachable("CF undo!");
+    }
+    if (InstHdl.OFisDefined()) {
+        llvm_unreachable("OF undo!");
+    }
+    if (InstHdl.ZFisDefined()) {
+        Value *IsZero = Builder.CreateICmpEQ(Dest, ConstInt(Dest->getType(), 0));
+        Value *ZFBit = Builder.CreateSelect(IsZero, ConstInt(Int64Ty, ZF_BIT),
+                                            ConstInt(Int64Ty, 0));
+        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getZFMask());
+        Value *NewEflag = Builder.CreateOr(ClearEflag, ZFBit);
+        StoreGMRValue(NewEflag, X86Config::EFLAG);
+    }
+    if (InstHdl.AFisDefined()) {
+        Value *AFBit = Builder.CreateXor(Dest, Builder.CreateXor(Src1, Src2));
+        AFBit = Builder.CreateAnd(AFBit, ConstInt(Int64Ty, AF_BIT));
+        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getAFMask());
+        Value *NewEflag = Builder.CreateOr(ClearEflag, AFBit);
+        StoreGMRValue(NewEflag, X86Config::EFLAG);
+    }
+    if (InstHdl.PFisDefined()) {
+        Type *ArrTy = ArrayType::get(Int8Ty, 256);
+        Value *PFT = Mod->getGlobalVariable("PFTable");
+        Value *Off = Builder.CreateAnd(Dest, ConstInt(Int64Ty, 0xff));
+        Value *PFBytePtr =
+            Builder.CreateGEP(ArrTy, PFT, {ConstInt(Int64Ty, 0), Off});
+        Value *PFByte = Builder.CreateLoad(Int8Ty, PFBytePtr);
+        Value *PFBit = Builder.CreateZExt(PFByte, Int64Ty);
+        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getPFMask());
+        Value *NewEflag = Builder.CreateOr(ClearEflag, PFBit);
+        StoreGMRValue(NewEflag, X86Config::EFLAG);
+    }
+    if (InstHdl.SFisDefined()) {
+        int shift = Dest->getType()->getIntegerBitWidth() - 1;
+        Value *IsSign =
+            Builder.CreateAShr(Dest, ConstInt(Dest->getType(), shift));
+        IsSign = Builder.CreateICmpNE(IsSign, ConstInt(Dest->getType(), 0));
+        Value *SFBit = Builder.CreateSelect(IsSign, ConstInt(Int64Ty, SF_BIT),
+                                            ConstInt(Int64Ty, 0));
+        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getSFMask());
+        Value *NewEflag = Builder.CreateOr(ClearEflag, SFBit);
+        StoreGMRValue(NewEflag, X86Config::EFLAG);
+    }
 }
 
 void X86Translator::Translate() {
@@ -219,7 +350,7 @@ void X86Translator::Translate() {
                 assert(0 && "Unknown x86 opcode!");
 #define HANDLE_X86_INST(opcode, name)     \
             case opcode:                  \
-                translate_##name();       \
+                translate_##name(inst);   \
                 break;
 #include "x86-inst.def"
             }

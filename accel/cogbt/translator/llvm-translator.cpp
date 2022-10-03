@@ -38,11 +38,16 @@ void LLVMTranslator::InitializeModule() {
     InitializeNativeTargetAsmPrinter();
     InitializeNativeTargetAsmParser();
 
+    // Import external symbols.
+    DeclareExternalSymbols();
+
     // Initialize data structure of converter
     TU = nullptr;
     TransFunc = nullptr;
-    for (auto &V : GuestStates)
+    for (auto &V : GMRStates)
         V = nullptr;
+    for (auto &V : GMRVals)
+        V.clear();
     for (auto &V : HostRegValues)
         V = nullptr;
     ExitBB = EntryBB = nullptr;

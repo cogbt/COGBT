@@ -4,6 +4,7 @@
 #include "llvm-translator.h"
 #include "x86-config.h"
 #include "x86-opnd-handler.h"
+#include "x86-inst-handler.h"
 
 class X86Translator final : public LLVMTranslator, public X86Config {
 public:
@@ -19,6 +20,8 @@ private:
     /// function.
     virtual void InitializeFunction(StringRef FuncName) override;
 
+    virtual void DeclareExternalSymbols() override;
+
     virtual void GenPrologue() override;
 
     virtual void GenEpilogue() override;
@@ -26,16 +29,38 @@ private:
     virtual void Translate() override;
 
     /// @name X86 translate functions.
-#define HANDLE_X86_INST(opcode, name) void translate_##name();
+#define HANDLE_X86_INST(opcode, name) void translate_##name(GuestInst *);
 #include "x86-inst.def"
 #undef HANDLE_X86_INST
+
+    /// ConstInt - Get a integer constant value.
+    Value *ConstInt(Type *Ty, uint64_t Val) {
+        return ConstantInt::get(Ty, Val);
+    }
 
     /// GetOpndType - Get the llvm type of x86 operand.
     Type *GetOpndLLVMType(X86Operand *Opnd);
 
-    /// LoadOperand - Generate llvm IRs to load a x86 opernad and return the
+    /// LoadGMRValue - Load the GMR value from GMRStates. If GMRVals have cached
+    /// this value, return it directly. Otherwise load it from GMRStates first.
+    Value *LoadGMRValue(Type *Ty, int GMRId);
+
+    /// StoreGMRValue - Store value V to GMRVals.
+    void StoreGMRValue(Value *V, int GMRId);
+
+    /// CalcMemAddr - Generate llvm IRs to calculate memory address of a memory
+    /// operand.
+    Value *CalcMemAddr(X86Operand *Opnd);
+
+    /// LoadOperand - Generate llvm IRs to load a x86 operand and return the
     /// loaded value.
-    Value *LoadOperand(X86Operand *Opnd);
+    Value *LoadOperand(X86Operand *SrcOpnd);
+
+    /// StoreOperand - Generate llvm IRs to store a value into a x86 operand.
+    void StoreOperand(Value *val, X86Operand *DestOpnd);
+
+    /// CalcEflag - Generate llvm IRs to define all eflags.
+    void CalcEflag(GuestInst *Inst, Value *Dest, Value *Src1, Value *Src2);
 };
 
 #endif

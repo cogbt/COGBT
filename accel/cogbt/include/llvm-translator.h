@@ -14,6 +14,30 @@ using namespace llvm;
 //===----------------------------------------------------------------------===//
 // Guest to LLVM IR translator definition
 //===----------------------------------------------------------------------===//
+class GMRValue {
+    Value *V;    ///< Value of this GMR(guest mapped register).
+    bool Dirty;  ///< Wether this value is synced with GMRState.
+public:
+    GMRValue(Value *V = nullptr, bool Dirty = false)
+        : V(V), Dirty(Dirty) {}
+    Value *getValue() { return V; }
+    void setValue(Value *V) { this->V = V; }
+    void setDirty(bool Dirty) { this->Dirty = Dirty; }
+    void set(Value *V, bool Dirty) {
+        this->V = V;
+        this->Dirty = Dirty;
+    }
+    bool hasValue() { return V != nullptr; }
+    bool isDirty() { return Dirty; }
+    void clear() {
+        V = nullptr;
+        Dirty = false;
+    }
+};
+
+//===----------------------------------------------------------------------===//
+// Guest to LLVM IR translator definition
+//===----------------------------------------------------------------------===//
 class LLVMTranslator {
 public:
     /// Interface for recording code cache allocations.
@@ -46,6 +70,10 @@ public:
         this->TU = TU;
     }
 
+    /// DeclareExternalSymbols - Declare external symbols in this module so
+    /// translator can access functions or data in dbt.
+    virtual void DeclareExternalSymbols() = 0;
+
     /// GenPrologue - Generates context switching IR instructions to switch
     /// translator to translation code.
     virtual void GenPrologue() = 0;
@@ -76,8 +104,9 @@ protected:
     /// @name Guest->IR converter submodule
     Function *TransFunc;         ///< Translation function.
     IRBuilder<> Builder;         ///< Utility for creating IR instructions.
-    SmallVector<Value *, 32> GuestStates;  ///< Stack objects for each guest GPRs.
-    SmallVector<Value *, 32> HostRegValues; ///< Host physical regs values. 
+    std::vector<Value *> GMRStates;  ///< Stack objects for each guest GPRs.
+    std::vector<GMRValue> GMRVals;   ///< Guest GPRs values.
+    std::vector<Value *> HostRegValues; ///< Host physical regs values. 
     BasicBlock *EntryBB;         ///< Entry block of Translation Function.
     BasicBlock *ExitBB;          ///< Exit block of Translation Function.
     Value *CPUEnv;               ///< Pointer to CPUX86State.
