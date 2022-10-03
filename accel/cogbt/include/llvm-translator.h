@@ -65,6 +65,9 @@ public:
     /// DataLayout, TargetTriple, DataStructures of converter.
     void InitializeModule();
 
+    /// InitializeBlock - Initialize block translation environment.
+    void InitializeBlock(GuestBlock &Block);
+
     /// SetTU - Commit TU to be processed to the translator.
     void SetTU(TranslationUnit *TU) {
         this->TU = TU;
@@ -109,6 +112,7 @@ protected:
     std::vector<Value *> HostRegValues; ///< Host physical regs values. 
     BasicBlock *EntryBB;         ///< Entry block of Translation Function.
     BasicBlock *ExitBB;          ///< Exit block of Translation Function.
+    BasicBlock *CurrBB;          ///< Current handled block.
     Value *CPUEnv;               ///< Pointer to CPUX86State.
 
     /// Basic types that are frequently used.

@@ -345,6 +345,7 @@ void X86Translator::Translate() {
     InitializeFunction(std::to_string(TU->GetTUEntry()));
     for (auto &block : *TU) {
         for (auto &inst : block) {
+            InitializeBlock(block);
             switch (inst->id) {
             default:
                 assert(0 && "Unknown x86 opcode!");

@@ -53,6 +53,16 @@ void LLVMTranslator::InitializeModule() {
     ExitBB = EntryBB = nullptr;
 }
 
+void LLVMTranslator::InitializeBlock(GuestBlock &Block) {
+    for (auto &GMRVal : GMRVals)
+        GMRVal.clear();
+    uint64_t PC = Block.GetBlockEntry();
+    CurrBB = BasicBlock::Create(Context, std::to_string(PC), TransFunc, ExitBB);
+    if (PC == TU->GetTUEntry()) {
+        dyn_cast<BranchInst>(EntryBB->getTerminator())->setSuccessor(0, CurrBB);
+    }
+}
+
 Value *LLVMTranslator::GetPhysicalRegValue(const char *RegName) {
     // Prepare inline asm type and inline constraints.
     FunctionType *InlineAsmTy = FunctionType::get(Int64Ty, false);

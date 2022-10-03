@@ -6,6 +6,7 @@
 #include <vector>
 #include <cstdint>
 #include <cstddef>
+#include <cassert>
 #include "capstone.h"
 using std::vector;
 using GuestInst = cs_insn;
@@ -14,6 +15,7 @@ using GuestPC = uint64_t;
 #else
 
 #include <stdint.h>
+#include <assert.h>
 typedef struct cs_insn GuestInst;
 typedef uint64_t GuestPC;
 
@@ -25,9 +27,15 @@ typedef uint64_t GuestPC;
 #ifdef __cplusplus
 class GuestBlock {
     vector<GuestInst *> GuestInsts;
-    /// All APIs for GuestInst should be registered below
 public:
     void AddGuestInst(GuestInst *Inst);
+
+    /// All APIs for GuestInst should be registered below
+    /// GetBlockEntry - Get block entry pc.
+    uint64_t GetBlockEntry() {
+        assert(!GuestInsts.empty() && "Block shouldn't be empty!");
+        return GuestInsts[0]->address;
+    }
 
     /// @name All APIs about iterators.
     using iteraotr = vector<GuestInst *>::iterator;
