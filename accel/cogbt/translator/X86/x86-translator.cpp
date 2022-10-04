@@ -32,18 +32,18 @@ void X86Translator::InitializeFunction(StringRef Name) {
 
     // Binds all mapped host physical registers with llvm value.
     for (int i = 0; i < GetNumGMRs() - GetNumSpecialGMRs(); i++) {
-        Value *HostRegValue =
+        Value *GMRVal =
             GetPhysicalRegValue(HostRegNames[GMRToHMR(i)]);
-        HostRegValues[GMRToHMR(i)] = HostRegValue;
+        GMRVals[i].set(GMRVal, false);
     }
-    HostRegValues[GMRToHMR(EFLAG)] =
-        GetPhysicalRegValue(HostRegNames[GMRToHMR(EFLAG)]);
+    GMRVals[X86Config::EFLAG].set(
+            GetPhysicalRegValue(HostRegNames[GMRToHMR(EFLAG)]), true);
     CPUEnv = GetPhysicalRegValue(HostRegNames[ENVReg]);
     CPUEnv = Builder.CreateIntToPtr(CPUEnv, Int8PtrTy);
 
     // Store physical register value(a.k.a guest state) into stack object.
     for (int i = 0; i < GetNumGMRs(); i++) {
-        Builder.CreateStore(HostRegValues[GMRToHMR(i)], GMRStates[i]);
+        Builder.CreateStore(GMRVals[i].getValue(), GMRStates[i]);
     }
 
     // Create exit Block. This block loads values in stack object and sync these
@@ -80,6 +80,7 @@ void X86Translator::GenPrologue() {
     Builder.SetInsertPoint(EntryBB);
 
     // Bind all needed physical reg to value
+    Value *HostRegValues[NumHostRegs] = {nullptr};
     HostRegValues[HostSP] = GetPhysicalRegValue(HostRegNames[HostSP]);
     HostRegValues[HostA0] = GetPhysicalRegValue(HostRegNames[HostA0]);
     HostRegValues[HostA1] = GetPhysicalRegValue(HostRegNames[HostA1]);
@@ -166,14 +167,16 @@ Value *X86Translator::LoadGMRValue(Type *Ty, int GMRId) {
         if (Ty->isIntegerTy(64)) {
             return V;
         } else {
-            V = Builder.CreateBitCast(V, Ty);
+            V = Builder.CreateTrunc(V, Ty);
             return V;
         }
     }
     assert(GMRVals.size() > (unsigned)GMRId);
 
     auto CurrBB = Builder.GetInsertBlock();
-    Builder.SetInsertPoint(EntryBB);
+    if (!CurrBB->empty()) {
+        Builder.SetInsertPoint(&CurrBB->front());
+    }
 
     Value *V = Builder.CreateLoad(Int64Ty, GMRStates[GMRId]);
     GMRVals[GMRId].setValue(V);
@@ -182,7 +185,7 @@ Value *X86Translator::LoadGMRValue(Type *Ty, int GMRId) {
     Builder.SetInsertPoint(CurrBB);
 
     if (!Ty->isIntegerTy(64))
-        V = Builder.CreateBitCast(V, Ty);
+        V = Builder.CreateTrunc(V, Ty);
     return V;
 }
 
@@ -275,7 +278,7 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd) {
 }
 
 void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
-    assert(!ResVal && "StoreOperand stores an empty value!");
+    assert(ResVal && "StoreOperand stores an empty value!");
     X86OperandHandler OpndHdl(DestOpnd);
     if (OpndHdl.isGPR()) {
         StoreGMRValue(ResVal, OpndHdl.GetGMRID());
@@ -359,8 +362,15 @@ void X86Translator::Translate() {
                 break;
 #include "x86-inst.def"
             }
-            /* printf("0x%lx  %s\t%s\n", inst->address, inst->mnemonic, */
-            /*         inst->op_str); // debug */
+            // debug
+            printf("0x%lx  %s\t%s\n", inst->address, inst->mnemonic,
+                    inst->op_str); // debug
+            /* Mod->print(outs(), nullptr); */
+            for (auto InstIt = CurrBB->begin(); InstIt != CurrBB->end();
+                 InstIt++) {
+                InstIt->print(outs(), true);
+                printf("\n");
+            }
         }
     }
 }

@@ -48,9 +48,7 @@ void LLVMTranslator::InitializeModule() {
         V = nullptr;
     for (auto &V : GMRVals)
         V.clear();
-    for (auto &V : HostRegValues)
-        V = nullptr;
-    ExitBB = EntryBB = nullptr;
+    ExitBB = EntryBB = CurrBB = nullptr;
 }
 
 void LLVMTranslator::InitializeBlock(GuestBlock &Block) {

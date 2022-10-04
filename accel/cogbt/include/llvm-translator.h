@@ -57,7 +57,7 @@ public:
     LLVMTranslator(uintptr_t CacheBegin, size_t CacheSize)
         : Builder(Context), CodeCache(CacheBegin, CacheSize) {
         InitializeTypes();
-        HostRegValues.resize(NumHostRegs);
+        /* HostRegValues.resize(NumHostRegs); */
     }
     virtual ~LLVMTranslator() = default;
 
@@ -109,7 +109,7 @@ protected:
     IRBuilder<> Builder;         ///< Utility for creating IR instructions.
     std::vector<Value *> GMRStates;  ///< Stack objects for each guest GPRs.
     std::vector<GMRValue> GMRVals;   ///< Guest GPRs values.
-    std::vector<Value *> HostRegValues; ///< Host physical regs values. 
+    /* std::vector<Value *> HostRegValues; ///< Host physical regs values. */ 
     BasicBlock *EntryBB;         ///< Entry block of Translation Function.
     BasicBlock *ExitBB;          ///< Exit block of Translation Function.
     BasicBlock *CurrBB;          ///< Current handled block.
