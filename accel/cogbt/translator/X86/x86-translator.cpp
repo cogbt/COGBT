@@ -163,7 +163,7 @@ Value *X86Translator::LoadGMRValue(Type *Ty, int GMRId) {
     assert(Ty->isIntegerTy() && "Type is not a integer type!");
     if (GMRVals[GMRId].hasValue()) {
         Value *V = GMRVals[GMRId].getValue();
-        if (V->getType()->isIntegerTy(Ty->getIntegerBitWidth())) {
+        if (Ty->isIntegerTy(64)) {
             return V;
         } else {
             V = Builder.CreateBitCast(V, Ty);
@@ -180,6 +180,9 @@ Value *X86Translator::LoadGMRValue(Type *Ty, int GMRId) {
     GMRVals[GMRId].setDirty(false);
 
     Builder.SetInsertPoint(CurrBB);
+
+    if (!Ty->isIntegerTy(64))
+        V = Builder.CreateBitCast(V, Ty);
     return V;
 }
 
