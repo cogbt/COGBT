@@ -5,6 +5,10 @@
 
 void X86Translator::DeclareExternalSymbols() {
     Mod->getOrInsertGlobal("PFTable", ArrayType::get(Int8Ty, 256));
+
+    // Declare epilogue.
+    FunctionType *FuncTy = FunctionType::get(VoidTy, false);
+    Function::Create(FuncTy, Function::ExternalLinkage, "epilogue", *Mod);
 }
 
 void X86Translator::InitializeFunction(StringRef Name) {
@@ -57,6 +61,10 @@ void X86Translator::InitializeFunction(StringRef Name) {
         // Sync these values into mapped host physical registers.
         SetPhysicalRegValue(HostRegNames[GMRToHMR(i)], GMRVal);
     }
+
+    // Call Epilogue to do context switch.
+    Builder.CreateCall(Mod->getFunction("epilogue"));
+    Builder.CreateUnreachable();
 
     // Insert a default branch of EntryBB to ExitBB.
     Builder.SetInsertPoint(EntryBB);
@@ -147,6 +155,21 @@ void X86Translator::GenEpilogue() {
 
 Type *X86Translator::GetOpndLLVMType(X86Operand *Opnd) {
     switch (Opnd->size) {
+    case 1:
+        return Int8Ty;
+    case 2:
+        return Int16Ty;
+    case 4:
+        return Int32Ty;
+    case 8:
+        return Int64Ty;
+    default:
+        llvm_unreachable("Unexpected operand size(not 1,2,4,8 bytes)");
+    }
+}
+
+Type *X86Translator::GetOpndLLVMType(int size) {
+    switch (size) {
     case 1:
         return Int8Ty;
     case 2:
@@ -363,14 +386,15 @@ void X86Translator::Translate() {
 #include "x86-inst.def"
             }
             // debug
-            printf("0x%lx  %s\t%s\n", inst->address, inst->mnemonic,
-                    inst->op_str); // debug
+            /* printf("0x%lx  %s\t%s\n", inst->address, inst->mnemonic, */
+            /*         inst->op_str); // debug */
             /* Mod->print(outs(), nullptr); */
-            for (auto InstIt = CurrBB->begin(); InstIt != CurrBB->end();
-                 InstIt++) {
-                InstIt->print(outs(), true);
-                printf("\n");
-            }
+            /* for (auto InstIt = CurrBB->begin(); InstIt != CurrBB->end(); */
+            /*      InstIt++) { */
+            /*     InstIt->print(outs(), true); */
+            /*     printf("\n"); */
+            /* } */
         }
+        Mod->print(outs(), nullptr);
     }
 }

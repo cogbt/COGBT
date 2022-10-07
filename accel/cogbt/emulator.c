@@ -31,3 +31,7 @@ int GuestSegOffset(int seg_idx) {
         abort();
     }
 }
+
+int GuestEIPOffset(void) {
+    return offsetof(CPUX86State, eip);
+}

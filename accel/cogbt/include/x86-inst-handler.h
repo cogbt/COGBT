@@ -39,6 +39,15 @@ public:
         assert(idx < (int)Inst->detail->x86.op_count);
         return &Inst->detail->x86.operands[idx];
     }
+
+    int getOpndSize() {
+        X86OperandHandler OpndHdl(getOpnd(0));
+        return OpndHdl.getOpndSize();
+    }
+
+    uint64_t getNextPC() {
+        return Inst->address + Inst->size;
+    }
 private:
     GuestInst *Inst;
     static const char PFTable[256];

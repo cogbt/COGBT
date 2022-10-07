@@ -1,4 +1,5 @@
 #include "x86-translator.h"
+#include "emulator.h"
 
 void X86Translator::translate_aaa(GuestInst *Inst) {
     dbgs() << "Untranslated instruction aaa\n";
@@ -94,10 +95,6 @@ void X86Translator::translate_aesimc(GuestInst *Inst) {
 }
 void X86Translator::translate_aeskeygenassist(GuestInst *Inst) {
     dbgs() << "Untranslated instruction aeskeygenassist\n";
-    exit(-1);
-}
-void X86Translator::translate_and(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction and\n";
     exit(-1);
 }
 void X86Translator::translate_andn(GuestInst *Inst) {
@@ -221,8 +218,33 @@ void X86Translator::translate_bzhi(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_call(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction call\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    // adjust esp
+    Value *OldESP = LoadGMRValue(Int64Ty, X86Config::RSP);
+    Value *NewESP = Builder.CreateAdd(OldESP, ConstInt(Int64Ty, -8));
+
+    // store return address into stack
+    Value *NewESPPtr = Builder.CreateIntToPtr(NewESP, Int64PtrTy);
+    Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getNextPC()), NewESPPtr);
+
+    // store call target into env.
+    Value *Target = LoadOperand(InstHdl.getOpnd(0));
+    Value *EnvEIP = Builder.CreateGEP(CPUEnv,
+                                      ConstInt(Int64Ty, GuestEIPOffset()));
+    Value *EIPAddr = Builder.CreateBitCast(EnvEIP,
+                                           Target->getType()->getPointerTo());
+    Builder.CreateStore(Target, EIPAddr);
+
+    // sync GMRVals into stack.
+    for (int GMRId = 0; GMRId < (int)GMRVals.size(); GMRId++) {
+        if (GMRVals[GMRId].isDirty()) {
+            Builder.CreateStore(GMRVals[GMRId].getValue(), GMRStates[GMRId]);
+        }
+    }
+    Builder.CreateBr(ExitBB);
+    /* dbgs() << "Untranslated instruction call\n"; */
+    /* exit(-1); */
 }
 void X86Translator::translate_cbw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cbw\n";
@@ -1481,8 +1503,11 @@ void X86Translator::translate_movq2dq(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_movq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movq\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(1));
+    Value *Dest = Builder.CreateOr(Src, ConstInt(Src->getType(), 0));
+    StoreOperand(Dest, InstHdl.getOpnd(1));
+    // CalcEflag();
 }
 void X86Translator::translate_pabsb(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pabsb\n";
@@ -1793,8 +1818,11 @@ void X86Translator::translate_montmul(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_mov(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction mov\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    Value *Dest = Builder.CreateOr(Src, ConstInt(Src->getType(), 0));
+    StoreOperand(Dest, InstHdl.getOpnd(1));
+    // CalcEflag();
 }
 void X86Translator::translate_movabs(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movabs\n";
@@ -2261,8 +2289,24 @@ void X86Translator::translate_pmulld(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_pop(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pop\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *OldESP = LoadGMRValue(Int64Ty, X86Config::RSP);
+    Type *OpndTy = GetOpndLLVMType(InstHdl.getOpndSize());
+    Value *OldESPPtr = Builder.CreateIntToPtr(OldESP, OpndTy->getPointerTo());
+
+    // Load stack value.
+    Value *Src = Builder.CreateLoad(OldESPPtr);
+
+    // Store value.
+    StoreOperand(Src, InstHdl.getOpnd(0));
+
+    // Adjust ESP value.
+    Value *NewESP = Builder.CreateAdd(OldESP,
+                                      ConstInt(Int64Ty, InstHdl.getOpndSize()));
+    StoreGMRValue(NewESP, X86Config::RSP);
+
+    /* dbgs() << "Untranslated instruction pop\n"; */
+    /* exit(-1); */
 }
 void X86Translator::translate_popaw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction popaw\n";
@@ -2349,8 +2393,22 @@ void X86Translator::translate_punpcklqdq(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_push(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction push\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    // Calculate new esp.
+    Value *OldESP = LoadGMRValue(Int64Ty, X86Config::RSP);
+    Value *NewESP = Builder.CreateSub(OldESP,
+                                      ConstInt(Int64Ty, InstHdl.getOpndSize()));
+
+    // Store src value into stack.
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    Value *NewESPPtr = Builder.CreateIntToPtr(NewESP,
+            GetOpndLLVMType(InstHdl.getOpndSize())->getPointerTo());
+    Builder.CreateStore(Src, NewESPPtr);
+
+    StoreGMRValue(NewESP, X86Config::RSP);
+    /* dbgs() << "Untranslated instruction push\n"; */
+    /* exit(-1); */
 }
 void X86Translator::translate_pushaw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pushaw\n";

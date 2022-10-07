@@ -40,6 +40,7 @@ private:
 
     /// GetOpndType - Get the llvm type of x86 operand.
     Type *GetOpndLLVMType(X86Operand *Opnd);
+    Type *GetOpndLLVMType(int size);
 
     /// LoadGMRValue - Load the GMR value from GMRStates. If GMRVals have cached
     /// this value, return it directly. Otherwise load it from GMRStates first.

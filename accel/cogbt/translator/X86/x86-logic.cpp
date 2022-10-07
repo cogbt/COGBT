@@ -5,6 +5,16 @@ void X86Translator::translate_xor(GuestInst *Inst) {
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
     Value *Src1 = LoadOperand(InstHdl.getOpnd(1));
     Value *Dest = Builder.CreateXor(Src0, Src1);
-    StoreOperand(Dest, InstHdl.getOpnd(0));
+    StoreOperand(Dest, InstHdl.getOpnd(1));
     // CalcEflag(Inst, Dest, Src0, Src1);
+}
+
+void X86Translator::translate_and(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    Value *Src1 = LoadOperand(InstHdl.getOpnd(1));
+    Value *Dest = Builder.CreateAnd(Src0, Src1);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
+    /* dbgs() << "Untranslated instruction and\n"; */
+    /* exit(-1); */
 }

@@ -35,6 +35,11 @@ public:
 
     /// isGPR - Judge if Opnd is a GPR register.
     bool isGPR();
+
+    /// getOpndSize - Get the size of Opnd.
+    int getOpndSize() {
+        return Opnd->size;
+    }
 private:
     X86Operand *Opnd;
 };
