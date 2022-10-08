@@ -12,14 +12,13 @@
 using namespace llvm;
 
 //===----------------------------------------------------------------------===//
-// Guest to LLVM IR translator definition
+// The value of a GMR during translation.
 //===----------------------------------------------------------------------===//
 class GMRValue {
-    Value *V;    ///< Value of this GMR(guest mapped register).
-    bool Dirty;  ///< Wether this value is synced with GMRState.
+    Value *V;   ///< Value of this GMR(guest mapped register).
+    bool Dirty; ///< Wether this value is synced with GMRState.
 public:
-    GMRValue(Value *V = nullptr, bool Dirty = false)
-        : V(V), Dirty(Dirty) {}
+    GMRValue(Value *V = nullptr, bool Dirty = false) : V(V), Dirty(Dirty) {}
     Value *getValue() { return V; }
     void setValue(Value *V) { this->V = V; }
     void setDirty(bool Dirty) { this->Dirty = Dirty; }
@@ -103,13 +102,13 @@ protected:
     std::unique_ptr<Module> Mod; ///< Container of all translated IR.
     Module *RawMod;              ///< Raw pointer of Mod.
     TranslationUnit *TU;         ///< Guest translation unit to handle.
+    uintptr_t Epilogue;          ///< Epilogue code address.
 
     /// @name Guest->IR converter submodule
     Function *TransFunc;         ///< Translation function.
     IRBuilder<> Builder;         ///< Utility for creating IR instructions.
     std::vector<Value *> GMRStates;  ///< Stack objects for each guest GPRs.
     std::vector<GMRValue> GMRVals;   ///< Guest GPRs values.
-    /* std::vector<Value *> HostRegValues; ///< Host physical regs values. */ 
     BasicBlock *EntryBB;         ///< Entry block of Translation Function.
     BasicBlock *ExitBB;          ///< Exit block of Translation Function.
     BasicBlock *CurrBB;          ///< Current handled block.
@@ -151,6 +150,8 @@ protected:
 
     /// DeleteSession - Finalize the JIT session.
     void DeleteJIT();
+
+    /// @name Debug submodule
 };
 
 #endif

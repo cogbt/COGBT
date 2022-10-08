@@ -3,8 +3,8 @@
 
 #include "llvm-translator.h"
 #include "x86-config.h"
-#include "x86-opnd-handler.h"
 #include "x86-inst-handler.h"
+#include "x86-opnd-handler.h"
 
 class X86Translator final : public LLVMTranslator, public X86Config {
 public:
@@ -44,6 +44,7 @@ private:
 
     /// LoadGMRValue - Load the GMR value from GMRStates. If GMRVals have cached
     /// this value, return it directly. Otherwise load it from GMRStates first.
+    /// NOTE! \p Ty should be integer type.
     Value *LoadGMRValue(Type *Ty, int GMRId);
 
     /// StoreGMRValue - Store value V to GMRVals.

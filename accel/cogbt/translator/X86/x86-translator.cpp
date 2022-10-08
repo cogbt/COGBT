@@ -1,21 +1,24 @@
-#include "llvm/IR/InlineAsm.h"
 #include "x86-translator.h"
-#include "host-info.h"
 #include "emulator.h"
+#include "host-info.h"
+#include "llvm/IR/InlineAsm.h"
 
 void X86Translator::DeclareExternalSymbols() {
     Mod->getOrInsertGlobal("PFTable", ArrayType::get(Int8Ty, 256));
 
     // Declare epilogue.
     FunctionType *FuncTy = FunctionType::get(VoidTy, false);
-    Function::Create(FuncTy, Function::ExternalLinkage, "epilogue", *Mod);
+    Function *EpilogFunc = Function::Create(FuncTy, Function::ExternalLinkage,
+                                          "epilogue", Mod.get());
+    EpilogFunc->addFnAttr(Attribute::NoReturn);
 }
 
 void X86Translator::InitializeFunction(StringRef Name) {
     // Create translation function with (void (*)()) type, C calling convention,
     // and cogbt attribute.
     FunctionType *FuncTy = FunctionType::get(VoidTy, false);
-    TransFunc = Function::Create(FuncTy, Function::ExternalLinkage, Name, Mod.get());
+    TransFunc =
+        Function::Create(FuncTy, Function::ExternalLinkage, Name, Mod.get());
     TransFunc->setCallingConv(CallingConv::C);
     TransFunc->addFnAttr(Attribute::NoReturn);
     TransFunc->addFnAttr("cogbt");
@@ -30,18 +33,19 @@ void X86Translator::InitializeFunction(StringRef Name) {
     GMRStates.resize(GetNumGMRs());
     GMRVals.resize(GetNumGMRs());
     for (int i = 0; i < GetNumGMRs(); i++) {
-        GMRStates[i] =
-            Builder.CreateAlloca(Int64Ty, nullptr, GetGMRName(i));
+        GMRStates[i] = Builder.CreateAlloca(Int64Ty, nullptr, GetGMRName(i));
+        GMRVals[i].clear();
     }
 
     // Binds all mapped host physical registers with llvm value.
     for (int i = 0; i < GetNumGMRs() - GetNumSpecialGMRs(); i++) {
-        Value *GMRVal =
-            GetPhysicalRegValue(HostRegNames[GMRToHMR(i)]);
+        Value *GMRVal = GetPhysicalRegValue(HostRegNames[GMRToHMR(i)]);
         GMRVals[i].set(GMRVal, false);
     }
     GMRVals[X86Config::EFLAG].set(
-            GetPhysicalRegValue(HostRegNames[GMRToHMR(EFLAG)]), true);
+        GetPhysicalRegValue(HostRegNames[GMRToHMR(EFLAG)]), true);
+
+    // Initialize cpu env register.
     CPUEnv = GetPhysicalRegValue(HostRegNames[ENVReg]);
     CPUEnv = Builder.CreateIntToPtr(CPUEnv, Int8PtrTy);
 
@@ -78,8 +82,8 @@ void X86Translator::GenPrologue() {
     InitializeModule();
 
     FunctionType *FuncTy = FunctionType::get(VoidTy, false);
-    TransFunc = Function::Create(FuncTy, Function::ExternalLinkage,
-                                 "prologue", *Mod);
+    TransFunc = Function::Create(FuncTy, Function::ExternalLinkage, "prologue",
+                                 Mod.get());
     TransFunc->setCallingConv(CallingConv::C);
     TransFunc->addFnAttr(Attribute::NoReturn);
     TransFunc->addFnAttr("cogbt");
@@ -99,7 +103,7 @@ void X86Translator::GenPrologue() {
 
     // Adjust $sp
     Value *OldSP = HostRegValues[HostSP];
-    Value *NewSP = Builder.CreateAdd( OldSP, ConstantInt::get(Int64Ty, -256));
+    Value *NewSP = Builder.CreateAdd(OldSP, ConstantInt::get(Int64Ty, -256));
     HostRegValues[HostSP] = NewSP;
 
     // Save Callee-Saved-Registers, including $s0-$s8, $fp and $ra
@@ -134,23 +138,81 @@ void X86Translator::GenPrologue() {
     for (int i = 0; i < EFLAG; i++) {
         SetPhysicalRegValue(HostRegNames[GMRToHMR(i)], GuestVals[i]);
     }
-    SetPhysicalRegValue("$r22", GuestVals[EFLAG]);
-    SetPhysicalRegValue("$r25", HostRegValues[HostA1]);
-    SetPhysicalRegValue("$r4", CodeEntry); // $r4 maybe modified, sync it.
-    SetPhysicalRegValue("$r3", NewSP);
+    SetPhysicalRegValue(HostRegNames[EFLAGReg], GuestVals[EFLAG]);
+    SetPhysicalRegValue(HostRegNames[ENVReg], HostRegValues[HostA1]);
+    // $r4 maybe modified, sync it.
+    SetPhysicalRegValue(HostRegNames[HostA0], CodeEntry);
+    SetPhysicalRegValue(HostRegNames[HostSP], NewSP);
 
     // Jump to CodeEntry
-    CodeEntry = GetPhysicalRegValue("$r4");
+    CodeEntry = GetPhysicalRegValue(HostRegNames[HostA0]);
     CodeEntry = Builder.CreateIntToPtr(CodeEntry, FuncTy->getPointerTo());
     Builder.CreateCall(FuncTy, CodeEntry);
     Builder.CreateUnreachable();
 
-    //debug
+    // debug
     Mod->print(outs(), nullptr);
 }
 
 void X86Translator::GenEpilogue() {
+    InitializeModule();
 
+    TransFunc = Mod->getFunction("epilogue");
+    /* FunctionType *FuncTy = FunctionType::get(VoidTy, false); */
+    /* TransFunc = Function::Create(FuncTy, Function::ExternalLinkage, "epilogue", */
+    /*                              Mod.get()); */
+    TransFunc->setCallingConv(CallingConv::C);
+    TransFunc->addFnAttr(Attribute::NoReturn);
+    TransFunc->addFnAttr("cogbt");
+
+    EntryBB = BasicBlock::Create(Context, "entry", TransFunc);
+    Builder.SetInsertPoint(EntryBB);
+
+    // Store GMR into CPUX86State
+    Value *OldSP = GetPhysicalRegValue(HostRegNames[HostSP]);
+    vector<Value *> GuestVals(GetNumGMRs());
+    for (int i = 0; i < GetNumGMRs(); i++) {
+        GuestVals[i] = GetPhysicalRegValue(HostRegNames[GMRToHMR(i)]);
+    }
+
+    CPUEnv = GetPhysicalRegValue(HostRegNames[ENVReg]);
+    CPUEnv = Builder.CreateIntToPtr(CPUEnv, Int8PtrTy);
+    for (int i = 0; i < GetNumGMRs(); i++) {
+        int Off = 0;
+        if (i < X86Config::EFLAG)
+            Off = GuestStateOffset(i);
+        else
+            Off = GuestEflagOffset();
+        Value *Addr =
+            Builder.CreateGEP(Int8Ty, CPUEnv, ConstantInt::get(Int64Ty, Off));
+        Value *Ptr = Builder.CreateBitCast(Addr, Int64PtrTy);
+        Builder.CreateStore(GuestVals[i], Ptr, true);
+    }
+
+    // Load CSRs.
+    Value *HostRegValues[NumHostRegs] = {nullptr};
+    Value *NewSP = Builder.CreateAdd(OldSP, ConstInt(Int64Ty, 256));
+    Type *CSRArrayTy = ArrayType::get(Int64Ty, NumHostCSRs);
+    Value *CSRPtrs = Builder.CreateIntToPtr(NewSP, CSRArrayTy->getPointerTo());
+    for (int i = 0; i < NumHostCSRs; i++) {
+        Value *CurrCSRPtr = Builder.CreateGEP(
+            CSRArrayTy, CSRPtrs,
+            {ConstantInt::get(Int64Ty, 0), ConstantInt::get(Int64Ty, i)});
+        HostRegValues[HostCSRs[i]] = Builder.CreateLoad(Int64Ty, CurrCSRPtr);
+    }
+
+    // Bind all CSR values with physical regs.
+    for (int i = 0; i < NumHostCSRs; i++) {
+        SetPhysicalRegValue(HostRegNames[HostCSRs[i]],
+                            HostRegValues[HostCSRs[i]]);
+    }
+    SetPhysicalRegValue(HostRegNames[HostSP], NewSP);
+
+    // Return dbt.
+    Builder.CreateRetVoid();
+
+    // debug
+    Mod->print(outs(), nullptr);
 }
 
 Type *X86Translator::GetOpndLLVMType(X86Operand *Opnd) {
@@ -202,8 +264,7 @@ Value *X86Translator::LoadGMRValue(Type *Ty, int GMRId) {
     }
 
     Value *V = Builder.CreateLoad(Int64Ty, GMRStates[GMRId]);
-    GMRVals[GMRId].setValue(V);
-    GMRVals[GMRId].setDirty(false);
+    GMRVals[GMRId].set(V, false);
 
     Builder.SetInsertPoint(CurrBB);
 
@@ -215,6 +276,7 @@ Value *X86Translator::LoadGMRValue(Type *Ty, int GMRId) {
 void X86Translator::StoreGMRValue(Value *V, int GMRId) {
     assert(V->getType()->isIntegerTy() && "V is not a interger type!");
     assert((unsigned)GMRId < GMRVals.size() && "GMRId is too large!");
+
     if (V->getType()->isIntegerTy(64)) {
         GMRVals[GMRId].set(V, true);
     } else {
@@ -326,7 +388,8 @@ void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src1,
         llvm_unreachable("OF undo!");
     }
     if (InstHdl.ZFisDefined()) {
-        Value *IsZero = Builder.CreateICmpEQ(Dest, ConstInt(Dest->getType(), 0));
+        Value *IsZero =
+            Builder.CreateICmpEQ(Dest, ConstInt(Dest->getType(), 0));
         Value *ZFBit = Builder.CreateSelect(IsZero, ConstInt(Int64Ty, ZF_BIT),
                                             ConstInt(Int64Ty, 0));
         Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -379,10 +442,10 @@ void X86Translator::Translate() {
             switch (inst->id) {
             default:
                 assert(0 && "Unknown x86 opcode!");
-#define HANDLE_X86_INST(opcode, name)     \
-            case opcode:                  \
-                translate_##name(inst);   \
-                break;
+#define HANDLE_X86_INST(opcode, name)                                          \
+    case opcode:                                                               \
+        translate_##name(inst);                                                \
+        break;
 #include "x86-inst.def"
             }
             // debug
