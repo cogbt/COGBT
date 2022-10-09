@@ -1,5 +1,5 @@
-#include "x86-translator.h"
 #include "emulator.h"
+#include "x86-translator.h"
 
 void X86Translator::translate_aaa(GuestInst *Inst) {
     dbgs() << "Untranslated instruction aaa\n";
@@ -230,10 +230,10 @@ void X86Translator::translate_call(GuestInst *Inst) {
 
     // store call target into env.
     Value *Target = LoadOperand(InstHdl.getOpnd(0));
-    Value *EnvEIP = Builder.CreateGEP(CPUEnv,
-                                      ConstInt(Int64Ty, GuestEIPOffset()));
-    Value *EIPAddr = Builder.CreateBitCast(EnvEIP,
-                                           Target->getType()->getPointerTo());
+    Value *EnvEIP =
+        Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset()));
+    Value *EIPAddr =
+        Builder.CreateBitCast(EnvEIP, Target->getType()->getPointerTo());
     Builder.CreateStore(Target, EIPAddr);
 
     // sync GMRVals into stack.
@@ -2295,14 +2295,14 @@ void X86Translator::translate_pop(GuestInst *Inst) {
     Value *OldESPPtr = Builder.CreateIntToPtr(OldESP, OpndTy->getPointerTo());
 
     // Load stack value.
-    Value *Src = Builder.CreateLoad(OldESPPtr);
+    Value *Src = Builder.CreateLoad(OpndTy, OldESPPtr);
 
     // Store value.
     StoreOperand(Src, InstHdl.getOpnd(0));
 
     // Adjust ESP value.
-    Value *NewESP = Builder.CreateAdd(OldESP,
-                                      ConstInt(Int64Ty, InstHdl.getOpndSize()));
+    Value *NewESP =
+        Builder.CreateAdd(OldESP, ConstInt(Int64Ty, InstHdl.getOpndSize()));
     StoreGMRValue(NewESP, X86Config::RSP);
 
     /* dbgs() << "Untranslated instruction pop\n"; */
@@ -2397,13 +2397,13 @@ void X86Translator::translate_push(GuestInst *Inst) {
 
     // Calculate new esp.
     Value *OldESP = LoadGMRValue(Int64Ty, X86Config::RSP);
-    Value *NewESP = Builder.CreateSub(OldESP,
-                                      ConstInt(Int64Ty, InstHdl.getOpndSize()));
+    Value *NewESP =
+        Builder.CreateSub(OldESP, ConstInt(Int64Ty, InstHdl.getOpndSize()));
 
     // Store src value into stack.
     Value *Src = LoadOperand(InstHdl.getOpnd(0));
-    Value *NewESPPtr = Builder.CreateIntToPtr(NewESP,
-            GetOpndLLVMType(InstHdl.getOpndSize())->getPointerTo());
+    Value *NewESPPtr = Builder.CreateIntToPtr(
+        NewESP, GetOpndLLVMType(InstHdl.getOpndSize())->getPointerTo());
     Builder.CreateStore(Src, NewESPPtr);
 
     StoreGMRValue(NewESP, X86Config::RSP);

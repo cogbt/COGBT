@@ -1,12 +1,12 @@
+#include "llvm-translator.h"
+#include "host-info.h"
+#include "memory-manager.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/LegacyPassManager.h"
-#include "llvm/Target/TargetMachine.h"
-#include "llvm/Analysis/TargetTransformInfo.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Support/TargetSelect.h"
-#include "llvm-translator.h"
-#include "memory-manager.h"
-#include "host-info.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include <memory>
 #include <string>
 
@@ -60,7 +60,7 @@ void LLVMTranslator::InitializeBlock(GuestBlock &Block) {
         dyn_cast<BranchInst>(EntryBB->getTerminator())->setSuccessor(0, CurrBB);
     }
     Builder.SetInsertPoint(CurrBB);
-    //debug
+    // debug
     Mod->print(outs(), nullptr);
 }
 
@@ -128,11 +128,14 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
     if (UseOptmizer) {
         Optimize();
     }
-    //debug
-    Mod->print(outs(), nullptr); //debug
+    // debug
+    Mod->print(outs(), nullptr); // debug
     assert(TransFunc && "No translation function in module.");
     CreateJIT();
-    uint8_t * FuncAddr = (uint8_t *)EE->getPointerToFunction(TransFunc);
+    uint8_t *FuncAddr = (uint8_t *)EE->getPointerToFunction(TransFunc);
+    if (TransFunc->getName() == "epilogue") {
+        Epilogue = (uintptr_t)FuncAddr;
+    }
     DeleteJIT();
     return FuncAddr;
 }
