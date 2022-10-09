@@ -2,8 +2,13 @@
 #include <stddef.h>
 #include "cogbt.h"
 #include "x86-translator.h"
+#include "llvm/Support/TargetSelect.h"
 
 LLVMTranslator *create_llvm_translator(uintptr_t CacheBegin, size_t CacheSize) {
+    InitializeAllTargets();
+    InitializeAllTargetInfos();
+    InitializeAllTargetMCs();
+    InitializeAllDisassemblers();
     return new X86Translator(CacheBegin, CacheSize);
 }
 

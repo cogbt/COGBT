@@ -1,11 +1,11 @@
 #include "cogbt-debug.h"
 #include "llvm/MC/MCAsmInfo.h"
 
-Disassembler::Disassembler(std::string &TripleName) {
+Disassembler::Disassembler(const std::string &TripleName) {
     std::string Error;
     TheTarget = llvm::TargetRegistry::lookupTarget(TripleName, Error);
     if (!TheTarget) {
-        dbgs() << Error;
+        dbgs() << Error << "\n";
     }
 
     Triple TheTriple(TripleName);
@@ -68,7 +68,7 @@ void Disassembler::PrintInst(uint64_t Addr, size_t Size, uint64_t PC) {
 #endif
 
             if (MIA && (MIA->isCall(Inst) || MIA->isUnconditionalBranch(Inst) ||
-                MIA->isConditionalBranch(Inst))) {
+                        MIA->isConditionalBranch(Inst))) {
                 uint64_t Target;
                 if (MIA->evaluateBranch(Inst, PC, Len, Target)) {
                     dbgs() << " <" << format("0x%08" PRIx64, Target) << ">";

@@ -1,4 +1,5 @@
 #include "llvm-translator.h"
+#include "jit-eventlistener.h"
 #include "host-info.h"
 #include "memory-manager.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
@@ -60,8 +61,8 @@ void LLVMTranslator::InitializeBlock(GuestBlock &Block) {
         dyn_cast<BranchInst>(EntryBB->getTerminator())->setSuccessor(0, CurrBB);
     }
     Builder.SetInsertPoint(CurrBB);
-    // debug
-    Mod->print(outs(), nullptr);
+    /* // debug */
+    /* Mod->print(outs(), nullptr); */
 }
 
 Value *LLVMTranslator::GetPhysicalRegValue(const char *RegName) {
@@ -99,7 +100,7 @@ void LLVMTranslator::Optimize() {
     MPM.run(*Mod.get());
 }
 
-void LLVMTranslator::CreateJIT() {
+void LLVMTranslator::CreateJIT(JITEventListener *Listener) {
     std::string ErrorMessage;
 
     // Set all attributes of an ExecutionEngine.
@@ -113,8 +114,8 @@ void LLVMTranslator::CreateJIT() {
     EE = builder.create();
     assert(EE && "ExecutionEngine build error.");
 
-    /// TODO! Register JITEventListener to handle some post-JITed events.
-    /// EE->RegisterJITEventListener(Listener);
+    /// Register JITEventListener to handle some post-JITed events.
+    EE->RegisterJITEventListener(Listener);
 
     // Bind addresses to external symbols.
 }
@@ -128,15 +129,20 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
     if (UseOptmizer) {
         Optimize();
     }
-    // debug
+
     Mod->print(outs(), nullptr); // debug
     assert(TransFunc && "No translation function in module.");
-    CreateJIT();
+    JITNotificationInfo NI;
+    COGBTEventListener Listener(NI);
+    CreateJIT(&Listener);
     uint8_t *FuncAddr = (uint8_t *)EE->getPointerToFunction(TransFunc);
     if (TransFunc->getName() == "epilogue") {
         Epilogue = (uintptr_t)FuncAddr;
     }
     DeleteJIT();
+
+    //debug
+    HostDisAsm.PrintInst((uint64_t)FuncAddr, NI.GetSize(TransFunc->getName()), (uint64_t)FuncAddr);
     return FuncAddr;
 }
 

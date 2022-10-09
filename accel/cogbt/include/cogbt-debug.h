@@ -26,7 +26,7 @@ class Disassembler {
     std::unique_ptr<MCSubtargetInfo> MSTI; ///< MC subtarget info.
     std::unique_ptr<MCInstrAnalysis> MIA;  ///< MC instruction analyzer.
 public:
-    Disassembler(std::string &TripleName);
+    Disassembler(const std::string &TripleName);
     void PrintInst(uint64_t Addr, size_t Size, uint64_t PC);
 };
 

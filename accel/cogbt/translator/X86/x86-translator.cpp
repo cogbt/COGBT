@@ -75,7 +75,7 @@ void X86Translator::InitializeFunction(StringRef Name) {
     Builder.CreateBr(ExitBB);
 
     // Debug
-    Mod->print(outs(), nullptr);
+    /* Mod->print(outs(), nullptr); */
 }
 
 void X86Translator::GenPrologue() {
@@ -151,7 +151,7 @@ void X86Translator::GenPrologue() {
     Builder.CreateUnreachable();
 
     // debug
-    Mod->print(outs(), nullptr);
+    /* Mod->print(outs(), nullptr); */
 }
 
 void X86Translator::GenEpilogue() {
@@ -212,7 +212,7 @@ void X86Translator::GenEpilogue() {
     Builder.CreateRetVoid();
 
     // debug
-    Mod->print(outs(), nullptr);
+    /* Mod->print(outs(), nullptr); */
 }
 
 Type *X86Translator::GetOpndLLVMType(X86Operand *Opnd) {
@@ -458,6 +458,6 @@ void X86Translator::Translate() {
             /*     printf("\n"); */
             /* } */
         }
-        Mod->print(outs(), nullptr);
+        /* Mod->print(outs(), nullptr); */
     }
 }

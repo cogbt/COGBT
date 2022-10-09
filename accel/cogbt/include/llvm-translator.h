@@ -1,13 +1,15 @@
 #ifndef LLVM_TRANSLATOR_H
 #define LLVM_TRANSLATOR_H
 
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/IRBuilder.h"
+#include "cogbt-debug.h"
+#include "host-info.h"
+#include "jit-eventlistener.h"
+#include "translation-unit.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
-#include "translation-unit.h"
-#include "host-info.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
 
 using namespace llvm;
 
@@ -53,10 +55,12 @@ public:
     };
 
     /// Constructor of LLVM Translator with given code cache to fill in.
-    LLVMTranslator(uintptr_t CacheBegin, size_t CacheSize)
-        : Builder(Context), CodeCache(CacheBegin, CacheSize) {
+    LLVMTranslator(uintptr_t CacheBegin, size_t CacheSize,
+                   const std::string &HostTripleName,
+                   const std::string &GuestTripleName)
+        : Builder(Context), CodeCache(CacheBegin, CacheSize), // Listener(NI),
+          HostDisAsm(HostTripleName), GuestDisAsm(GuestTripleName) {
         InitializeTypes();
-        /* HostRegValues.resize(NumHostRegs); */
     }
     virtual ~LLVMTranslator() = default;
 
@@ -68,9 +72,7 @@ public:
     void InitializeBlock(GuestBlock &Block);
 
     /// SetTU - Commit TU to be processed to the translator.
-    void SetTU(TranslationUnit *TU) {
-        this->TU = TU;
-    }
+    void SetTU(TranslationUnit *TU) { this->TU = TU; }
 
     /// DeclareExternalSymbols - Declare external symbols in this module so
     /// translator can access functions or data in dbt.
@@ -105,14 +107,14 @@ protected:
     uintptr_t Epilogue;          ///< Epilogue code address.
 
     /// @name Guest->IR converter submodule
-    Function *TransFunc;         ///< Translation function.
-    IRBuilder<> Builder;         ///< Utility for creating IR instructions.
-    std::vector<Value *> GMRStates;  ///< Stack objects for each guest GPRs.
-    std::vector<GMRValue> GMRVals;   ///< Guest GPRs values.
-    BasicBlock *EntryBB;         ///< Entry block of Translation Function.
-    BasicBlock *ExitBB;          ///< Exit block of Translation Function.
-    BasicBlock *CurrBB;          ///< Current handled block.
-    Value *CPUEnv;               ///< Pointer to CPUX86State.
+    Function *TransFunc;            ///< Translation function.
+    IRBuilder<> Builder;            ///< Utility for creating IR instructions.
+    std::vector<Value *> GMRStates; ///< Stack objects for each guest GPRs.
+    std::vector<GMRValue> GMRVals;  ///< Guest GPRs values.
+    BasicBlock *EntryBB;            ///< Entry block of Translation Function.
+    BasicBlock *ExitBB;             ///< Exit block of Translation Function.
+    BasicBlock *CurrBB;             ///< Current handled block.
+    Value *CPUEnv;                  ///< Pointer to CPUX86State.
 
     /// Basic types that are frequently used.
     Type *Int8Ty, *Int16Ty, *Int32Ty, *Int64Ty, *VoidTy, *Int8PtrTy,
@@ -142,16 +144,20 @@ protected:
 
     /// @name JIT Submodule Of Translator
     ExecutionEngine *EE;
-    CodeCacheInfo CodeCache;     ///< Per-translator code cache.
+    CodeCacheInfo CodeCache; ///< Per-translator code cache.
+    /* JITNotificationInfo NI; */
+    /* COGBTEventListener Listener; */
 
     /// CreateJIT - Initialize the JIT session for current translator. Set
     /// various attributes of ExecutionEngine, IR Module and MemoryManager.
-    void CreateJIT();
+    void CreateJIT(JITEventListener *Listener);
 
     /// DeleteSession - Finalize the JIT session.
     void DeleteJIT();
 
     /// @name Debug submodule
+    Disassembler HostDisAsm;
+    Disassembler GuestDisAsm;
 };
 
 #endif
