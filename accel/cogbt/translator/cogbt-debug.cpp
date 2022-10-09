@@ -18,7 +18,6 @@ Disassembler::Disassembler(const std::string &TripleName) {
     std::unique_ptr<MCAsmInfo> MAI(
         TheTarget->createMCAsmInfo(*MRI, TripleName, MCOptions));
 #else
-    const MCTargetOptions MCOptions = InitMCTargetOptionsFromFlags();
     std::unique_ptr<MCAsmInfo> MAI(
         TheTarget->createMCAsmInfo(*MRI, TripleName));
 #endif

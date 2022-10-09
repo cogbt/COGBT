@@ -12,7 +12,6 @@
 #include "llvm/MC/MCTargetOptionsCommandFlags.h"
 #include "llvm/MC/TargetRegistry.h"
 #else
-#include "llvm/MC/MCTargetOptionsCommandFlags.inc"
 #include "llvm/Support/TargetRegistry.h"
 #endif
 
