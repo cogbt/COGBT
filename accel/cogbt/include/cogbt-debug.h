@@ -5,10 +5,16 @@
 #include "llvm/MC/MCInstrAnalysis.h"
 #include "llvm/MC/MCDisassembler/MCDisassembler.h"
 #include "llvm/MC/MCTargetOptions.h"
-#include "llvm/MC/MCTargetOptionsCommandFlags.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/Target/TargetMachine.h"
+
+#if (LLVM_VERSION_MAJOR > 8)
+#include "llvm/MC/MCTargetOptionsCommandFlags.h"
 #include "llvm/MC/TargetRegistry.h"
+#else
+#include "llvm/MC/MCTargetOptionsCommandFlags.inc"
+#include "llvm/Support/TargetRegistry.h"
+#endif
 
 using namespace llvm;
 

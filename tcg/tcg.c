@@ -756,6 +756,8 @@ void tcg_prologue_init(TCGContext *s)
 #else
     gen_prologue(s->translator);
     tcg_qemu_tb_exec = (tcg_prologue_fn *)llvm_compile(s->translator, true);
+    gen_epilogue(s->translator);
+    llvm_compile(s->translator, true);
 #endif
 
 #ifdef TCG_TARGET_NEED_POOL_LABELS

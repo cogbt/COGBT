@@ -13,9 +13,15 @@ Disassembler::Disassembler(std::string &TripleName) {
     std::unique_ptr<MCRegisterInfo> MRI(TheTarget->createMCRegInfo(TripleName));
     assert(MRI && "Unable to create MCRegInfo.\n");
 
+#if (LLVM_VERSION_MAJOR > 8)
     const MCTargetOptions MCOptions = llvm::mc::InitMCTargetOptionsFromFlags();
     std::unique_ptr<MCAsmInfo> MAI(
         TheTarget->createMCAsmInfo(*MRI, TripleName, MCOptions));
+#else
+    const MCTargetOptions MCOptions = InitMCTargetOptionsFromFlags();
+    std::unique_ptr<MCAsmInfo> MAI(
+        TheTarget->createMCAsmInfo(*MRI, TripleName));
+#endif
     assert(MAI && "Unable to create MCAsmInfo.\n");
 
     std::unique_ptr<MCInstrInfo> MII(TheTarget->createMCInstrInfo());
@@ -27,7 +33,11 @@ Disassembler::Disassembler(std::string &TripleName) {
     MIA.reset(TheTarget->createMCInstrAnalysis(MII.get()));
     assert(MIA && "Unable to create MCInstrAnalysis.\n");
 
+#if (LLVM_VERSION_MAJOR > 8)
     MCContext MCCtx(TheTriple, MAI.get(), MRI.get(), MSTI.get());
+#else
+    MCContext MCCtx(MAI.get(), MRI.get(), nullptr);
+#endif
     IP.reset(TheTarget->createMCInstPrinter(TheTriple, 0, *MAI, *MII, *MRI));
     IP->setPrintImmHex(true);
 
@@ -41,12 +51,21 @@ void Disassembler::PrintInst(uint64_t Addr, size_t Size, uint64_t PC) {
     for (uint64_t Idx = 0; Idx < Size; Idx += Len) {
         MCInst Inst;
         std::string Str;
+#if (LLVM_VERSION_MAJOR > 8)
         if (MCD->getInstruction(Inst, Len, Bytes.slice(Idx), Addr + Idx,
                                 nulls())) {
+#else
+        if (MCD->getInstruction(Inst, Len, Bytes.slice(Idx), Addr + Idx,
+                                nulls(), nulls())) {
+#endif
             dbgs() << format("0x%08" PRIx64 ":", PC);
 
             /* DumpBytes(Bytes.slice(Start, Len), OS); */
+#if (LLVM_VERSION_MAJOR > 8)
             IP->printInst(&Inst, PC, "", *MSTI, dbgs());
+#else
+            IP->printInst(&Inst, dbgs(), "", *MSTI);
+#endif
 
             if (MIA && (MIA->isCall(Inst) || MIA->isUnconditionalBranch(Inst) ||
                 MIA->isConditionalBranch(Inst))) {
