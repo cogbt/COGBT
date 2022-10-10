@@ -15,15 +15,13 @@ Disassembler::Disassembler(const std::string &TripleName) {
 
 #if (LLVM_VERSION_MAJOR > 8)
     const MCTargetOptions MCOptions = llvm::mc::InitMCTargetOptionsFromFlags();
-    std::unique_ptr<MCAsmInfo> MAI(
-        TheTarget->createMCAsmInfo(*MRI, TripleName, MCOptions));
+    MAI.reset(TheTarget->createMCAsmInfo(*MRI, TripleName, MCOptions));
 #else
-    std::unique_ptr<MCAsmInfo> MAI(
-        TheTarget->createMCAsmInfo(*MRI, TripleName));
+    MAI.reset(TheTarget->createMCAsmInfo(*MRI, TripleName));
 #endif
     assert(MAI && "Unable to create MCAsmInfo.\n");
 
-    std::unique_ptr<MCInstrInfo> MII(TheTarget->createMCInstrInfo());
+    MII.reset(TheTarget->createMCInstrInfo());
     assert(MII && "Unalbe to create MCInstrInfo.\n");
 
     MSTI.reset(TheTarget->createMCSubtargetInfo(TripleName, "", ""));

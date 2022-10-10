@@ -131,6 +131,12 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
     }
 
     Mod->print(outs(), nullptr); // debug
+    ////test
+    /* char array[10]; */
+    /* memset(array, 0, sizeof(array)); */
+    /* array[0] = 0xc3; */
+    /* HostDisAsm.PrintInst((uint64_t)array, 10, (uint64_t)array); */
+    ///test end
     assert(TransFunc && "No translation function in module.");
     JITNotificationInfo NI;
     COGBTEventListener Listener(NI);

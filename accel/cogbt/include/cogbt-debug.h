@@ -6,6 +6,9 @@
 #include "llvm/MC/MCDisassembler/MCDisassembler.h"
 #include "llvm/MC/MCTargetOptions.h"
 #include "llvm/MC/MCContext.h"
+#include "llvm/MC/MCSubtargetInfo.h"
+#include "llvm/MC/MCAsmInfo.h"
+#include "llvm/MC/MCInstrInfo.h"
 #include "llvm/Target/TargetMachine.h"
 
 #if (LLVM_VERSION_MAJOR > 8)
@@ -24,6 +27,8 @@ class Disassembler {
 
     std::unique_ptr<MCSubtargetInfo> MSTI; ///< MC subtarget info.
     std::unique_ptr<MCInstrAnalysis> MIA;  ///< MC instruction analyzer.
+    std::unique_ptr<MCAsmInfo> MAI;        ///< MC assemble info.
+    std::unique_ptr<MCInstrInfo> MII;      ///< MC instruction info.
 public:
     Disassembler(const std::string &TripleName);
     void PrintInst(uint64_t Addr, size_t Size, uint64_t PC);
