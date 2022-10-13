@@ -7,9 +7,9 @@ using namespace llvm::object;
 void COGBTEventListener::notifyObjectLoaded(
     ObjectKey K, const object::ObjectFile &Obj,
     const RuntimeDyld::LoadedObjectInfo &L) {
-    auto &DebugObj = *L.getObjectForDebug(Obj).getBinary();
-    for (const std::pair<SymbolRef, uint64_t> &Sym :
-         computeSymbolSizes(DebugObj)) {
+    std::vector<std::pair<SymbolRef, uint64_t>> SymVec =
+        computeSymbolSizes(Obj);
+    for (const std::pair<SymbolRef, uint64_t> &Sym : SymVec) {
         Expected<SymbolRef::Type> SymType = Sym.first.getType();
         if (!SymType || *SymType != SymbolRef::ST_Function)
             continue;
@@ -20,5 +20,6 @@ void COGBTEventListener::notifyObjectLoaded(
             continue;
 
         NI.AddFunc(*FuncName, *FuncAddr, Sym.second);
+        dbgs() << "add func " << *FuncName << " size " << Sym.second << "\n";
     }
 }

@@ -35,9 +35,9 @@ void LLVMTranslator::InitializeModule() {
 #endif
 
     // Some initialization about JIT.
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
-    InitializeNativeTargetAsmParser();
+    /* InitializeNativeTarget(); */
+    /* InitializeNativeTargetAsmPrinter(); */
+    /* InitializeNativeTargetAsmParser(); */
 
     // Import external symbols.
     DeclareExternalSymbols();
@@ -61,7 +61,6 @@ void LLVMTranslator::InitializeBlock(GuestBlock &Block) {
         dyn_cast<BranchInst>(EntryBB->getTerminator())->setSuccessor(0, CurrBB);
     }
     Builder.SetInsertPoint(CurrBB);
-    /* // debug */
     /* Mod->print(outs(), nullptr); */
 }
 
@@ -131,12 +130,6 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
     }
 
     Mod->print(outs(), nullptr); // debug
-    ////test
-    /* char array[10]; */
-    /* memset(array, 0, sizeof(array)); */
-    /* array[0] = 0xc3; */
-    /* HostDisAsm.PrintInst((uint64_t)array, 10, (uint64_t)array); */
-    ///test end
     assert(TransFunc && "No translation function in module.");
     JITNotificationInfo NI;
     COGBTEventListener Listener(NI);

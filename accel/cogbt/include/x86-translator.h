@@ -11,8 +11,10 @@ public:
     X86Translator(uintptr_t CacheBegin, size_t CacheSize)
         : LLVMTranslator(
               CacheBegin, CacheSize,
-              "x86_64-pc-linux-gnu", //"loongarch64-unknown-linux-gnu",
-              "x86_64-pc-linux-gnu") {}
+              "loongarch64-pc-linux-gnu",
+              "loongarch64-pc-linux-gnu") {
+        }
+              //"x86_64-pc-linux-gnu") {}
 
 private:
     /// InitializeFunction - Initialize the basic framework of the translation

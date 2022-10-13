@@ -10,7 +10,7 @@ Disassembler::Disassembler(const std::string &TripleName) {
 
     Triple TheTriple(TripleName);
 
-    std::unique_ptr<MCRegisterInfo> MRI(TheTarget->createMCRegInfo(TripleName));
+    MRI.reset(TheTarget->createMCRegInfo(TripleName));
     assert(MRI && "Unable to create MCRegInfo.\n");
 
 #if (LLVM_VERSION_MAJOR > 8)
@@ -31,14 +31,14 @@ Disassembler::Disassembler(const std::string &TripleName) {
     assert(MIA && "Unable to create MCInstrAnalysis.\n");
 
 #if (LLVM_VERSION_MAJOR > 8)
-    MCContext MCCtx(TheTriple, MAI.get(), MRI.get(), MSTI.get());
+    MCtx.reset(TheTriple, MAI.get(), MRI.get(), MSTI.get());
 #else
-    MCContext MCCtx(MAI.get(), MRI.get(), nullptr);
+    MCtx.reset(new MCContext(MAI.get(), MRI.get(), nullptr));
 #endif
     IP.reset(TheTarget->createMCInstPrinter(TheTriple, 0, *MAI, *MII, *MRI));
     IP->setPrintImmHex(true);
 
-    MCD.reset(TheTarget->createMCDisassembler(*MSTI, MCCtx));
+    MCD.reset(TheTarget->createMCDisassembler(*MSTI, *MCtx));
 }
 
 void Disassembler::PrintInst(uint64_t Addr, size_t Size, uint64_t PC) {

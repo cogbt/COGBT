@@ -7,8 +7,11 @@
 LLVMTranslator *create_llvm_translator(uintptr_t CacheBegin, size_t CacheSize) {
     InitializeAllTargets();
     InitializeAllTargetInfos();
+    InitializeAllAsmParsers();
+    InitializeAllAsmPrinters();
     InitializeAllTargetMCs();
     InitializeAllDisassemblers();
+    InitializeNativeTarget();
     return new X86Translator(CacheBegin, CacheSize);
 }
 

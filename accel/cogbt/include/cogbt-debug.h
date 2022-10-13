@@ -29,8 +29,12 @@ class Disassembler {
     std::unique_ptr<MCInstrAnalysis> MIA;  ///< MC instruction analyzer.
     std::unique_ptr<MCAsmInfo> MAI;        ///< MC assemble info.
     std::unique_ptr<MCInstrInfo> MII;      ///< MC instruction info.
+    std::unique_ptr<MCContext> MCtx;       ///< MC Context
+    std::unique_ptr<MCRegisterInfo> MRI;   ///< MCRegisterInfo
+
 public:
     Disassembler(const std::string &TripleName);
+    ~Disassembler() {}
     void PrintInst(uint64_t Addr, size_t Size, uint64_t PC);
 };
 
