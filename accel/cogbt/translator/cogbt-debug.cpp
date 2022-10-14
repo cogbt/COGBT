@@ -31,7 +31,7 @@ Disassembler::Disassembler(const std::string &TripleName) {
     assert(MIA && "Unable to create MCInstrAnalysis.\n");
 
 #if (LLVM_VERSION_MAJOR > 8)
-    MCtx.reset(TheTriple, MAI.get(), MRI.get(), MSTI.get());
+    MCtx.reset(new MCContext(TheTriple, MAI.get(), MRI.get(), MSTI.get()));
 #else
     MCtx.reset(new MCContext(MAI.get(), MRI.get(), nullptr));
 #endif
