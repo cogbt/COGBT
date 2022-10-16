@@ -117,8 +117,8 @@ void X86Translator::GenPrologue() {
     }
 
     // Get transalted code entry and ENV value
-    Value *CodeEntry = HostRegValues[HostA0];
-    Value *ENV = Builder.CreateIntToPtr(HostRegValues[HostA1], Int8PtrTy);
+    Value *CodeEntry = HostRegValues[HostA1];
+    Value *ENV = Builder.CreateIntToPtr(HostRegValues[HostA0], Int8PtrTy);
 
     // Load guest state into mapped registers
     vector<Value *> GuestVals(GetNumGMRs());
@@ -139,13 +139,13 @@ void X86Translator::GenPrologue() {
         SetPhysicalRegValue(HostRegNames[GMRToHMR(i)], GuestVals[i]);
     }
     SetPhysicalRegValue(HostRegNames[EFLAGReg], GuestVals[EFLAG]);
-    SetPhysicalRegValue(HostRegNames[ENVReg], HostRegValues[HostA1]);
+    SetPhysicalRegValue(HostRegNames[ENVReg], HostRegValues[HostA0]);
     // $r4 maybe modified, sync it.
-    SetPhysicalRegValue(HostRegNames[HostA0], CodeEntry);
+    SetPhysicalRegValue(HostRegNames[HostA1], CodeEntry);
     SetPhysicalRegValue(HostRegNames[HostSP], NewSP);
 
     // Jump to CodeEntry
-    CodeEntry = GetPhysicalRegValue(HostRegNames[HostA0]);
+    CodeEntry = GetPhysicalRegValue(HostRegNames[HostA1]);
     CodeEntry = Builder.CreateIntToPtr(CodeEntry, FuncTy->getPointerTo());
     Builder.CreateCall(FuncTy, CodeEntry);
     Builder.CreateUnreachable();
@@ -448,15 +448,6 @@ void X86Translator::Translate() {
         break;
 #include "x86-inst.def"
             }
-            // debug
-            /* printf("0x%lx  %s\t%s\n", inst->address, inst->mnemonic, */
-            /*         inst->op_str); // debug */
-            /* Mod->print(outs(), nullptr); */
-            /* for (auto InstIt = CurrBB->begin(); InstIt != CurrBB->end(); */
-            /*      InstIt++) { */
-            /*     InstIt->print(outs(), true); */
-            /*     printf("\n"); */
-            /* } */
         }
         /* Mod->print(outs(), nullptr); */
     }

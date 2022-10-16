@@ -67,7 +67,7 @@ int block_gen_code(uint64_t pc, int max_insns, LLVMTranslator *translator,
     llvm_initialize(translator);
     llvm_set_tu(translator, tu);
     llvm_translate(translator);
-    llvm_compile(translator, true);
+    *(uint32_t **)code_cache = (uint32_t *)llvm_compile(translator, true);
     size_t llvm_code_size_after = llvm_get_code_size(translator);
 
     /* Free all cs_insn allocated by capstone */
