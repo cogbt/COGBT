@@ -1622,7 +1622,7 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
     int guest_inst_cnt = 0;
     void *host_code_ptr = NULL;
     gen_code_size = block_gen_code(tb->pc, max_insns, tcg_ctx->translator,
-                                   host_code_ptr, &guest_inst_cnt);
+                                   &host_code_ptr, &guest_inst_cnt);
     tb->tc.ptr = tcg_splitwx_to_rx(host_code_ptr);
     tb->tc.size = gen_code_size;
     tb->icount = guest_inst_cnt;
