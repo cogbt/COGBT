@@ -117,6 +117,7 @@ void LLVMTranslator::CreateJIT(JITEventListener *Listener) {
     EE->RegisterJITEventListener(Listener);
 
     // Bind addresses to external symbols.
+    EE->addGlobalMapping("epilogue", Epilogue);
 }
 
 void LLVMTranslator::DeleteJIT() {
