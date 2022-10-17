@@ -193,7 +193,7 @@ void X86Translator::GenEpilogue() {
     Value *HostRegValues[NumHostRegs] = {nullptr};
     Value *NewSP = Builder.CreateAdd(OldSP, ConstInt(Int64Ty, 256));
     Type *CSRArrayTy = ArrayType::get(Int64Ty, NumHostCSRs);
-    Value *CSRPtrs = Builder.CreateIntToPtr(NewSP, CSRArrayTy->getPointerTo());
+    Value *CSRPtrs = Builder.CreateIntToPtr(OldSP, CSRArrayTy->getPointerTo());
     for (int i = 0; i < NumHostCSRs; i++) {
         Value *CurrCSRPtr = Builder.CreateGEP(
             CSRArrayTy, CSRPtrs,

@@ -117,7 +117,9 @@ void LLVMTranslator::CreateJIT(JITEventListener *Listener) {
     EE->RegisterJITEventListener(Listener);
 
     // Bind addresses to external symbols.
-    EE->addGlobalMapping("epilogue", Epilogue);
+    if (Epilogue) {
+        EE->addGlobalMapping("epilogue", Epilogue);
+    }
 }
 
 void LLVMTranslator::DeleteJIT() {
@@ -135,9 +137,10 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
     JITNotificationInfo NI;
     COGBTEventListener Listener(NI);
     CreateJIT(&Listener);
-    uint8_t *FuncAddr = (uint8_t *)EE->getPointerToFunction(TransFunc);
+    uint8_t *FuncAddr = (uint8_t *)EE->getFunctionAddress(TransFunc->getName());
     if (TransFunc->getName() == "epilogue") {
         Epilogue = (uintptr_t)FuncAddr;
+        dbgs() << "Epilogue addr " << Epilogue << "\n"; //debug
     }
     DeleteJIT();
 
