@@ -34,15 +34,11 @@ void LLVMTranslator::InitializeModule() {
     Mod->setDataLayout("e-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128");
 #endif
 
-    // Some initialization about JIT.
-    /* InitializeNativeTarget(); */
-    /* InitializeNativeTargetAsmPrinter(); */
-    /* InitializeNativeTargetAsmParser(); */
-
     // Import external symbols.
     DeclareExternalSymbols();
 
     // Initialize data structure of converter
+    Epilogue = 0;
     TU = nullptr;
     TransFunc = nullptr;
     for (auto &V : GMRStates)
@@ -122,7 +118,8 @@ void LLVMTranslator::CreateJIT(JITEventListener *Listener) {
     }
 }
 
-void LLVMTranslator::DeleteJIT() {
+void LLVMTranslator::DeleteJIT(JITEventListener *Listener) {
+    EE->UnregisterJITEventListener(Listener);
     EE->removeModule(RawMod);
     delete EE;
 }
@@ -142,7 +139,7 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
         Epilogue = (uintptr_t)FuncAddr;
         dbgs() << "Epilogue addr " << Epilogue << "\n"; //debug
     }
-    DeleteJIT();
+    DeleteJIT(&Listener);
 
     //debug
     HostDisAsm.PrintInst((uint64_t)FuncAddr, NI.GetSize(TransFunc->getName()), (uint64_t)FuncAddr);

@@ -39,7 +39,7 @@ public:
 //===----------------------------------------------------------------------===//
 // Guest to LLVM IR translator definition
 //===----------------------------------------------------------------------===//
-class LLVMTranslator {
+struct LLVMTranslator {
 public:
     /// Interface for recording code cache allocations.
     class CodeCacheInfo {
@@ -153,7 +153,7 @@ protected:
     void CreateJIT(JITEventListener *Listener);
 
     /// DeleteSession - Finalize the JIT session.
-    void DeleteJIT();
+    void DeleteJIT(JITEventListener *Listener);
 
     /// @name Debug submodule
     Disassembler HostDisAsm;

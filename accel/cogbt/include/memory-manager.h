@@ -57,6 +57,14 @@ public:
     /// \returns true if an error occurred, false otherwise.
     bool finalizeMemory(std::string *ErrMsg = nullptr) override;
 
+
+    /* void registerEHFrames(uint8_t *Addr, uint64_t LoadAddr, size_t Size) override { */
+    /*     dbgs() << "Debug registerEHFrames\n"; // debug */
+    /* } */
+    /* void deregisterEHFrames() override { */
+    /*     dbgs() << "Debug deregisterEHFrames\n"; //debug */
+    /* } */
+
 private:
     LLVMTranslator::CodeCacheInfo &CodeCache;
 };

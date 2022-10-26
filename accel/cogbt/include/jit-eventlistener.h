@@ -10,21 +10,22 @@ using namespace llvm;
 // LLVM MCJIT Notification infomation definition
 //===----------------------------------------------------------------------===//
 class JITNotificationInfo {
-    std::map<StringRef, std::pair<uint64_t, uint64_t>> FuncNameToAddrSize;
+    std::map<std::string, std::pair<uint64_t, uint64_t>> FuncNameToAddrSize;
     size_t TotalCodeSize;      ///< Translated host code size of TU.
 public:
     JITNotificationInfo() : TotalCodeSize(0) {}
+    ~JITNotificationInfo() {}
     size_t GetTotalSize() { return TotalCodeSize; }
-    void AddFunc(StringRef Name, uint64_t Addr, uint64_t Size) {
+    void AddFunc(std::string Name, uint64_t Addr, uint64_t Size) {
         FuncNameToAddrSize[Name] = {Addr, Size};
         TotalCodeSize += Size;
     }
 
-    uint64_t GetAddr(StringRef FuncName) {
+    uint64_t GetAddr(std::string FuncName) {
         return FuncNameToAddrSize[FuncName].first;
     }
 
-    uint64_t GetSize(StringRef FuncName) {
+    uint64_t GetSize(std::string FuncName) {
         return FuncNameToAddrSize[FuncName].second;
     }
 };
