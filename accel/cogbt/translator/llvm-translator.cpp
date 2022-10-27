@@ -38,7 +38,6 @@ void LLVMTranslator::InitializeModule() {
     DeclareExternalSymbols();
 
     // Initialize data structure of converter
-    Epilogue = 0;
     TU = nullptr;
     TransFunc = nullptr;
     for (auto &V : GMRStates)

@@ -58,12 +58,9 @@ public:
     bool finalizeMemory(std::string *ErrMsg = nullptr) override;
 
 
-    /* void registerEHFrames(uint8_t *Addr, uint64_t LoadAddr, size_t Size) override { */
-    /*     dbgs() << "Debug registerEHFrames\n"; // debug */
-    /* } */
-    /* void deregisterEHFrames() override { */
-    /*     dbgs() << "Debug deregisterEHFrames\n"; //debug */
-    /* } */
+    void registerEHFrames(uint8_t *Addr, uint64_t LoadAddr,
+                          size_t Size) override {}
+    void deregisterEHFrames() override {}
 
 private:
     LLVMTranslator::CodeCacheInfo &CodeCache;

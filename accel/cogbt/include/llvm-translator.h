@@ -58,7 +58,7 @@ public:
     LLVMTranslator(uintptr_t CacheBegin, size_t CacheSize,
                    const std::string &HostTripleName,
                    const std::string &GuestTripleName)
-        : Builder(Context), CodeCache(CacheBegin, CacheSize), // Listener(NI),
+        : Epilogue(0), Builder(Context), CodeCache(CacheBegin, CacheSize),
           HostDisAsm(HostTripleName), GuestDisAsm(GuestTripleName) {
         InitializeTypes();
     }

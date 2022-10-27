@@ -66,6 +66,9 @@ public:
     /// address.
     GuestBlock *CreateAndAddGuestBlock();
 
+    /// Clear - Clear all guest blocks in this TU.
+    void Clear() { GuestBlocks.clear(); }
+
     /// dump - Show all GuestInstructions in this TU.
     void dump(void);
 
