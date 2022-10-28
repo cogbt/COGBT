@@ -133,7 +133,8 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
     JITNotificationInfo NI;
     COGBTEventListener Listener(NI);
     CreateJIT(&Listener);
-    uint8_t *FuncAddr = (uint8_t *)EE->getFunctionAddress(TransFunc->getName());
+    std::string FuncName(TransFunc->getName());
+    uint8_t *FuncAddr = (uint8_t *)EE->getFunctionAddress(FuncName);
     if (TransFunc->getName() == "epilogue") {
         Epilogue = (uintptr_t)FuncAddr;
         dbgs() << "Epilogue addr " << Epilogue << "\n"; //debug
@@ -141,7 +142,8 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
     DeleteJIT(&Listener);
 
     //debug
-    HostDisAsm.PrintInst((uint64_t)FuncAddr, NI.GetSize(TransFunc->getName()), (uint64_t)FuncAddr);
+    HostDisAsm.PrintInst((uint64_t)FuncAddr, NI.GetSize(FuncName),
+                         (uint64_t)FuncAddr);
     return FuncAddr;
 }
 

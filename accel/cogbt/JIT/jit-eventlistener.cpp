@@ -19,7 +19,7 @@ void COGBTEventListener::notifyObjectLoaded(
         if (!FuncName || !FuncAddr)
             continue;
 
-        NI.AddFunc(*FuncName, *FuncAddr, Sym.second);
+        NI.AddFunc(FuncName->str(), *FuncAddr, Sym.second);
         dbgs() << "add func " << *FuncName << " size " << Sym.second << "\n";
     }
 }
