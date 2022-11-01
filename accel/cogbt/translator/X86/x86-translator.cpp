@@ -475,6 +475,7 @@ void X86Translator::Translate() {
     dbgs() << "Welcome to COGBT translation module!\n";
     InitializeFunction(std::to_string(TU->GetTUEntry()));
     for (auto &block : *TU) {
+        assert(TU->size() && "TU size is expected to be non-zero!");
         dbgs() << "TU->size = " << TU->size() << "\n";
         InitializeBlock(block);
         for (auto &inst : block) {
@@ -488,6 +489,25 @@ void X86Translator::Translate() {
 #include "x86-inst.def"
             }
         }
-        /* Mod->print(outs(), nullptr); */
+        // In debug mode, ONLY one guest instruction is in a block. So some IRs
+        // should be added to save guest pc and jump to epilogue.
+        X86InstHandler GuestInstHdl(*block.rbegin());
+        if (!GuestInstHdl.isTerminator()) {
+            Value *Target = ConstInt(Int64Ty, GuestInstHdl.getNextPC());
+            Value *EnvEIP = Builder.CreateGEP(
+                Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset()));
+            Value *EIPAddr = Builder.CreateBitCast(
+                EnvEIP, Target->getType()->getPointerTo());
+            Builder.CreateStore(Target, EIPAddr);
+
+            // sync GMRVals into stack.
+            for (int GMRId = 0; GMRId < (int)GMRVals.size(); GMRId++) {
+                if (GMRVals[GMRId].isDirty()) {
+                    Builder.CreateStore(GMRVals[GMRId].getValue(),
+                                        GMRStates[GMRId]);
+                }
+            }
+            Builder.CreateBr(ExitBB);
+        }
     }
 }

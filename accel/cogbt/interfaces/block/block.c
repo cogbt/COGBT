@@ -17,7 +17,7 @@ void cogbt_block_init(void) {
     tu_init(global_tu);
 }
 
-static bool guest_inst_is_terminator(cs_insn *insn) {
+bool guest_inst_is_terminator(cs_insn *insn) {
     return cs_insn_group(handle, insn, CS_GRP_JUMP) ||
            cs_insn_group(handle, insn, CS_GRP_RET) ||
            cs_insn_group(handle, insn, CS_GRP_CALL);

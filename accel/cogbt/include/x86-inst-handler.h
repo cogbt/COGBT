@@ -3,6 +3,9 @@
 
 #include "translation-unit.h"
 #include "x86-opnd-handler.h"
+#include <capstone.h>
+
+extern "C" bool guest_inst_is_terminator(cs_insn *insn);
 
 #define CF_BIT (1ULL << 0)
 #define PF_BIT (1ULL << 2)
@@ -47,6 +50,10 @@ public:
 
     uint64_t getNextPC() {
         return Inst->address + Inst->size;
+    }
+
+    bool isTerminator() {
+        return guest_inst_is_terminator(Inst);
     }
 private:
     GuestInst *Inst;
