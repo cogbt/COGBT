@@ -379,14 +379,52 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
     }
 }
 
+void X86Translator::AddExternalSyms() {
+    EE->addGlobalMapping("PFTable", X86InstHandler::getPFTable());
+}
+
+void X86Translator::GenCF(GuestInst *Inst, Value *Dest, Value *Src1,
+                          Value *Src2) {
+    X86InstHandler InstHdl(Inst);
+    switch (Inst->id) {
+    default:
+        llvm_unreachable("GenCF Unhandled Inst ID\n");
+    case X86_INS_AND: // CF is cleared
+    case X86_INS_OR:
+    case X86_INS_TEST:
+    case X86_INS_XOR:
+        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getZFMask());
+        StoreGMRValue(ClearEflag, X86Config::EFLAG);
+        break;
+    }
+}
+
+void X86Translator::GenOF(GuestInst *Inst, Value *Dest, Value *Src1,
+                          Value *Src2) {
+    X86InstHandler InstHdl(Inst);
+    switch (Inst->id) {
+    default:
+        llvm_unreachable("GenCF Unhandled Inst ID\n");
+    case X86_INS_AND: // OF is cleared
+    case X86_INS_OR:
+    case X86_INS_TEST:
+    case X86_INS_XOR:
+        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getZFMask());
+        StoreGMRValue(ClearEflag, X86Config::EFLAG);
+        break;
+    }
+}
+
 void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src1,
                               Value *Src2) {
     X86InstHandler InstHdl(Inst);
     if (InstHdl.CFisDefined()) {
-        llvm_unreachable("CF undo!");
+        GenCF(Inst, Dest, Src1, Src2);
     }
     if (InstHdl.OFisDefined()) {
-        llvm_unreachable("OF undo!");
+        GenOF(Inst, Dest, Src1, Src2);
     }
     if (InstHdl.ZFisDefined()) {
         Value *IsZero =
@@ -409,7 +447,7 @@ void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src1,
     if (InstHdl.PFisDefined()) {
         Type *ArrTy = ArrayType::get(Int8Ty, 256);
         Value *PFT = Mod->getGlobalVariable("PFTable");
-        Value *Off = Builder.CreateAnd(Dest, ConstInt(Int64Ty, 0xff));
+        Value *Off = Builder.CreateAnd(Dest, ConstInt(Dest->getType(), 0xff));
         Value *PFBytePtr =
             Builder.CreateGEP(ArrTy, PFT, {ConstInt(Int64Ty, 0), Off});
         Value *PFByte = Builder.CreateLoad(Int8Ty, PFBytePtr);

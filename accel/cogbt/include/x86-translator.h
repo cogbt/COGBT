@@ -31,6 +31,8 @@ private:
 
     virtual void GenEpilogue() override;
 
+    virtual void AddExternalSyms() override;
+
     virtual void Translate() override;
 
     /// @name X86 translate functions.
@@ -68,6 +70,11 @@ private:
 
     /// CalcEflag - Generate llvm IRs to define all eflags.
     void CalcEflag(GuestInst *Inst, Value *Dest, Value *Src1, Value *Src2);
+
+    /// GenCF/OF - Generate llvm IRs to define CF/OF eflag.
+    void GenCF(GuestInst *Inst, Value *Dest, Value *Src1, Value *Src2);
+    void GenOF(GuestInst *Inst, Value *Dest, Value *Src1, Value *Src2);
+
 };
 
 #endif

@@ -148,6 +148,9 @@ protected:
     /* JITNotificationInfo NI; */
     /* COGBTEventListener Listener; */
 
+    /// AddExternalSyms - add external symbols address into ExecutionEngine.
+    virtual void AddExternalSyms() = 0;
+
     /// CreateJIT - Initialize the JIT session for current translator. Set
     /// various attributes of ExecutionEngine, IR Module and MemoryManager.
     void CreateJIT(JITEventListener *Listener);

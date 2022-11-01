@@ -114,6 +114,7 @@ void LLVMTranslator::CreateJIT(JITEventListener *Listener) {
     // Bind addresses to external symbols.
     if (Epilogue) {
         EE->addGlobalMapping("epilogue", Epilogue);
+        AddExternalSyms();
     }
 }
 
@@ -125,7 +126,7 @@ void LLVMTranslator::DeleteJIT(JITEventListener *Listener) {
 
 uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
     if (UseOptmizer) {
-        Optimize();
+        /* Optimize(); */
     }
 
     Mod->print(outs(), nullptr); // debug
@@ -139,6 +140,8 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
         Epilogue = (uintptr_t)FuncAddr;
         dbgs() << "Epilogue addr " << Epilogue << "\n"; //debug
     }
+    //debug
+    fprintf(stderr, "After compiole, name epilogue is 0x%lx\n", EE->getAddressToGlobalIfAvailable("epilogue"));
     DeleteJIT(&Listener);
 
     //debug
