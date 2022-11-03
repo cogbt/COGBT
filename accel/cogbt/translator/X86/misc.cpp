@@ -1350,10 +1350,10 @@ void X86Translator::translate_or(GuestInst *Inst) {
     dbgs() << "Untranslated instruction or\n";
     exit(-1);
 }
-void X86Translator::translate_sub(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction sub\n";
-    exit(-1);
-}
+/* void X86Translator::translate_sub(GuestInst *Inst) { */
+/*     dbgs() << "Untranslated instruction sub\n"; */
+/*     exit(-1); */
+/* } */
 /* void X86Translator::translate_xor(GuestInst *Inst) { */
 /*     dbgs() << "Untranslated instruction xor\n"; */
 /*     exit(-1); */
@@ -1820,9 +1820,8 @@ void X86Translator::translate_montmul(GuestInst *Inst) {
 void X86Translator::translate_mov(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     Value *Src = LoadOperand(InstHdl.getOpnd(0));
-    Value *Dest = Builder.CreateOr(Src, ConstInt(Src->getType(), 0));
-    StoreOperand(Dest, InstHdl.getOpnd(1));
-    // CalcEflag();
+    /* Value *Dest = Builder.CreateOr(Src, ConstInt(Src->getType(), 0)); */
+    StoreOperand(Src, InstHdl.getOpnd(1));
 }
 void X86Translator::translate_movabs(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movabs\n";
@@ -2304,9 +2303,6 @@ void X86Translator::translate_pop(GuestInst *Inst) {
     Value *NewESP =
         Builder.CreateAdd(OldESP, ConstInt(Int64Ty, InstHdl.getOpndSize()));
     StoreGMRValue(NewESP, X86Config::RSP);
-
-    /* dbgs() << "Untranslated instruction pop\n"; */
-    /* exit(-1); */
 }
 void X86Translator::translate_popaw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction popaw\n";

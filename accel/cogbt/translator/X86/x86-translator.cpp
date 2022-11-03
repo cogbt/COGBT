@@ -312,7 +312,7 @@ Value *X86Translator::CalcMemAddr(X86Operand *Opnd) {
     }
     // Base field is valid, calculate base.
     if (Opnd->mem.base != X86_REG_INVALID) {
-        int baseReg = OpndHdl.GetGMRID();
+        int baseReg = OpndHdl.GetBaseReg();
         Base = LoadGMRValue(Int64Ty, baseReg);
         if (!MemAddr)
             MemAddr = Base;
@@ -367,12 +367,18 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
     assert(ResVal && "StoreOperand stores an empty value!");
     X86OperandHandler OpndHdl(DestOpnd);
     if (OpndHdl.isGPR()) {
+        // if dest reg is 32-bit, zext it first
+        if (ResVal->getType()->isIntegerTy(32)) {
+            ResVal = Builder.CreateZExt(ResVal, Int64Ty);
+        }
         StoreGMRValue(ResVal, OpndHdl.GetGMRID());
     } else if (OpndHdl.isMem()) {
         Value *MemAddr = CalcMemAddr(DestOpnd);
-        if (!ResVal->getType()->isIntegerTy(64)) {
-            MemAddr = Builder.CreateIntToPtr(MemAddr, ResVal->getType());
-        }
+        /* if (!ResVal->getType()->isIntegerTy(64)) { */
+        /*     MemAddr = Builder.CreateIntToPtr(MemAddr, ResVal->getType()); */
+        /* } */
+        MemAddr =
+            Builder.CreateIntToPtr(MemAddr, ResVal->getType()->getPointerTo());
         Builder.CreateStore(ResVal, MemAddr);
     } else {
         llvm_unreachable("Unhandled StoreOperand type!");
@@ -383,48 +389,98 @@ void X86Translator::AddExternalSyms() {
     EE->addGlobalMapping("PFTable", X86InstHandler::getPFTable());
 }
 
-void X86Translator::GenCF(GuestInst *Inst, Value *Dest, Value *Src1,
-                          Value *Src2) {
+// CF is set if the addition of two numbers causes a carry out of the most
+// significant bits added or substraction of two numbers requires a borrow
+// into the most significant bits substracted.
+void X86Translator::GenCF(GuestInst *Inst, Value *Dest, Value *Src0,
+                          Value *Src1) {
     X86InstHandler InstHdl(Inst);
     switch (Inst->id) {
     default:
+        printf("0x%lx  %s\t%s\n", Inst->address, Inst->mnemonic, Inst->op_str);
         llvm_unreachable("GenCF Unhandled Inst ID\n");
     case X86_INS_AND: // CF is cleared
     case X86_INS_OR:
     case X86_INS_TEST:
-    case X86_INS_XOR:
+    case X86_INS_XOR: {
         Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
         Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getZFMask());
         StoreGMRValue(ClearEflag, X86Config::EFLAG);
         break;
     }
+    case X86_INS_SCASB:
+    case X86_INS_SCASW:
+    case X86_INS_SCASD:
+    case X86_INS_SUB:
+    case X86_INS_CMPSB:
+    case X86_INS_CMPSW:
+    case X86_INS_CMPSD:
+    case X86_INS_CMP:
+    case X86_INS_CMPXCHG:
+    case X86_INS_DEC: {
+        Value *IsLess = Builder.CreateICmpULT(Src0, Src1);
+        Value *CFBit = Builder.CreateSelect(IsLess, ConstInt(Int64Ty, CF_BIT),
+                                            ConstInt(Int64Ty, 0));
+        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getZFMask());
+        Value *NewEflag = Builder.CreateOr(ClearEflag, CFBit);
+        StoreGMRValue(NewEflag, X86Config::EFLAG);
+        break;
+    }
+
+    }
 }
 
-void X86Translator::GenOF(GuestInst *Inst, Value *Dest, Value *Src1,
-                          Value *Src2) {
+// If the sum of two numbers with the sign bits off yields a result number with
+// the sign bit on, the "overflow" flag is turned on.
+// 0100 + 0100 = 1000 (overflow flag is turned on)
+//
+// If the sum of two numbers with the sign bits on yields a result number with
+// the sign bit off, the "overflow" flag is turned on.
+// 1000 + 1000 = 0000 (overflow flag is turned on)
+void X86Translator::GenOF(GuestInst *Inst, Value *Dest, Value *Src0,
+                          Value *Src1) {
     X86InstHandler InstHdl(Inst);
     switch (Inst->id) {
     default:
-        llvm_unreachable("GenCF Unhandled Inst ID\n");
+        llvm_unreachable("GenOF Unhandled Inst ID\n");
     case X86_INS_AND: // OF is cleared
     case X86_INS_OR:
     case X86_INS_TEST:
-    case X86_INS_XOR:
+    case X86_INS_XOR: {
         Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
         Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getZFMask());
         StoreGMRValue(ClearEflag, X86Config::EFLAG);
         break;
     }
+    case X86_INS_SUB:
+    case X86_INS_CMP:
+    case X86_INS_DEC: {
+        Value *SrcDiff = Builder.CreateXor(Src0, Src1);
+        Value *DestDiff = Builder.CreateXor(Src0, Dest);
+        Value *Overflow = Builder.CreateAnd(SrcDiff, DestDiff);
+        Value *IsOverflow =
+            Builder.CreateICmpSLT(Overflow, ConstInt(Dest->getType(), 0));
+        Value *OFBit = Builder.CreateSelect(
+            IsOverflow, ConstInt(Int64Ty, OF_BIT), ConstInt(Int64Ty, 0));
+        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getOFMask());
+        Value *NewEflag = Builder.CreateOr(ClearEflag, OFBit);
+        StoreGMRValue(NewEflag, X86Config::EFLAG);
+        break;
+    }
+
+    }
 }
 
-void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src1,
-                              Value *Src2) {
+void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src0,
+                              Value *Src1) {
     X86InstHandler InstHdl(Inst);
     if (InstHdl.CFisDefined()) {
-        GenCF(Inst, Dest, Src1, Src2);
+        GenCF(Inst, Dest, Src0, Src1);
     }
     if (InstHdl.OFisDefined()) {
-        GenOF(Inst, Dest, Src1, Src2);
+        GenOF(Inst, Dest, Src0, Src1);
     }
     if (InstHdl.ZFisDefined()) {
         Value *IsZero =
@@ -437,7 +493,7 @@ void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src1,
         StoreGMRValue(NewEflag, X86Config::EFLAG);
     }
     if (InstHdl.AFisDefined()) {
-        Value *AFBit = Builder.CreateXor(Dest, Builder.CreateXor(Src1, Src2));
+        Value *AFBit = Builder.CreateXor(Dest, Builder.CreateXor(Src0, Src1));
         AFBit = Builder.CreateAnd(AFBit, ConstInt(Int64Ty, AF_BIT));
         Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
         Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getAFMask());
@@ -445,17 +501,17 @@ void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src1,
         StoreGMRValue(NewEflag, X86Config::EFLAG);
     }
     if (InstHdl.PFisDefined()) {
-        Type *ArrTy = ArrayType::get(Int8Ty, 256);
-        Value *PFT = Mod->getGlobalVariable("PFTable");
-        Value *Off = Builder.CreateAnd(Dest, ConstInt(Dest->getType(), 0xff));
-        Value *PFBytePtr =
-            Builder.CreateGEP(ArrTy, PFT, {ConstInt(Int64Ty, 0), Off});
-        Value *PFByte = Builder.CreateLoad(Int8Ty, PFBytePtr);
-        Value *PFBit = Builder.CreateZExt(PFByte, Int64Ty);
-        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getPFMask());
-        Value *NewEflag = Builder.CreateOr(ClearEflag, PFBit);
-        StoreGMRValue(NewEflag, X86Config::EFLAG);
+        /* Type *ArrTy = ArrayType::get(Int8Ty, 256); */
+        /* Value *PFT = Mod->getGlobalVariable("PFTable"); */
+        /* Value *Off = Builder.CreateAnd(Dest, ConstInt(Dest->getType(), 0xff)); */
+        /* Value *PFBytePtr = */
+        /*     Builder.CreateGEP(ArrTy, PFT, {ConstInt(Int64Ty, 0), Off}); */
+        /* Value *PFByte = Builder.CreateLoad(Int8Ty, PFBytePtr); */
+        /* Value *PFBit = Builder.CreateZExt(PFByte, Int64Ty); */
+        /* Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG); */
+        /* Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getPFMask()); */
+        /* Value *NewEflag = Builder.CreateOr(ClearEflag, PFBit); */
+        /* StoreGMRValue(NewEflag, X86Config::EFLAG); */
     }
     if (InstHdl.SFisDefined()) {
         int shift = Dest->getType()->getIntegerBitWidth() - 1;

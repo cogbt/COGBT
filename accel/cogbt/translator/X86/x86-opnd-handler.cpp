@@ -1,12 +1,8 @@
 #include "x86-opnd-handler.h"
 #include "x86-config.h"
 
-int X86OperandHandler::GetGMRID() {
-    if (Opnd->type != X86_OP_REG) {
-        llvm_unreachable("x86 operand is not a reg!");
-    }
-
-    switch (Opnd->reg) {
+int X86OperandHandler::NormalizeGuestReg(int GuestRegID) {
+    switch (GuestRegID) {
     default:
         llvm_unreachable("Unexpected X86 reg!");
 
@@ -53,6 +49,14 @@ int X86OperandHandler::GetGMRID() {
     HANDLE_REG(R15)
 #undef HANDLE_REG
     }
+}
+
+int X86OperandHandler::GetGMRID() {
+    if (Opnd->type != X86_OP_REG) {
+        llvm_unreachable("x86 operand is not a reg!");
+    }
+
+    return NormalizeGuestReg(Opnd->reg);
 }
 
 bool X86OperandHandler::isGPR() {
@@ -102,4 +106,11 @@ bool X86OperandHandler::isGPR() {
 #undef HANDLE_REG
     return true;
     }
+}
+
+int X86OperandHandler::GetBaseReg() {
+    if (Opnd->type != X86_OP_MEM) {
+        llvm_unreachable("x86 operand is not a mem opnd!");
+    }
+    return NormalizeGuestReg(Opnd->mem.base);
 }

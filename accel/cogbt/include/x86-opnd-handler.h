@@ -10,6 +10,9 @@ using llvm::Type;
 using X86Operand = struct cs_x86_op;
 
 class X86OperandHandler {
+private:
+    int NormalizeGuestReg(int GuestRegID);
+
 public:
     /// Constructor - Binding the x86 operand to handle.
     X86OperandHandler(X86Operand *Opnd): Opnd(Opnd) {}
@@ -17,6 +20,10 @@ public:
     /// GetGMRID - If operand is a x86 mapped register, return its id, otherwise
     /// return -1.
     int GetGMRID();
+
+    /// GetBaseReg - If opnd is a memory operand, return the base reg id. -1
+    /// otherwise.
+    int GetBaseReg();
 
     /// isImmediate - Judge if Opnd is an immmediate operand.
     bool isImm() {

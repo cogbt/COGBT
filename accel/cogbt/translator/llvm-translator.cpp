@@ -126,7 +126,7 @@ void LLVMTranslator::DeleteJIT(JITEventListener *Listener) {
 
 uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
     if (UseOptmizer) {
-        /* Optimize(); */
+        Optimize();
     }
 
     Mod->print(outs(), nullptr); // debug
