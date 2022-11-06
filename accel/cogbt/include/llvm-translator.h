@@ -118,7 +118,7 @@ protected:
 
     /// Basic types that are frequently used.
     Type *Int8Ty, *Int16Ty, *Int32Ty, *Int64Ty, *VoidTy, *Int8PtrTy,
-        *Int64PtrTy;
+        *Int64PtrTy, *CPUX86StatePtrTy;
 
     /// InitializeTypes - Cache some basic types that are frequently used in
     /// translator.

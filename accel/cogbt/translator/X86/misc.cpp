@@ -398,10 +398,10 @@ void X86Translator::translate_cmovs(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cmovs\n";
     exit(-1);
 }
-void X86Translator::translate_cmp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmp\n";
-    exit(-1);
-}
+/* void X86Translator::translate_cmp(GuestInst *Inst) { */
+/*     dbgs() << "Untranslated instruction cmp\n"; */
+/*     exit(-1); */
+/* } */
 void X86Translator::translate_cmpsb(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cmpsb\n";
     exit(-1);
@@ -455,8 +455,9 @@ void X86Translator::translate_fcos(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_cpuid(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cpuid\n";
-    exit(-1);
+    FunctionType *FuncTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+    Value *Func = Mod->getOrInsertFunction("helper_cpuid", FuncTy);
+    Builder.CreateCall(Func, CPUEnv);
 }
 void X86Translator::translate_cqo(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cqo\n";

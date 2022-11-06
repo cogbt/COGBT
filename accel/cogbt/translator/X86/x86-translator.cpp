@@ -312,8 +312,12 @@ Value *X86Translator::CalcMemAddr(X86Operand *Opnd) {
     }
     // Base field is valid, calculate base.
     if (Opnd->mem.base != X86_REG_INVALID) {
-        int baseReg = OpndHdl.GetBaseReg();
-        Base = LoadGMRValue(Int64Ty, baseReg);
+        if (Opnd->mem.base == X86_REG_RIP) {
+            Base = ConstInt(Int64Ty, CurrInst->address);
+        } else {
+            int baseReg = OpndHdl.GetBaseReg();
+            Base = LoadGMRValue(Int64Ty, baseReg);
+        }
         if (!MemAddr)
             MemAddr = Base;
         else {
@@ -493,12 +497,12 @@ void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src0,
         StoreGMRValue(NewEflag, X86Config::EFLAG);
     }
     if (InstHdl.AFisDefined()) {
-        Value *AFBit = Builder.CreateXor(Dest, Builder.CreateXor(Src0, Src1));
-        AFBit = Builder.CreateAnd(AFBit, ConstInt(Int64Ty, AF_BIT));
-        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getAFMask());
-        Value *NewEflag = Builder.CreateOr(ClearEflag, AFBit);
-        StoreGMRValue(NewEflag, X86Config::EFLAG);
+        /* Value *AFBit = Builder.CreateXor(Dest, Builder.CreateXor(Src0, Src1)); */
+        /* AFBit = Builder.CreateAnd(AFBit, ConstInt(Int64Ty, AF_BIT)); */
+        /* Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG); */
+        /* Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getAFMask()); */
+        /* Value *NewEflag = Builder.CreateOr(ClearEflag, AFBit); */
+        /* StoreGMRValue(NewEflag, X86Config::EFLAG); */
     }
     if (InstHdl.PFisDefined()) {
         /* Type *ArrTy = ArrayType::get(Int8Ty, 256); */
@@ -535,6 +539,7 @@ void X86Translator::Translate() {
         dbgs() << "TU->size = " << TU->size() << "\n";
         InitializeBlock(block);
         for (auto &inst : block) {
+            CurrInst = inst;
             switch (inst->id) {
             default:
                 assert(0 && "Unknown x86 opcode!");

@@ -12,11 +12,14 @@ public:
         : LLVMTranslator(
               CacheBegin, CacheSize,
               "loongarch64-pc-linux-gnu",
-              "loongarch64-pc-linux-gnu") {
+              "loongarch64-pc-linux-gnu"), CurrInst(nullptr) {
         }
               //"x86_64-pc-linux-gnu") {}
 
 private:
+    /// Currently translated instruction.
+    GuestInst *CurrInst;
+
     /// InitializeFunction - Initialize the basic framework of the translation
     /// function, such as `entry` block(binding physical register to IR value),
     /// `exit` block(sync modified guest register state into physical register),
