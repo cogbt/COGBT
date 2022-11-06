@@ -7,6 +7,14 @@
 
 extern "C" bool guest_inst_is_terminator(cs_insn *insn);
 
+#define CF_SHIFT 0
+#define PF_SHIFT 2
+#define AF_SHIFT 4
+#define ZF_SHIFT 6
+#define SF_SHIFT 7
+#define OF_SHIFT 11
+#define DF_SHIFT 10
+
 #define CF_BIT (1ULL << 0)
 #define PF_BIT (1ULL << 2)
 #define AF_BIT (1ULL << 4)

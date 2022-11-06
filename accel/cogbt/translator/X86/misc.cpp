@@ -2572,8 +2572,11 @@ void X86Translator::translate_setb(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_sete(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction sete\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *Val = Builder.CreateLShr(Flag, ConstInt(Flag->getType(), ZF_SHIFT));
+    Val = Builder.CreateAnd(Val, ConstInt(Val->getType(), 1));
+    StoreOperand(Val, InstHdl.getOpnd(0));
 }
 void X86Translator::translate_setge(GuestInst *Inst) {
     dbgs() << "Untranslated instruction setge\n";
