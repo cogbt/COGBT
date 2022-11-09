@@ -8,9 +8,10 @@ void X86Translator::DeclareExternalSymbols() {
 
     // Declare epilogue.
     FunctionType *FuncTy = FunctionType::get(VoidTy, false);
-    Function *EpilogFunc = Function::Create(FuncTy, Function::ExternalLinkage,
-                                          "epilogue", Mod.get());
-    EpilogFunc->addFnAttr(Attribute::NoReturn);
+    Function::Create(FuncTy, Function::ExternalLinkage, "epilogue", Mod.get());
+    /* Function *EpilogFunc = Function::Create(FuncTy, Function::ExternalLinkage, */
+    /*                                       "epilogue", Mod.get()); */
+    /* EpilogFunc->addFnAttr(Attribute::NoReturn); */
 }
 
 void X86Translator::InitializeFunction(StringRef Name) {
@@ -21,6 +22,8 @@ void X86Translator::InitializeFunction(StringRef Name) {
         Function::Create(FuncTy, Function::ExternalLinkage, Name, Mod.get());
     TransFunc->setCallingConv(CallingConv::C);
     TransFunc->addFnAttr(Attribute::NoReturn);
+    TransFunc->addFnAttr(Attribute::NoUnwind);
+    /* TransFunc->addFnAttr(Attribute::Naked); */
     TransFunc->addFnAttr("cogbt");
 
     // Create entry block. This block allocates stack objects to cache host
@@ -68,6 +71,7 @@ void X86Translator::InitializeFunction(StringRef Name) {
 
     // Call Epilogue to do context switch.
     Builder.CreateCall(Mod->getFunction("epilogue"));
+    /* Builder.CreateRetVoid(); */
     Builder.CreateUnreachable();
 
     // Insert a default branch of EntryBB to ExitBB.
@@ -75,7 +79,7 @@ void X86Translator::InitializeFunction(StringRef Name) {
     Builder.CreateBr(ExitBB);
 
     // Debug
-    /* Mod->print(outs(), nullptr); */
+    Mod->print(outs(), nullptr);
 }
 
 void X86Translator::GenPrologue() {
@@ -86,7 +90,9 @@ void X86Translator::GenPrologue() {
                                  Mod.get());
     TransFunc->setCallingConv(CallingConv::C);
     TransFunc->addFnAttr(Attribute::NoReturn);
-    TransFunc->addFnAttr("cogbt");
+    TransFunc->addFnAttr(Attribute::NoUnwind);
+    TransFunc->addFnAttr(Attribute::Naked);
+    /* TransFunc->addFnAttr("cogbt"); */
 
     EntryBB = BasicBlock::Create(Context, "entry", TransFunc);
     Builder.SetInsertPoint(EntryBB);
@@ -163,7 +169,9 @@ void X86Translator::GenEpilogue() {
     /*                              Mod.get()); */
     TransFunc->setCallingConv(CallingConv::C);
     TransFunc->addFnAttr(Attribute::NoReturn);
-    TransFunc->addFnAttr("cogbt");
+    TransFunc->addFnAttr(Attribute::NoUnwind);
+    TransFunc->addFnAttr(Attribute::Naked);
+    /* TransFunc->addFnAttr("cogbt"); */
 
     EntryBB = BasicBlock::Create(Context, "entry", TransFunc);
     Builder.SetInsertPoint(EntryBB);
@@ -305,10 +313,11 @@ Value *X86Translator::CalcMemAddr(X86Operand *Opnd) {
     // Memory operand has segment register, load its segment base addr.
     if (Opnd->mem.segment != X86_REG_INVALID) {
         Value *Addr = Builder.CreateGEP(
-            LLVMTy, CPUEnv,
+            Int64Ty, CPUEnv,
             ConstantInt::get(Int64Ty, GuestSegOffset(Opnd->mem.segment)));
         Seg = Builder.CreateLoad(Int64Ty, Addr);
         MemAddr = Seg;
+        assert(0 && "Unhandled mem opnd with seg reg");
     }
     // Base field is valid, calculate base.
     if (Opnd->mem.base != X86_REG_INVALID) {
@@ -341,6 +350,7 @@ Value *X86Translator::CalcMemAddr(X86Operand *Opnd) {
                                     ConstantInt::get(Int64Ty, Opnd->mem.disp));
     }
 
+    MemAddr = Builder.CreateIntToPtr(MemAddr, LLVMTy->getPointerTo());
     return MemAddr;
 }
 

@@ -60,6 +60,12 @@ public:
         return Inst->address + Inst->size;
     }
 
+    uint64_t getTargetPC() {
+        X86Operand *target = getOpnd(0);
+        assert(target->type == X86_OP_IMM && "Target PC should be imm.");
+        return target->imm;
+    }
+
     bool isTerminator() {
         return guest_inst_is_terminator(Inst);
     }
