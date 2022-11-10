@@ -1267,10 +1267,6 @@ void X86Translator::translate_lmsw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction lmsw\n";
     exit(-1);
 }
-void X86Translator::translate_or(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction or\n";
-    exit(-1);
-}
 /* void X86Translator::translate_sub(GuestInst *Inst) { */
 /*     dbgs() << "Untranslated instruction sub\n"; */
 /*     exit(-1); */

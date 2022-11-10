@@ -2,16 +2,87 @@
 #include "emulator.h"
 
 void X86Translator::translate_jae(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction jae\n";
-    exit(-1);
+    // CF == 0
+    X86InstHandler InstHdl(Inst);
+    BasicBlock *TargetBB =
+        BasicBlock::Create(Context, "target", TransFunc, ExitBB);
+    BasicBlock *FallThroughBB =
+        BasicBlock::Create(Context, "fallthrough", TransFunc, TargetBB);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *CFVal =
+        Builder.CreateAnd(Flag, ConstInt(Flag->getType(), InstHdl.getCFMask()));
+    CFVal = Builder.CreateICmpEQ(CFVal, ConstInt(CFVal->getType(), 0));
+    Builder.CreateCondBr(CFVal, TargetBB, FallThroughBB);
+
+    Builder.SetInsertPoint(FallThroughBB);
+    Value *EnvEIP =
+        Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset()));
+    Value *EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
+    Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getNextPC()), EIPAddr);
+    Builder.CreateBr(ExitBB);
+
+    Builder.SetInsertPoint(TargetBB);
+    EnvEIP =
+        Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset()));
+    EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
+    Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getTargetPC()), EIPAddr);
+    Builder.CreateBr(ExitBB);
 }
 void X86Translator::translate_ja(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction ja\n";
-    exit(-1);
+    // CF == 0 && ZF == 0
+    X86InstHandler InstHdl(Inst);
+    BasicBlock *TargetBB =
+        BasicBlock::Create(Context, "target", TransFunc, ExitBB);
+    BasicBlock *FallThroughBB =
+        BasicBlock::Create(Context, "fallthrough", TransFunc, TargetBB);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *Cond = Builder.CreateAnd(
+        Flag,
+        ConstInt(Flag->getType(), InstHdl.getCFMask() | InstHdl.getZFMask()));
+    Cond = Builder.CreateICmpEQ(Cond, ConstInt(Cond->getType(), 0));
+    Builder.CreateCondBr(Cond, TargetBB, FallThroughBB);
+
+    Builder.SetInsertPoint(FallThroughBB);
+    Value *EnvEIP =
+        Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset()));
+    Value *EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
+    Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getNextPC()), EIPAddr);
+    Builder.CreateBr(ExitBB);
+
+    Builder.SetInsertPoint(TargetBB);
+    EnvEIP =
+        Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset()));
+    EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
+    Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getTargetPC()), EIPAddr);
+    Builder.CreateBr(ExitBB);
 }
 void X86Translator::translate_jbe(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction jbe\n";
-    exit(-1);
+    // CF == 1 or ZF == 1
+    X86InstHandler InstHdl(Inst);
+    BasicBlock *TargetBB =
+        BasicBlock::Create(Context, "target", TransFunc, ExitBB);
+    BasicBlock *FallThroughBB =
+        BasicBlock::Create(Context, "fallthrough", TransFunc, TargetBB);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *Cond = Builder.CreateAnd(
+        Flag,
+        ConstInt(Flag->getType(), InstHdl.getCFMask() | InstHdl.getZFMask()));
+    Cond = Builder.CreateICmpEQ(Cond, ConstInt(Cond->getType(), 0));
+    Builder.CreateCondBr(Cond, TargetBB, FallThroughBB);
+
+    Builder.SetInsertPoint(FallThroughBB);
+    Value *EnvEIP =
+        Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset()));
+    Value *EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
+    Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getNextPC()), EIPAddr);
+    Builder.CreateBr(ExitBB);
+
+    Builder.SetInsertPoint(TargetBB);
+    EnvEIP =
+        Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset()));
+    EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
+    Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getTargetPC()), EIPAddr);
+    Builder.CreateBr(ExitBB);
 }
 void X86Translator::translate_jb(GuestInst *Inst) {
     dbgs() << "Untranslated instruction jb\n";
@@ -60,8 +131,37 @@ void X86Translator::translate_jg(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_jle(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction jle\n";
-    exit(-1);
+    // ZF == 1 OR SF != OF
+    X86InstHandler InstHdl(Inst);
+    BasicBlock *TargetBB =
+        BasicBlock::Create(Context, "target", TransFunc, ExitBB);
+    BasicBlock *FallThroughBB =
+        BasicBlock::Create(Context, "fallthrough", TransFunc, TargetBB);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *ZFVal =
+        Builder.CreateAnd(Flag, ConstInt(Flag->getType(), InstHdl.getZFMask()));
+    Value *SFVal =
+        Builder.CreateAnd(Flag, ConstInt(Flag->getType(), InstHdl.getSFMask()));
+    Value *OFVal =
+        Builder.CreateAnd(Flag, ConstInt(Flag->getType(), InstHdl.getOFMask()));
+    Value *Cond1 = Builder.CreateICmpNE(ZFVal, ConstInt(Flag->getType(), 0));
+    Value *Cond2 = Builder.CreateICmpNE(SFVal, OFVal);
+    Value *Cond = Builder.CreateOr(Cond1, Cond2);
+    Builder.CreateCondBr(Cond, TargetBB, FallThroughBB);
+
+    Builder.SetInsertPoint(FallThroughBB);
+    Value *EnvEIP =
+        Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset()));
+    Value *EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
+    Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getNextPC()), EIPAddr);
+    Builder.CreateBr(ExitBB);
+
+    Builder.SetInsertPoint(TargetBB);
+    EnvEIP =
+        Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset()));
+    EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
+    Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getTargetPC()), EIPAddr);
+    Builder.CreateBr(ExitBB);
 }
 void X86Translator::translate_jl(GuestInst *Inst) {
     dbgs() << "Untranslated instruction jl\n";
