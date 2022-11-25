@@ -1885,10 +1885,10 @@ void X86Translator::translate_movups(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movups\n";
     exit(-1);
 }
-void X86Translator::translate_movzx(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movzx\n";
-    exit(-1);
-}
+/* void X86Translator::translate_movzx(GuestInst *Inst) { */
+/*     dbgs() << "Untranslated instruction movzx\n"; */
+/*     exit(-1); */
+/* } */
 void X86Translator::translate_mpsadbw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction mpsadbw\n";
     exit(-1);
