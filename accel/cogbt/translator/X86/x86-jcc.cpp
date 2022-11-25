@@ -181,9 +181,14 @@ void X86Translator::translate_jl(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_jmp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction jmp\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Target = LoadOperand(InstHdl.getOpnd(0));
+    Value *EnvEIP =
+        Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset()));
+    Value *EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
+    Builder.CreateStore(Target, EIPAddr);
 }
+
 void X86Translator::translate_jne(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     BasicBlock *TargetBB =
