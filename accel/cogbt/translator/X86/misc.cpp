@@ -1248,10 +1248,10 @@ void X86Translator::translate_fld(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fld\n";
     exit(-1);
 }
-void X86Translator::translate_lea(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction lea\n";
-    exit(-1);
-}
+/* void X86Translator::translate_lea(GuestInst *Inst) { */
+/*     dbgs() << "Untranslated instruction lea\n"; */
+/*     exit(-1); */
+/* } */
 void X86Translator::translate_leave(GuestInst *Inst) {
     dbgs() << "Untranslated instruction leave\n";
     exit(-1);

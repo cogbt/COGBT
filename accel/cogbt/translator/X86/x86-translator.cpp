@@ -307,7 +307,7 @@ Value *X86Translator::CalcMemAddr(X86Operand *Opnd) {
     X86OperandHandler OpndHdl(Opnd);
     assert(OpndHdl.isMem() && "CalcMemAddr should handle memory operand!");
 
-    Type *LLVMTy = GetOpndLLVMType(Opnd);
+    /* Type *LLVMTy = GetOpndLLVMType(Opnd); */
     Value *MemAddr = nullptr, *Seg = nullptr, *Base = nullptr, *Index = nullptr;
 
     // Memory operand has segment register, load its segment base addr.
@@ -350,7 +350,7 @@ Value *X86Translator::CalcMemAddr(X86Operand *Opnd) {
                                     ConstantInt::get(Int64Ty, Opnd->mem.disp));
     }
 
-    MemAddr = Builder.CreateIntToPtr(MemAddr, LLVMTy->getPointerTo());
+    /* MemAddr = Builder.CreateIntToPtr(MemAddr, LLVMTy->getPointerTo()); */
     return MemAddr;
 }
 
@@ -372,6 +372,7 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd) {
     } else {
         assert(OpndHdl.isMem() && "Opnd type is illegal!");
         Res = CalcMemAddr(Opnd);
+        Res = Builder.CreateIntToPtr(Res, LLVMTy->getPointerTo());
         Res = Builder.CreateLoad(LLVMTy, Res);
     }
     return Res;
