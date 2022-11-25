@@ -24,6 +24,8 @@ void llvm_set_tu(LLVMTranslator *translator, TranslationUnit *tu);
 void llvm_translate(LLVMTranslator *translator);
 size_t llvm_get_code_size(LLVMTranslator *translator);
 
+bool debug_guest_inst(LLVMTranslator *translator);
+bool debug_cpu_state(LLVMTranslator *translator);
 #ifdef __cplusplus
 }
 #endif

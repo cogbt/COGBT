@@ -81,3 +81,42 @@ void Disassembler::PrintInst(uint64_t Addr, size_t Size, uint64_t PC) {
         PC += Len;
     }
 }
+
+Debugger::Debugger() : Mode(D_NONE) {
+    static std::map<std::string, DebugMode> EnvMap = {
+        {"guest_ins", D_GUEST_INS},
+        {"ir", D_IR},
+        {"ir_opt", D_IR_OPT},
+        {"host_ins", D_HOST_INS},
+        {"cpu_state", D_CPU_STATE},
+    };
+
+    std::string EnvStr("");
+    if (char *p = getenv("COGBT_DEBUG_MODE")) {
+        EnvStr = p;
+    }
+    std::string EnvItem;
+    for (char c : EnvStr) {
+        if (c == ',') {
+            // convert string to corresponding mode
+            if (EnvMap.count(EnvItem)) {
+                Mode = (DebugMode)(Mode | EnvMap[EnvItem]);
+                EnvItem.clear();
+            } else {
+                dbgs() << "Unkown debug mode " << EnvItem << "\n";
+                exit(-1);
+            }
+        }
+        else EnvItem += c;
+    }
+    if (!EnvItem.empty()) {
+        // convert string to corresponding mode
+        if (EnvMap.count(EnvItem)) {
+            Mode = (DebugMode)(Mode | EnvMap[EnvItem]);
+            EnvItem.clear();
+        } else {
+            dbgs() << "Unkown debug mode " << EnvItem << "\n";
+            exit(-1);
+        }
+    }
+}

@@ -32,6 +32,11 @@ int block_gen_code(uint64_t pc, int max_insns, LLVMTranslator *translator,
     cs_insn **insns = calloc(max_insns + 1, sizeof(cs_insn *));
     *insn_cnt = 0;
 
+    if (debug_guest_inst(translator)) {
+        fprintf(stderr, "+------------------------------------------------+\n");
+        fprintf(stderr, "|                 Guest Block                    |\n");
+        fprintf(stderr, "+------------------------------------------------+\n");
+    }
     for (int i = 0; i < max_insns; i++) {
         int res = cs_disasm(handle, (const uint8_t *)pc, 15, pc, 1, insns + i);
         if (res == 0) {
@@ -40,10 +45,10 @@ int block_gen_code(uint64_t pc, int max_insns, LLVMTranslator *translator,
             exit(-1);
         }
 
-#ifdef DISASSEMBLE_DEBUG
-        printf("0x%lx  %s\t%s\n", insns[i]->address, insns[i]->mnemonic,
-               insns[i]->op_str); // debug
-#endif
+        if (debug_guest_inst(translator)) {
+            fprintf(stderr, "0x%lx  %s\t%s\n", insns[i]->address,
+                    insns[i]->mnemonic, insns[i]->op_str);
+        }
         ++*insn_cnt;
 
         // Check wether we have reached the terminator of a basic block

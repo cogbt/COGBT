@@ -222,7 +222,8 @@ void X86Translator::translate_call(GuestInst *Inst) {
 
     // adjust esp
     Value *OldESP = LoadGMRValue(Int64Ty, X86Config::RSP);
-    Value *NewESP = Builder.CreateAdd(OldESP, ConstInt(Int64Ty, -8));
+    Value *NewESP = Builder.CreateSub(OldESP, ConstInt(Int64Ty, 8));
+    StoreGMRValue(NewESP, X86Config::RSP);
 
     // store return address into stack
     Value *NewESPPtr = Builder.CreateIntToPtr(NewESP, Int64PtrTy);
@@ -458,6 +459,11 @@ void X86Translator::translate_cpuid(GuestInst *Inst) {
     FunctionType *FuncTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     Value *Func = Mod->getOrInsertFunction("helper_cpuid", FuncTy);
     Builder.CreateCall(Func, CPUEnv);
+    // Load eax, ebx, ecx, edx
+    Value *EAXAddr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GetEAXOffset()));
+    Value *Ptr = Builder.CreateBitCast(EAXAddr, Int64PtrTy);
+    GuestVals[i] = Builder.CreateLoad(Int64Ty, Ptr);
+    Builder.CreateLoad()
 }
 void X86Translator::translate_cqo(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cqo\n";

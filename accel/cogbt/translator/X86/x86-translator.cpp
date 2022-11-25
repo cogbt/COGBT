@@ -79,7 +79,7 @@ void X86Translator::InitializeFunction(StringRef Name) {
     Builder.CreateBr(ExitBB);
 
     // Debug
-    Mod->print(outs(), nullptr);
+    /* Mod->print(outs(), nullptr); */
 }
 
 void X86Translator::GenPrologue() {
@@ -491,10 +491,10 @@ void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src0,
                               Value *Src1) {
     X86InstHandler InstHdl(Inst);
     if (InstHdl.CFisDefined()) {
-        GenCF(Inst, Dest, Src0, Src1);
+        /* GenCF(Inst, Dest, Src0, Src1); */
     }
     if (InstHdl.OFisDefined()) {
-        GenOF(Inst, Dest, Src0, Src1);
+        /* GenOF(Inst, Dest, Src0, Src1); */
     }
     if (InstHdl.ZFisDefined()) {
         Value *IsZero =
@@ -528,25 +528,23 @@ void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src0,
         /* StoreGMRValue(NewEflag, X86Config::EFLAG); */
     }
     if (InstHdl.SFisDefined()) {
-        int shift = Dest->getType()->getIntegerBitWidth() - 1;
-        Value *IsSign =
-            Builder.CreateAShr(Dest, ConstInt(Dest->getType(), shift));
-        IsSign = Builder.CreateICmpNE(IsSign, ConstInt(Dest->getType(), 0));
-        Value *SFBit = Builder.CreateSelect(IsSign, ConstInt(Int64Ty, SF_BIT),
-                                            ConstInt(Int64Ty, 0));
-        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getSFMask());
-        Value *NewEflag = Builder.CreateOr(ClearEflag, SFBit);
-        StoreGMRValue(NewEflag, X86Config::EFLAG);
+        /* int shift = Dest->getType()->getIntegerBitWidth() - 1; */
+        /* Value *IsSign = */
+        /*     Builder.CreateAShr(Dest, ConstInt(Dest->getType(), shift)); */
+        /* IsSign = Builder.CreateICmpNE(IsSign, ConstInt(Dest->getType(), 0)); */
+        /* Value *SFBit = Builder.CreateSelect(IsSign, ConstInt(Int64Ty, SF_BIT), */
+        /*                                     ConstInt(Int64Ty, 0)); */
+        /* Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG); */
+        /* Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getSFMask()); */
+        /* Value *NewEflag = Builder.CreateOr(ClearEflag, SFBit); */
+        /* StoreGMRValue(NewEflag, X86Config::EFLAG); */
     }
 }
 
 void X86Translator::Translate() {
-    dbgs() << "Welcome to COGBT translation module!\n";
     InitializeFunction(std::to_string(TU->GetTUEntry()));
     for (auto &block : *TU) {
         assert(TU->size() && "TU size is expected to be non-zero!");
-        dbgs() << "TU->size = " << TU->size() << "\n";
         InitializeBlock(block);
         for (auto &inst : block) {
             CurrInst = inst;

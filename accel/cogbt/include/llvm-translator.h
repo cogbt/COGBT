@@ -54,13 +54,17 @@ public:
               CodeCachePtr((uint8_t *)CodeCacheBegin) {}
     };
 
+    /// COGBT debugger
+    Debugger DBG;
+
     /// Constructor of LLVM Translator with given code cache to fill in.
     LLVMTranslator(uintptr_t CacheBegin, size_t CacheSize,
                    const std::string &HostTripleName,
                    const std::string &GuestTripleName)
-        : Epilogue(0), Builder(Context), CodeCache(CacheBegin, CacheSize),
-          HostDisAsm(HostTripleName), GuestDisAsm(GuestTripleName) {
-        InitializeTypes();
+        : DBG(), Epilogue(0), Builder(Context),
+          CodeCache(CacheBegin, CacheSize), HostDisAsm(HostTripleName),
+          GuestDisAsm(GuestTripleName) {
+      InitializeTypes();
     }
     virtual ~LLVMTranslator() = default;
 

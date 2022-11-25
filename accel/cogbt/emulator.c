@@ -4,6 +4,10 @@
 #include "emulator.h"
 #include "x86.h"
 
+int GetEAXOffset(void) { return GuestStateOffset(R_EAX); }
+int GetEBXOffset(void) { return GuestStateOffset(R_EBX); }
+int GetECXOffset(void) { return GuestStateOffset(R_ECX); }
+
 int GuestStateOffset(int idx) {
     return offsetof(CPUX86State, regs[idx]);
 }

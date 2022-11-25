@@ -126,11 +126,23 @@ void LLVMTranslator::DeleteJIT(JITEventListener *Listener) {
 }
 
 uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
+    if (DBG.DebugIR()) {
+        dbgs() << "+------------------------------------------------+\n";
+        dbgs() << "|                 LLVM  IR                       |\n";
+        dbgs() << "+------------------------------------------------+\n";
+        Mod->print(dbgs(), nullptr);
+    }
     if (UseOptmizer) {
         Optimize();
+        if (DBG.DebugIROpt()) {
+            dbgs() << "+------------------------------------------------+\n";
+            dbgs() << "|                 LLVM  IR  OPT                  |\n";
+            dbgs() << "+------------------------------------------------+\n";
+            Mod->print(dbgs(), nullptr);
+        }
+
     }
 
-    Mod->print(outs(), nullptr); // debug
     assert(TransFunc && "No translation function in module.");
     JITNotificationInfo NI;
     COGBTEventListener Listener(NI);
@@ -139,15 +151,19 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
     uint8_t *FuncAddr = (uint8_t *)EE->getFunctionAddress(FuncName);
     if (TransFunc->getName() == "epilogue") {
         Epilogue = (uintptr_t)FuncAddr;
-        dbgs() << "Epilogue addr " << Epilogue << "\n"; //debug
+        /* dbgs() << "Epilogue addr " << Epilogue << "\n"; //debug */
     }
     //debug
-    fprintf(stderr, "After compiole, name epilogue is 0x%lx\n", EE->getAddressToGlobalIfAvailable("epilogue"));
+    /* fprintf(stderr, "After compiole, name epilogue is 0x%lx\n", EE->getAddressToGlobalIfAvailable("epilogue")); */
     DeleteJIT(&Listener);
 
-    //debug
-    HostDisAsm.PrintInst((uint64_t)FuncAddr, NI.GetSize(FuncName),
-                         (uint64_t)FuncAddr);
+    if (DBG.DebugHostIns()) {
+        dbgs() << "+------------------------------------------------+\n";
+        dbgs() << "|                 Host Inst                      |\n";
+        dbgs() << "+------------------------------------------------+\n";
+        HostDisAsm.PrintInst((uint64_t)FuncAddr, NI.GetSize(FuncName),
+                             (uint64_t)FuncAddr);
+    }
     return FuncAddr;
 }
 

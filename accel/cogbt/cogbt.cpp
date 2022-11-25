@@ -46,3 +46,11 @@ void llvm_translate(LLVMTranslator *translator) {
 size_t llvm_get_code_size(LLVMTranslator *translator) {
     return translator->GetCurrentCodeSize();
 }
+
+bool debug_guest_inst(LLVMTranslator *translator) {
+    return translator->DBG.DebugGuestIns();
+}
+
+bool debug_cpu_state(LLVMTranslator *translator) {
+    return translator->DBG.DebugCPUState();
+}

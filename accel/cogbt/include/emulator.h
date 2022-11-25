@@ -5,6 +5,9 @@
 extern "C" {
 #endif
 
+int GetEAXOffset(void);
+int GetEBXOffset(void);
+int GetECXOffset(void);
 int GuestStateOffset(int Idx);
 int GuestEflagOffset(void);
 int GuestSegOffset(int SegIdx);
