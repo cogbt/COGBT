@@ -114,3 +114,10 @@ int X86OperandHandler::GetBaseReg() {
     }
     return NormalizeGuestReg(Opnd->mem.base);
 }
+
+int X86OperandHandler::GetIndexReg() {
+    if (Opnd->type != X86_OP_MEM) {
+        llvm_unreachable("x86 operand is not a mem opnd!");
+    }
+    return NormalizeGuestReg(Opnd->mem.index);
+}

@@ -25,6 +25,10 @@ public:
     /// otherwise.
     int GetBaseReg();
 
+    /// GetIndexReg - If opnd is a memory operand, return the index reg id. -1
+    /// otherwise.
+    int GetIndexReg();
+
     /// isImmediate - Judge if Opnd is an immmediate operand.
     bool isImm() {
         return Opnd->type == X86_OP_IMM;

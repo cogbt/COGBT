@@ -335,7 +335,7 @@ Value *X86Translator::CalcMemAddr(X86Operand *Opnd) {
     }
     // Index field is valid, caculate index*scale.
     if (Opnd->mem.index != X86_REG_INVALID) {
-        int indexReg = OpndHdl.GetGMRID();
+        int indexReg = OpndHdl.GetIndexReg();
         int scale = Opnd->mem.scale;
         Index = LoadGMRValue(Int64Ty, indexReg);
         Index = Builder.CreateShl(Index, ConstantInt::get(Int64Ty, scale));
