@@ -419,7 +419,7 @@ void X86Translator::GenCF(GuestInst *Inst, Value *Dest, Value *Src0,
     case X86_INS_TEST:
     case X86_INS_XOR: {
         Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getZFMask());
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getCFMask());
         StoreGMRValue(ClearEflag, X86Config::EFLAG);
         break;
     }
@@ -433,11 +433,26 @@ void X86Translator::GenCF(GuestInst *Inst, Value *Dest, Value *Src0,
     case X86_INS_CMP:
     case X86_INS_CMPXCHG:
     case X86_INS_DEC: {
-        Value *IsLess = Builder.CreateICmpULT(Src0, Src1);
+        Value *IsLess = Builder.CreateICmpULT(Src1, Src0);
         Value *CFBit = Builder.CreateSelect(IsLess, ConstInt(Int64Ty, CF_BIT),
                                             ConstInt(Int64Ty, 0));
         Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getZFMask());
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getCFMask());
+        Value *NewEflag = Builder.CreateOr(ClearEflag, CFBit);
+        StoreGMRValue(NewEflag, X86Config::EFLAG);
+        break;
+    }
+    case X86_INS_SHR:
+    case X86_INS_SAR: {
+        /// CF contains the value of the last bit shifted out of de destination
+        /// opnd.
+        Value *Shift = Builder.CreateAdd(Src0, ConstInt(Src1->getType(), -1));
+        Value *LB = Builder.CreateLShr(Src1, Shift);
+        LB = Builder.CreateAnd(LB, ConstInt(LB->getType(), 1));
+        Value *CFBit = Builder.CreateZExt(LB, Int64Ty);
+
+        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getCFMask());
         Value *NewEflag = Builder.CreateOr(ClearEflag, CFBit);
         StoreGMRValue(NewEflag, X86Config::EFLAG);
         break;
@@ -471,19 +486,24 @@ void X86Translator::GenOF(GuestInst *Inst, Value *Dest, Value *Src0,
     case X86_INS_SUB:
     case X86_INS_CMP:
     case X86_INS_DEC: {
-        Value *SrcDiff = Builder.CreateXor(Src0, Src1);
-        Value *DestDiff = Builder.CreateXor(Src0, Dest);
+        /// Src1 OP Src0 -> Dest overflow
+        /// iff. Src1 has a different sign bit than Src0 and Dest.
+        Value *SrcDiff = Builder.CreateXor(Src1, Src0);
+        Value *DestDiff = Builder.CreateXor(Src1, Dest);
         Value *Overflow = Builder.CreateAnd(SrcDiff, DestDiff);
         Value *IsOverflow =
             Builder.CreateICmpSLT(Overflow, ConstInt(Dest->getType(), 0));
         Value *OFBit = Builder.CreateSelect(
             IsOverflow, ConstInt(Int64Ty, OF_BIT), ConstInt(Int64Ty, 0));
+
         Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
         Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getOFMask());
         Value *NewEflag = Builder.CreateOr(ClearEflag, OFBit);
         StoreGMRValue(NewEflag, X86Config::EFLAG);
         break;
     }
+    case X86_INS_SHR: // TODO
+        break;
 
     }
 }
@@ -492,10 +512,10 @@ void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src0,
                               Value *Src1) {
     X86InstHandler InstHdl(Inst);
     if (InstHdl.CFisDefined()) {
-        /* GenCF(Inst, Dest, Src0, Src1); */
+        GenCF(Inst, Dest, Src0, Src1);
     }
     if (InstHdl.OFisDefined()) {
-        /* GenOF(Inst, Dest, Src0, Src1); */
+        GenOF(Inst, Dest, Src0, Src1);
     }
     if (InstHdl.ZFisDefined()) {
         Value *IsZero =

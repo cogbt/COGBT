@@ -2607,10 +2607,10 @@ void X86Translator::translate_shlx(GuestInst *Inst) {
     dbgs() << "Untranslated instruction shlx\n";
     exit(-1);
 }
-void X86Translator::translate_shr(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction shr\n";
-    exit(-1);
-}
+/* void X86Translator::translate_shr(GuestInst *Inst) { */
+/*     dbgs() << "Untranslated instruction shr\n"; */
+/*     exit(-1); */
+/* } */
 void X86Translator::translate_shrd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction shrd\n";
     exit(-1);
