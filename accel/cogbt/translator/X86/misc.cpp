@@ -457,8 +457,14 @@ void X86Translator::translate_fcos(GuestInst *Inst) {
 }
 void X86Translator::translate_cpuid(GuestInst *Inst) {
     FunctionType *FuncTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+#if (LLVM_VERSION_MAJOR > 8)
+    FunctionCallee F = Mod->getOrInsertFunction("helper_cpuid", FuncTy);
+    if (F)
+        Builder.CreateCall(FuncTy, F.getCallee(), CPUEnv);
+#else
     Value *Func = Mod->getOrInsertFunction("helper_cpuid", FuncTy);
     Builder.CreateCall(Func, CPUEnv);
+#endif
     // Load eax, ebx, ecx, edx
     Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv,
                                     ConstInt(Int64Ty, GetEAXOffset()));
