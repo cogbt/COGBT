@@ -562,16 +562,16 @@ void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src0,
         /* StoreGMRValue(NewEflag, X86Config::EFLAG); */
     }
     if (InstHdl.SFisDefined()) {
-        /* int shift = Dest->getType()->getIntegerBitWidth() - 1; */
-        /* Value *IsSign = */
-        /*     Builder.CreateAShr(Dest, ConstInt(Dest->getType(), shift)); */
-        /* IsSign = Builder.CreateICmpNE(IsSign, ConstInt(Dest->getType(), 0)); */
-        /* Value *SFBit = Builder.CreateSelect(IsSign, ConstInt(Int64Ty, SF_BIT), */
-        /*                                     ConstInt(Int64Ty, 0)); */
-        /* Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG); */
-        /* Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getSFMask()); */
-        /* Value *NewEflag = Builder.CreateOr(ClearEflag, SFBit); */
-        /* StoreGMRValue(NewEflag, X86Config::EFLAG); */
+        int shift = Dest->getType()->getIntegerBitWidth() - 1;
+        Value *IsSign =
+            Builder.CreateAShr(Dest, ConstInt(Dest->getType(), shift));
+        IsSign = Builder.CreateICmpNE(IsSign, ConstInt(Dest->getType(), 0));
+        Value *SFBit = Builder.CreateSelect(IsSign, ConstInt(Int64Ty, SF_BIT),
+                                            ConstInt(Int64Ty, 0));
+        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getSFMask());
+        Value *NewEflag = Builder.CreateOr(ClearEflag, SFBit);
+        StoreGMRValue(NewEflag, X86Config::EFLAG);
     }
 }
 

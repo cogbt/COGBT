@@ -10,7 +10,7 @@ void X86Translator::translate_jae(GuestInst *Inst) {
         BasicBlock::Create(Context, "fallthrough", TransFunc, TargetBB);
     Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
     Value *CFVal =
-        Builder.CreateAnd(Flag, ConstInt(Flag->getType(), InstHdl.getCFMask()));
+        Builder.CreateAnd(Flag, ConstInt(Flag->getType(), CF_BIT));
     CFVal = Builder.CreateICmpEQ(CFVal, ConstInt(CFVal->getType(), 0));
     Builder.CreateCondBr(CFVal, TargetBB, FallThroughBB);
 
@@ -38,7 +38,7 @@ void X86Translator::translate_ja(GuestInst *Inst) {
     Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
     Value *Cond = Builder.CreateAnd(
         Flag,
-        ConstInt(Flag->getType(), InstHdl.getCFMask() | InstHdl.getZFMask()));
+        ConstInt(Flag->getType(), CF_BIT | ZF_BIT));
     Cond = Builder.CreateICmpEQ(Cond, ConstInt(Cond->getType(), 0));
     Builder.CreateCondBr(Cond, TargetBB, FallThroughBB);
 
@@ -66,8 +66,8 @@ void X86Translator::translate_jbe(GuestInst *Inst) {
     Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
     Value *Cond = Builder.CreateAnd(
         Flag,
-        ConstInt(Flag->getType(), InstHdl.getCFMask() | InstHdl.getZFMask()));
-    Cond = Builder.CreateICmpEQ(Cond, ConstInt(Cond->getType(), 0));
+        ConstInt(Flag->getType(), CF_BIT | ZF_BIT));
+    Cond = Builder.CreateICmpNE(Cond, ConstInt(Cond->getType(), 0));
     for (int GMRId = 0; GMRId < (int)GMRVals.size(); GMRId++) {
         if (GMRVals[GMRId].isDirty()) {
             Builder.CreateStore(GMRVals[GMRId].getValue(), GMRStates[GMRId]);
@@ -152,14 +152,20 @@ void X86Translator::translate_jle(GuestInst *Inst) {
         BasicBlock::Create(Context, "fallthrough", TransFunc, TargetBB);
     Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
     Value *ZFVal =
-        Builder.CreateAnd(Flag, ConstInt(Flag->getType(), InstHdl.getZFMask()));
+        Builder.CreateAnd(Flag, ConstInt(Flag->getType(), ZF_BIT));
     Value *SFVal =
-        Builder.CreateAnd(Flag, ConstInt(Flag->getType(), InstHdl.getSFMask()));
+        Builder.CreateAnd(Flag, ConstInt(Flag->getType(), SF_BIT));
     Value *OFVal =
-        Builder.CreateAnd(Flag, ConstInt(Flag->getType(), InstHdl.getOFMask()));
+        Builder.CreateAnd(Flag, ConstInt(Flag->getType(), OF_BIT));
     Value *Cond1 = Builder.CreateICmpNE(ZFVal, ConstInt(Flag->getType(), 0));
     Value *Cond2 = Builder.CreateICmpNE(SFVal, OFVal);
     Value *Cond = Builder.CreateOr(Cond1, Cond2);
+    for (int GMRId = 0; GMRId < (int)GMRVals.size(); GMRId++) {
+        if (GMRVals[GMRId].isDirty()) {
+            Builder.CreateStore(GMRVals[GMRId].getValue(), GMRStates[GMRId]);
+            GMRVals[GMRId].setDirty(false);
+        }
+    }
     Builder.CreateCondBr(Cond, TargetBB, FallThroughBB);
 
     Builder.SetInsertPoint(FallThroughBB);
@@ -181,12 +187,19 @@ void X86Translator::translate_jl(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_jmp(GuestInst *Inst) {
+    for (int GMRId = 0; GMRId < (int)GMRVals.size(); GMRId++) {
+        if (GMRVals[GMRId].isDirty()) {
+            Builder.CreateStore(GMRVals[GMRId].getValue(), GMRStates[GMRId]);
+            GMRVals[GMRId].setDirty(false);
+        }
+    }
     X86InstHandler InstHdl(Inst);
     Value *Target = LoadOperand(InstHdl.getOpnd(0));
     Value *EnvEIP =
         Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset()));
     Value *EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
     Builder.CreateStore(Target, EIPAddr);
+    Builder.CreateBr(ExitBB);
 }
 
 void X86Translator::translate_jne(GuestInst *Inst) {
