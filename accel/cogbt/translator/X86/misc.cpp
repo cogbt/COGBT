@@ -460,10 +460,19 @@ void X86Translator::translate_cpuid(GuestInst *Inst) {
     Value *Func = Mod->getOrInsertFunction("helper_cpuid", FuncTy);
     Builder.CreateCall(Func, CPUEnv);
     // Load eax, ebx, ecx, edx
-    Value *EAXAddr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GetEAXOffset()));
-    Value *Ptr = Builder.CreateBitCast(EAXAddr, Int64PtrTy);
-    GuestVals[i] = Builder.CreateLoad(Int64Ty, Ptr);
-    Builder.CreateLoad()
+    Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv,
+                                    ConstInt(Int64Ty, GetEAXOffset()));
+    Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
+    StoreGMRValue(Builder.CreateLoad(Int64Ty, Addr), X86Config::RAX);
+    Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GetEBXOffset()));
+    Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
+    StoreGMRValue(Builder.CreateLoad(Int64Ty, Addr), X86Config::RBX);
+    Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GetECXOffset()));
+    Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
+    StoreGMRValue(Builder.CreateLoad(Int64Ty, Addr), X86Config::RCX);
+    Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GetEDXOffset()));
+    Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
+    StoreGMRValue(Builder.CreateLoad(Int64Ty, Addr), X86Config::RDX);
 }
 void X86Translator::translate_cqo(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cqo\n";

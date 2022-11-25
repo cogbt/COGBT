@@ -102,10 +102,17 @@ void X86Translator::translate_je(GuestInst *Inst) {
         BasicBlock::Create(Context, "target", TransFunc, ExitBB);
     BasicBlock *FallThroughBB =
         BasicBlock::Create(Context, "fallthrough", TransFunc, TargetBB);
+
     Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
     Value *ZFVal =
-        Builder.CreateAnd(Flag, ConstInt(Flag->getType(), InstHdl.getZFMask()));
-    ZFVal = Builder.CreateICmpEQ(ZFVal, ConstInt(ZFVal->getType(), 0));
+        Builder.CreateAnd(Flag, ConstInt(Flag->getType(), ZF_BIT));
+    ZFVal = Builder.CreateICmpNE(ZFVal, ConstInt(ZFVal->getType(), 0));
+    for (int GMRId = 0; GMRId < (int)GMRVals.size(); GMRId++) {
+        if (GMRVals[GMRId].isDirty()) {
+            Builder.CreateStore(GMRVals[GMRId].getValue(), GMRStates[GMRId]);
+            GMRVals[GMRId].setDirty(false);
+        }
+    }
     Builder.CreateCondBr(ZFVal, TargetBB, FallThroughBB);
 
     Builder.SetInsertPoint(FallThroughBB);

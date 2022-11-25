@@ -7,6 +7,7 @@
 int GetEAXOffset(void) { return GuestStateOffset(R_EAX); }
 int GetEBXOffset(void) { return GuestStateOffset(R_EBX); }
 int GetECXOffset(void) { return GuestStateOffset(R_ECX); }
+int GetEDXOffset(void) { return GuestStateOffset(R_EDX); }
 
 int GuestStateOffset(int idx) {
     return offsetof(CPUX86State, regs[idx]);

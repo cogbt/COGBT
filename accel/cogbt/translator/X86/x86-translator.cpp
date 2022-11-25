@@ -574,6 +574,7 @@ void X86Translator::Translate() {
                 if (GMRVals[GMRId].isDirty()) {
                     Builder.CreateStore(GMRVals[GMRId].getValue(),
                                         GMRStates[GMRId]);
+                    GMRVals[GMRId].setDirty(false);
                 }
             }
             Builder.CreateBr(ExitBB);

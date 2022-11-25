@@ -8,6 +8,7 @@ extern "C" {
 int GetEAXOffset(void);
 int GetEBXOffset(void);
 int GetECXOffset(void);
+int GetEDXOffset(void);
 int GuestStateOffset(int Idx);
 int GuestEflagOffset(void);
 int GuestSegOffset(int SegIdx);
