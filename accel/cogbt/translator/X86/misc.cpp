@@ -29,10 +29,10 @@ void X86Translator::translate_adcx(GuestInst *Inst) {
     dbgs() << "Untranslated instruction adcx\n";
     exit(-1);
 }
-void X86Translator::translate_add(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction add\n";
-    exit(-1);
-}
+/* void X86Translator::translate_add(GuestInst *Inst) { */
+/*     dbgs() << "Untranslated instruction add\n"; */
+/*     exit(-1); */
+/* } */
 void X86Translator::translate_addpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction addpd\n";
     exit(-1);
@@ -629,8 +629,32 @@ void X86Translator::translate_dpps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_ret(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction ret\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    // load return address from stack
+    Value *OldESP = LoadGMRValue(Int64Ty, X86Config::RSP);
+    Value *OldESPPtr = Builder.CreateIntToPtr(OldESP, Int64PtrTy);
+    Value *RA = Builder.CreateLoad(Int64Ty, OldESPPtr);
+
+    // adjust esp
+    Value *NewESP = Builder.CreateAdd(OldESP, ConstInt(Int64Ty, 8));
+    StoreGMRValue(NewESP, X86Config::RSP);
+
+    // store return address into env.
+    Value *EnvEIP =
+        Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset()));
+    Value *EIPAddr =
+        Builder.CreateBitCast(EnvEIP, Int64Ty->getPointerTo());
+    Builder.CreateStore(RA, EIPAddr);
+
+    // sync GMRVals into stack.
+    for (int GMRId = 0; GMRId < (int)GMRVals.size(); GMRId++) {
+        if (GMRVals[GMRId].isDirty()) {
+            Builder.CreateStore(GMRVals[GMRId].getValue(), GMRStates[GMRId]);
+        }
+    }
+    Builder.CreateBr(ExitBB);
+
 }
 void X86Translator::translate_encls(GuestInst *Inst) {
     dbgs() << "Untranslated instruction encls\n";
