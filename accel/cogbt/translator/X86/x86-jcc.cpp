@@ -68,6 +68,12 @@ void X86Translator::translate_jbe(GuestInst *Inst) {
         Flag,
         ConstInt(Flag->getType(), InstHdl.getCFMask() | InstHdl.getZFMask()));
     Cond = Builder.CreateICmpEQ(Cond, ConstInt(Cond->getType(), 0));
+    for (int GMRId = 0; GMRId < (int)GMRVals.size(); GMRId++) {
+        if (GMRVals[GMRId].isDirty()) {
+            Builder.CreateStore(GMRVals[GMRId].getValue(), GMRStates[GMRId]);
+            GMRVals[GMRId].setDirty(false);
+        }
+    }
     Builder.CreateCondBr(Cond, TargetBB, FallThroughBB);
 
     Builder.SetInsertPoint(FallThroughBB);

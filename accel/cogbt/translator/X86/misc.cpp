@@ -456,6 +456,27 @@ void X86Translator::translate_fcos(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_cpuid(GuestInst *Inst) {
+    /* for (int GMRId = 0; GMRId < (int)GMRVals.size(); GMRId++) { */
+    /*     if (GMRVals[GMRId].isDirty()) { */
+    /*         Builder.CreateStore(GMRVals[GMRId].getValue(), GMRStates[GMRId]); */
+    /*         GMRVals[GMRId].setDirty(false); */
+    /*     } */
+    /* } */
+    // Sync 
+    Value *Addr = nullptr;
+    if (GMRVals[X86Config::RAX].hasValue()) {
+        Addr = Builder.CreateGEP(Int8Ty, CPUEnv,
+                                 ConstInt(Int64Ty, GetEAXOffset()));
+        Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
+        Builder.CreateStore(GMRVals[X86Config::RAX].getValue(), Addr);
+    }
+    if (GMRVals[X86Config::RCX].hasValue()) {
+        Addr = Builder.CreateGEP(Int8Ty, CPUEnv,
+                                 ConstInt(Int64Ty, GetECXOffset()));
+        Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
+        Builder.CreateStore(GMRVals[X86Config::RCX].getValue(), Addr);
+    }
+
     FunctionType *FuncTy = FunctionType::get(VoidTy, Int8PtrTy, false);
 #if (LLVM_VERSION_MAJOR > 8)
     FunctionCallee F = Mod->getOrInsertFunction("helper_cpuid", FuncTy);
@@ -466,8 +487,7 @@ void X86Translator::translate_cpuid(GuestInst *Inst) {
     Builder.CreateCall(Func, CPUEnv);
 #endif
     // Load eax, ebx, ecx, edx
-    Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv,
-                                    ConstInt(Int64Ty, GetEAXOffset()));
+    Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GetEAXOffset()));
     Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
     StoreGMRValue(Builder.CreateLoad(Int64Ty, Addr), X86Config::RAX);
     Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GetEBXOffset()));
