@@ -457,6 +457,18 @@ void X86Translator::GenCF(GuestInst *Inst, Value *Dest, Value *Src0,
         StoreGMRValue(NewEflag, X86Config::EFLAG);
         break;
     }
+    case X86_INS_ADD:
+    case X86_INS_XADD: {
+        /// dest < src
+        Value *isLess = Builder.CreateICmpULT(Dest, Src0);
+        Value *CFBit = Builder.CreateZExt(isLess, Int64Ty);
+
+        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getCFMask());
+        Value *NewEflag = Builder.CreateOr(ClearEflag, CFBit);
+        StoreGMRValue(NewEflag, X86Config::EFLAG);
+        break;
+    }
 
     }
 }
@@ -503,6 +515,7 @@ void X86Translator::GenOF(GuestInst *Inst, Value *Dest, Value *Src0,
         break;
     }
     case X86_INS_SHR: // TODO
+    case X86_INS_ADD: // TODO
         break;
 
     }
