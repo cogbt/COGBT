@@ -337,8 +337,16 @@ Value *X86Translator::CalcMemAddr(X86Operand *Opnd) {
     if (Opnd->mem.index != X86_REG_INVALID) {
         int indexReg = OpndHdl.GetIndexReg();
         int scale = Opnd->mem.scale;
+        int shift = 0;
+        switch (scale) {
+            case 1: shift = 0; break;
+            case 2: shift = 1; break;
+            case 4: shift = 2; break;
+            case 8: shift = 8; break;
+            default: llvm_unreachable("scale should be power of 2");
+        }
         Index = LoadGMRValue(Int64Ty, indexReg);
-        Index = Builder.CreateShl(Index, ConstantInt::get(Int64Ty, scale));
+        Index = Builder.CreateShl(Index, ConstantInt::get(Int64Ty, shift));
         if (!MemAddr)
             MemAddr = Index;
         else
