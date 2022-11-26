@@ -9,6 +9,7 @@ int X86OperandHandler::NormalizeGuestReg(int GuestRegID) {
 #define HANDLE_REG(name)             \
     case X86_REG_##name##H:          \
     case X86_REG_##name##L:          \
+    case X86_REG_##name##X:          \
     case X86_REG_E##name##X:         \
     case X86_REG_R##name##X:         \
         return X86Config::R##name##X;
@@ -68,6 +69,7 @@ bool X86OperandHandler::isGPR() {
 #define HANDLE_REG(name)         \
     case X86_REG_##name##H:      \
     case X86_REG_##name##L:      \
+    case X86_REG_##name##X:      \
     case X86_REG_E##name##X:     \
     case X86_REG_R##name##X:
 
