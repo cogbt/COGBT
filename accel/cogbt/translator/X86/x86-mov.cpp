@@ -150,3 +150,110 @@ void X86Translator::translate_mpsadbw(GuestInst *Inst) {
     exit(-1);
 }
 
+void X86Translator::translate_cmova(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction cmova\n";
+    exit(-1);
+}
+void X86Translator::translate_cmovae(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction cmovae\n";
+    exit(-1);
+}
+void X86Translator::translate_cmovb(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction cmovb\n";
+    exit(-1);
+}
+void X86Translator::translate_cmovbe(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction cmovbe\n";
+    exit(-1);
+}
+void X86Translator::translate_fcmovbe(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fcmovbe\n";
+    exit(-1);
+}
+void X86Translator::translate_fcmovb(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fcmovb\n";
+    exit(-1);
+}
+void X86Translator::translate_cmove(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction cmove\n";
+    exit(-1);
+}
+void X86Translator::translate_fcmove(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fcmove\n";
+    exit(-1);
+}
+void X86Translator::translate_cmovg(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction cmovg\n";
+    exit(-1);
+}
+void X86Translator::translate_cmovge(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction cmovge\n";
+    exit(-1);
+}
+void X86Translator::translate_cmovl(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction cmovl\n";
+    exit(-1);
+}
+void X86Translator::translate_cmovle(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction cmovle\n";
+    exit(-1);
+}
+void X86Translator::translate_fcmovnbe(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fcmovnbe\n";
+    exit(-1);
+}
+void X86Translator::translate_fcmovnb(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fcmovnb\n";
+    exit(-1);
+}
+void X86Translator::translate_cmovne(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    // ZF == 0
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *ZF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, ZF_BIT));
+    Value *isZero = Builder.CreateICmpEQ(ZF, ConstInt(Int64Ty, 0));
+
+    // if condition is satisfied, prepare src value.
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    // if condition is not satisfied, prepare the former value.
+    Value *OldV = LoadOperand(InstHdl.getOpnd(1));
+
+    Value *Dest = Builder.CreateSelect(isZero, Src0, OldV);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
+}
+void X86Translator::translate_fcmovne(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fcmovne\n";
+    exit(-1);
+}
+void X86Translator::translate_cmovno(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction cmovno\n";
+    exit(-1);
+}
+void X86Translator::translate_cmovnp(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction cmovnp\n";
+    exit(-1);
+}
+void X86Translator::translate_fcmovnu(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fcmovnu\n";
+    exit(-1);
+}
+void X86Translator::translate_cmovns(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction cmovns\n";
+    exit(-1);
+}
+void X86Translator::translate_cmovo(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction cmovo\n";
+    exit(-1);
+}
+void X86Translator::translate_cmovp(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction cmovp\n";
+    exit(-1);
+}
+void X86Translator::translate_fcmovu(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fcmovu\n";
+    exit(-1);
+}
+void X86Translator::translate_cmovs(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction cmovs\n";
+    exit(-1);
+}
