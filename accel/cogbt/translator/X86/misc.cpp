@@ -1844,8 +1844,6 @@ void X86Translator::translate_neg(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_nop(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction nop\n";
-    exit(-1);
 }
 void X86Translator::translate_not(GuestInst *Inst) {
     dbgs() << "Untranslated instruction not\n";
