@@ -2403,30 +2403,6 @@ void X86Translator::translate_sha256rnds2(GuestInst *Inst) {
     dbgs() << "Untranslated instruction sha256rnds2\n";
     exit(-1);
 }
-void X86Translator::translate_shl(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction shl\n";
-    exit(-1);
-}
-void X86Translator::translate_shld(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction shld\n";
-    exit(-1);
-}
-void X86Translator::translate_shlx(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction shlx\n";
-    exit(-1);
-}
-/* void X86Translator::translate_shr(GuestInst *Inst) { */
-/*     dbgs() << "Untranslated instruction shr\n"; */
-/*     exit(-1); */
-/* } */
-void X86Translator::translate_shrd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction shrd\n";
-    exit(-1);
-}
-void X86Translator::translate_shrx(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction shrx\n";
-    exit(-1);
-}
 void X86Translator::translate_shufpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction shufpd\n";
     exit(-1);

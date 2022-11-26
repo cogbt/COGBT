@@ -452,9 +452,26 @@ void X86Translator::GenCF(GuestInst *Inst, Value *Dest, Value *Src0,
         StoreGMRValue(NewEflag, X86Config::EFLAG);
         break;
     }
+    case X86_INS_SHL:
+    case X86_INS_SAL: {
+        // CF contains the value of the last bit shifted left out of the
+        // destination operand.
+        Value *Shift = Builder.CreateAdd(Src0, ConstInt(Src1->getType(), -1));
+        Value *LB = Builder.CreateShl(Src1, Shift);
+        LB = Builder.CreateLShr(LB,
+            ConstInt(LB->getType(), Src1->getType()->getIntegerBitWidth() - 1));
+        LB = Builder.CreateAnd(LB, ConstInt(LB->getType(), 1));
+        Value *CFBit = Builder.CreateZExt(LB, Int64Ty);
+
+        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getCFMask());
+        Value *NewEflag = Builder.CreateOr(ClearEflag, CFBit);
+        StoreGMRValue(NewEflag, X86Config::EFLAG);
+        break;
+    }
     case X86_INS_SHR:
     case X86_INS_SAR: {
-        /// CF contains the value of the last bit shifted out of de destination
+        /// CF contains the value of the last bit shifted out of the destination
         /// opnd.
         Value *Shift = Builder.CreateAdd(Src0, ConstInt(Src1->getType(), -1));
         Value *LB = Builder.CreateLShr(Src1, Shift);
@@ -526,6 +543,7 @@ void X86Translator::GenOF(GuestInst *Inst, Value *Dest, Value *Src0,
     }
     case X86_INS_SHR: // TODO
     case X86_INS_ADD: // TODO
+    case X86_INS_SHL: // TODO
         break;
 
     }
