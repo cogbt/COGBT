@@ -20,7 +20,8 @@ void cogbt_block_init(void) {
 bool guest_inst_is_terminator(cs_insn *insn) {
     return cs_insn_group(handle, insn, CS_GRP_JUMP) ||
            cs_insn_group(handle, insn, CS_GRP_RET) ||
-           cs_insn_group(handle, insn, CS_GRP_CALL);
+           cs_insn_group(handle, insn, CS_GRP_CALL) ||
+           cs_insn_group(handle, insn, CS_GRP_INT);
 #if 0
            cs_insn_group(handle, insn, CS_GRP_CALL) ||
            cs_insn_group(handle, insn, CS_GRP_BRANCH_RELATIVE);

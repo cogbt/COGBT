@@ -14,6 +14,7 @@ int GuestEflagOffset(void);
 int GuestSegOffset(int SegIdx);
 int GuestEIPOffset(void);
 
+void helper_raise_syscall(void *env);
 #ifdef __cplusplus
 }
 #endif
