@@ -2582,10 +2582,10 @@ void X86Translator::translate_swapgs(GuestInst *Inst) {
 void X86Translator::translate_syscall(GuestInst *Inst) {
     // Save next pc.
     X86InstHandler InstHdl(Inst);
-    Value *EnvEIP =
-        Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset()));
-    EnvEIP = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
-    Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getNextPC()), EnvEIP);
+    /* Value *EnvEIP = */
+    /*     Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset())); */
+    /* EnvEIP = Builder.CreateBitCast(EnvEIP, Int64PtrTy); */
+    /* Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getNextPC()), EnvEIP); */
 
     // Sync all GMR value into env.
     for (int GMRId = 0; GMRId < GetNumGMRs(); GMRId++) {
@@ -2602,18 +2602,19 @@ void X86Translator::translate_syscall(GuestInst *Inst) {
     }
 
     // Call helper_raise_syscall to go back qemu.
-    FunctionType *FuncTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+    FunctionType *FuncTy = FunctionType::get(VoidTy, {Int8PtrTy,Int64Ty}, false);
 #if (LLVM_VERSION_MAJOR > 8)
     FunctionCallee F = Mod->getOrInsertFunction("helper_raise_syscall", FuncTy);
     if (F)
-        Builder.CreateCall(FuncTy, F.getCallee(), CPUEnv);
+        Builder.CreateCall(FuncTy, F.getCallee(),
+                           {CPUEnv, ConstInt(Int64Ty, InstHdl.getNextPC())});
 #else
     Value *Func = Mod->getOrInsertFunction("helper_raise_syscall", FuncTy);
-    Builder.CreateCall(Func, CPUEnv);
+    Builder.CreateCall(Func, {CPUEnv, ConstInt(Int64Ty, InstHdl.getNextPC())});
 #endif
 
     Builder.CreateUnreachable();
-    ExitBB->removeFromParent();
+    ExitBB->eraseFromParent();
 }
 void X86Translator::translate_sysenter(GuestInst *Inst) {
     dbgs() << "Untranslated instruction sysenter\n";

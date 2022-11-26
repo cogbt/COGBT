@@ -411,6 +411,7 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
 
 void X86Translator::AddExternalSyms() {
     EE->addGlobalMapping("PFTable", X86InstHandler::getPFTable());
+    EE->addGlobalMapping("helper_raise_syscall", (uint64_t)helper_raise_syscall);
 }
 
 // CF is set if the addition of two numbers causes a carry out of the most

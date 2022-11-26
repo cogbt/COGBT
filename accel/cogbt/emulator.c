@@ -41,11 +41,12 @@ int GuestEIPOffset(void) {
     return offsetof(CPUX86State, eip);
 }
 
-void helper_raise_syscall(void *p) {
+void helper_raise_syscall(void *p, uint64_t next_eip) {
     CPUX86State *env = (CPUX86State *)p;
     CPUState *cpu = env_cpu(env);
     cpu->exception_index = EXCP_SYSCALL;
     cpu->can_do_io = 1;
     env->exception_is_int = 0;
+    env->exception_next_eip = next_eip;
     siglongjmp(cpu->jmp_env, 1);
 }

@@ -5,6 +5,8 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+
 int GetEAXOffset(void);
 int GetEBXOffset(void);
 int GetECXOffset(void);
@@ -14,7 +16,7 @@ int GuestEflagOffset(void);
 int GuestSegOffset(int SegIdx);
 int GuestEIPOffset(void);
 
-void helper_raise_syscall(void *env);
+void helper_raise_syscall(void *p, uint64_t next_eip);
 #ifdef __cplusplus
 }
 #endif
