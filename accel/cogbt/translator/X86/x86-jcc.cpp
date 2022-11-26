@@ -12,6 +12,12 @@ void X86Translator::translate_jae(GuestInst *Inst) {
     Value *CFVal =
         Builder.CreateAnd(Flag, ConstInt(Flag->getType(), CF_BIT));
     CFVal = Builder.CreateICmpEQ(CFVal, ConstInt(CFVal->getType(), 0));
+    for (int GMRId = 0; GMRId < (int)GMRVals.size(); GMRId++) {
+        if (GMRVals[GMRId].isDirty()) {
+            Builder.CreateStore(GMRVals[GMRId].getValue(), GMRStates[GMRId]);
+            GMRVals[GMRId].setDirty(false);
+        }
+    }
     Builder.CreateCondBr(CFVal, TargetBB, FallThroughBB);
 
     Builder.SetInsertPoint(FallThroughBB);
@@ -40,6 +46,12 @@ void X86Translator::translate_ja(GuestInst *Inst) {
         Flag,
         ConstInt(Flag->getType(), CF_BIT | ZF_BIT));
     Cond = Builder.CreateICmpEQ(Cond, ConstInt(Cond->getType(), 0));
+    for (int GMRId = 0; GMRId < (int)GMRVals.size(); GMRId++) {
+        if (GMRVals[GMRId].isDirty()) {
+            Builder.CreateStore(GMRVals[GMRId].getValue(), GMRStates[GMRId]);
+            GMRVals[GMRId].setDirty(false);
+        }
+    }
     Builder.CreateCondBr(Cond, TargetBB, FallThroughBB);
 
     Builder.SetInsertPoint(FallThroughBB);

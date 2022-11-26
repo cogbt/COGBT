@@ -322,7 +322,8 @@ Value *X86Translator::CalcMemAddr(X86Operand *Opnd) {
     // Base field is valid, calculate base.
     if (Opnd->mem.base != X86_REG_INVALID) {
         if (Opnd->mem.base == X86_REG_RIP) {
-            Base = ConstInt(Int64Ty, CurrInst->address);
+            X86InstHandler InstHdl(CurrInst);
+            Base = ConstInt(Int64Ty, InstHdl.getNextPC());
         } else {
             int baseReg = OpndHdl.GetBaseReg();
             Base = LoadGMRValue(Int64Ty, baseReg);
