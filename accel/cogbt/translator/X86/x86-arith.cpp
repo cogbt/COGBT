@@ -185,7 +185,7 @@ void X86Translator::translate_div(GuestInst *Inst) {
         Builder.CreateCall(FuncTy, F.getCallee(), {CPUEnv, Divisor});
 #else
         Value *Func = Mod->getOrInsertFunction("helper_divb_AL", FuncTy);
-        Builder.CreateCall(Func, {CPUEnv, Divisor)});
+        Builder.CreateCall(Func, {CPUEnv, Divisor});
 #endif
         ReloadGMRValue(X86Config::RAX);
         break;
@@ -200,7 +200,7 @@ void X86Translator::translate_div(GuestInst *Inst) {
         Builder.CreateCall(FuncTy, F.getCallee(), {CPUEnv, Divisor});
 #else
         Value *Func = Mod->getOrInsertFunction("helper_divw_AX", FuncTy);
-        Builder.CreateCall(Func, {CPUEnv, Divisor)});
+        Builder.CreateCall(Func, {CPUEnv, Divisor});
 #endif
         ReloadGMRValue(X86Config::RAX);
         ReloadGMRValue(X86Config::RDX);
@@ -216,7 +216,7 @@ void X86Translator::translate_div(GuestInst *Inst) {
         Builder.CreateCall(FuncTy, F.getCallee(), {CPUEnv, Divisor});
 #else
         Value *Func = Mod->getOrInsertFunction("helper_divl_EAX", FuncTy);
-        Builder.CreateCall(Func, {CPUEnv, Divisor)});
+        Builder.CreateCall(Func, {CPUEnv, Divisor});
 #endif
         ReloadGMRValue(X86Config::RAX);
         ReloadGMRValue(X86Config::RDX);
@@ -232,7 +232,7 @@ void X86Translator::translate_div(GuestInst *Inst) {
         Builder.CreateCall(FuncTy, F.getCallee(), {CPUEnv, Divisor});
 #else
         Value *Func = Mod->getOrInsertFunction("helper_divq_EAX", FuncTy);
-        Builder.CreateCall(Func, {CPUEnv, Divisor)});
+        Builder.CreateCall(Func, {CPUEnv, Divisor});
 #endif
         ReloadGMRValue(X86Config::RAX);
         ReloadGMRValue(X86Config::RDX);
