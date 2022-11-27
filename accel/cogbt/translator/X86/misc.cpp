@@ -1,38 +1,10 @@
 #include "emulator.h"
 #include "x86-translator.h"
 
-void X86Translator::translate_aaa(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction aaa\n";
-    exit(-1);
-}
-void X86Translator::translate_aad(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction aad\n";
-    exit(-1);
-}
-void X86Translator::translate_aam(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction aam\n";
-    exit(-1);
-}
-void X86Translator::translate_aas(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction aas\n";
-    exit(-1);
-}
 void X86Translator::translate_fabs(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fabs\n";
     exit(-1);
 }
-void X86Translator::translate_adc(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction adc\n";
-    exit(-1);
-}
-void X86Translator::translate_adcx(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction adcx\n";
-    exit(-1);
-}
-/* void X86Translator::translate_add(GuestInst *Inst) { */
-/*     dbgs() << "Untranslated instruction add\n"; */
-/*     exit(-1); */
-/* } */
 void X86Translator::translate_addpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction addpd\n";
     exit(-1);
@@ -498,50 +470,6 @@ void X86Translator::translate_data16(GuestInst *Inst) {
 }
 void X86Translator::translate_dec(GuestInst *Inst) {
     dbgs() << "Untranslated instruction dec\n";
-    exit(-1);
-}
-void X86Translator::translate_div(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction div\n";
-    exit(-1);
-}
-void X86Translator::translate_divpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction divpd\n";
-    exit(-1);
-}
-void X86Translator::translate_divps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction divps\n";
-    exit(-1);
-}
-void X86Translator::translate_fdivr(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fdivr\n";
-    exit(-1);
-}
-void X86Translator::translate_fidivr(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fidivr\n";
-    exit(-1);
-}
-void X86Translator::translate_fdivrp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fdivrp\n";
-    exit(-1);
-}
-void X86Translator::translate_divsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction divsd\n";
-    exit(-1);
-}
-void X86Translator::translate_divss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction divss\n";
-    exit(-1);
-}
-void X86Translator::translate_fdiv(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fdiv\n";
-    exit(-1);
-}
-void X86Translator::translate_fidiv(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fidiv\n";
-    exit(-1);
-}
-void X86Translator::translate_fdivp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fdivp\n";
     exit(-1);
 }
 void X86Translator::translate_dppd(GuestInst *Inst) {
@@ -1701,42 +1629,6 @@ void X86Translator::translate_monitor(GuestInst *Inst) {
 }
 void X86Translator::translate_montmul(GuestInst *Inst) {
     dbgs() << "Untranslated instruction montmul\n";
-    exit(-1);
-}
-void X86Translator::translate_mul(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction mul\n";
-    exit(-1);
-}
-void X86Translator::translate_mulpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction mulpd\n";
-    exit(-1);
-}
-void X86Translator::translate_mulps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction mulps\n";
-    exit(-1);
-}
-void X86Translator::translate_mulsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction mulsd\n";
-    exit(-1);
-}
-void X86Translator::translate_mulss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction mulss\n";
-    exit(-1);
-}
-void X86Translator::translate_mulx(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction mulx\n";
-    exit(-1);
-}
-void X86Translator::translate_fmul(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fmul\n";
-    exit(-1);
-}
-void X86Translator::translate_fimul(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fimul\n";
-    exit(-1);
-}
-void X86Translator::translate_fmulp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fmulp\n";
     exit(-1);
 }
 void X86Translator::translate_mwait(GuestInst *Inst) {

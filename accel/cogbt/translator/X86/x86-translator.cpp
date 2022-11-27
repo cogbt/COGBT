@@ -224,6 +224,26 @@ void X86Translator::GenEpilogue() {
     /* Mod->print(outs(), nullptr); */
 }
 
+void X86Translator::FlushGMRValue(int GMRId) {
+    assert(GMRId < (int)GMRVals.size());
+    int Off = 0;
+    if (GMRId < X86Config::EFLAG)
+        Off = GuestStateOffset(GMRId);
+    else
+        Off = GuestEflagOffset();
+    Value *Addr =
+        Builder.CreateGEP(Int8Ty, CPUEnv, ConstantInt::get(Int64Ty, Off));
+    Value *Ptr = Builder.CreateBitCast(Addr, Int64PtrTy);
+    Value *GMRV = LoadGMRValue(Int64Ty, GMRId);
+    Builder.CreateStore(GMRV, Ptr, true);
+}
+
+void X86Translator::ReloadGMRValue(int GMRId) {
+    Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GMRId));
+    Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
+    StoreGMRValue(Builder.CreateLoad(Int64Ty, Addr), GMRId);
+}
+
 Type *X86Translator::GetOpndLLVMType(X86Operand *Opnd) {
     switch (Opnd->size) {
     case 1:
@@ -503,6 +523,27 @@ void X86Translator::GenCF(GuestInst *Inst, Value *Dest, Value *Src0,
         StoreGMRValue(NewEflag, X86Config::EFLAG);
         break;
     }
+    case X86_INS_MUL: {
+        // If upper half == 1 then CF = 1
+        Value *UpperHalf = nullptr;
+        if (!Src0) {
+            assert(Dest->getType()->getIntegerBitWidth() == 16 && "mul error");
+            UpperHalf = Builder.CreateLShr(Dest, ConstInt(Dest->getType(), 8));
+        } else {
+            UpperHalf = Src0;
+        }
+        Value *isSet =
+            Builder.CreateICmpNE(UpperHalf, ConstInt(UpperHalf->getType(), 0));
+
+        Value *CFBit = Builder.CreateSelect(isSet, ConstInt(Int64Ty, CF_BIT),
+                                            ConstInt(Int64Ty, 0));
+
+        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getCFMask());
+        Value *NewEflag = Builder.CreateOr(ClearEflag, CFBit);
+        StoreGMRValue(NewEflag, X86Config::EFLAG);
+        break;
+    }
 
     }
 }
@@ -545,6 +586,27 @@ void X86Translator::GenOF(GuestInst *Inst, Value *Dest, Value *Src0,
         Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
         Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getOFMask());
         Value *NewEflag = Builder.CreateOr(ClearEflag, OFBit);
+        StoreGMRValue(NewEflag, X86Config::EFLAG);
+        break;
+    }
+    case X86_INS_MUL: {
+        // If upper half == 1 then OF = 1
+        Value *UpperHalf = nullptr;
+        if (!Src0) {
+            assert(Dest->getType()->getIntegerBitWidth() == 16 && "mul error");
+            UpperHalf = Builder.CreateLShr(Dest, ConstInt(Dest->getType(), 8));
+        } else {
+            UpperHalf = Src0;
+        }
+        Value *isSet =
+            Builder.CreateICmpNE(UpperHalf, ConstInt(UpperHalf->getType(), 0));
+
+        Value *CFBit = Builder.CreateSelect(isSet, ConstInt(Int64Ty, CF_BIT),
+                                            ConstInt(Int64Ty, 0));
+
+        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getCFMask());
+        Value *NewEflag = Builder.CreateOr(ClearEflag, CFBit);
         StoreGMRValue(NewEflag, X86Config::EFLAG);
         break;
     }

@@ -50,3 +50,18 @@ void helper_raise_syscall(void *p, uint64_t next_eip) {
     env->exception_next_eip = next_eip;
     siglongjmp(cpu->jmp_env, 1);
 }
+
+extern void helper_divb_AL(CPUX86State *env, target_ulong t0);
+extern void helper_divw_AX(CPUX86State *env, target_ulong t0);
+extern void helper_divl_EAX(CPUX86State *env, target_ulong t0);
+extern void helper_divq_EAX(CPUX86State *env, target_ulong t0);
+
+void helper_divb_AL_wrapper(void *p, uint64_t divisor) {
+    helper_divb_AL((CPUX86State *)p, divisor);
+}
+void helper_divw_AX_wrapper(void *p, uint64_t divisor) {
+    helper_divw_AX((CPUX86State *)p, divisor);
+}
+void helper_divl_EAX_wrapper(void *p, uint64_t divisor) {
+    helper_divl_EAX((CPUX86State *)p, divisor);
+}

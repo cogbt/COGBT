@@ -121,7 +121,7 @@ protected:
     Value *CPUEnv;                  ///< Pointer to CPUX86State.
 
     /// Basic types that are frequently used.
-    Type *Int8Ty, *Int16Ty, *Int32Ty, *Int64Ty, *VoidTy, *Int8PtrTy,
+    Type *Int8Ty, *Int16Ty, *Int32Ty, *Int64Ty, *Int128Ty, *VoidTy, *Int8PtrTy,
         *Int64PtrTy, *CPUX86StatePtrTy;
 
     /// InitializeTypes - Cache some basic types that are frequently used in
