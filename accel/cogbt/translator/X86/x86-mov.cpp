@@ -11,14 +11,60 @@ void X86Translator::translate_mov(GuestInst *Inst) {
     Value *Src = LoadOperand(InstHdl.getOpnd(0));
     StoreOperand(Src, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_movabs(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movabs\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    StoreOperand(Src, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_movbe(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movbe\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    Value *Dest = nullptr;
+
+    // call llvm.bswap.i16/i32/i64
+    FunctionType *FuncTy16 = FunctionType::get(Int16Ty, Int16Ty, false);
+    FunctionType *FuncTy32 = FunctionType::get(Int32Ty, Int32Ty, false);
+    FunctionType *FuncTy64 = FunctionType::get(Int64Ty, Int64Ty, false);
+#if (LLVM_VERSION_MAJOR > 8)
+    FunctionCallee F16 = Mod->getOrInsertFunction("llvm.bswap.i16", FuncTy16);
+    FunctionCallee F32 = Mod->getOrInsertFunction("llvm.bswap.i32", FuncTy32);
+    FunctionCallee F64 = Mod->getOrInsertFunction("llvm.bswap.i64", FuncTy64);
+    switch (InstHdl.getOpndSize()) {
+    case 2:
+        Dest = Builder.CreateCall(F16, Src);
+        break;
+    case 4:
+        Dest = Builder.CreateCall(F32, Src);
+        break;
+    case 8:
+        Dest = Builder.CreateCall(F64, Src);
+        break;
+    default:
+        llvm_unreachable("movbe operand size should be 16/32/64 bits!\n");
+    }
+#else
+    Value *F16 = Mod->getOrInsertFunction("llvm.bswap.i16", FuncTy16);
+    Value *F32 = Mod->getOrInsertFunction("llvm.bswap.i32", FuncTy32);
+    Value *F64 = Mod->getOrInsertFunction("llvm.bswap.i64", FuncTy64);
+    switch (InstHdl.getOpndSize()) {
+    case 2:
+        Dest = Builder.CreateCall(F16, Src);
+        break;
+    case 4:
+        Dest = Builder.CreateCall(F32, Src);
+        break;
+    case 8:
+        Dest = Builder.CreateCall(F64, Src);
+        break;
+    default:
+        llvm_unreachable("movbe operand size should be 16/32/64 bits!\n");
+    }
+#endif
+    StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_movddup(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movddup\n";
     exit(-1);
@@ -151,21 +197,69 @@ void X86Translator::translate_mpsadbw(GuestInst *Inst) {
 }
 
 void X86Translator::translate_cmova(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmova\n";
-    exit(-1);
+    // CF == 0 && ZF == 0
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *CZ = Builder.CreateAnd(Flag, ConstInt(Int64Ty, CF_BIT | ZF_BIT));
+    Value *isZero = Builder.CreateICmpEQ(CZ, ConstInt(Int64Ty, 0));
+
+    // if condition is satisfied, prepare src value.
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    // if condition is not satisfied, prepare the former value.
+    Value *OldV = LoadOperand(InstHdl.getOpnd(1));
+
+    Value *Dest = Builder.CreateSelect(isZero, Src0, OldV);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_cmovae(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmovae\n";
-    exit(-1);
+    // CF == 0
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *CF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, CF_BIT));
+    Value *isZero = Builder.CreateICmpEQ(CF, ConstInt(Int64Ty, 0));
+
+    // if condition is satisfied, prepare src value.
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    // if condition is not satisfied, prepare the former value.
+    Value *OldV = LoadOperand(InstHdl.getOpnd(1));
+
+    Value *Dest = Builder.CreateSelect(isZero, Src0, OldV);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_cmovb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmovb\n";
-    exit(-1);
+    // CF == 1
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *CF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, CF_BIT));
+    Value *isSet = Builder.CreateICmpNE(CF, ConstInt(Int64Ty, 0));
+
+    // if condition is satisfied, prepare src value.
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    // if condition is not satisfied, prepare the former value.
+    Value *OldV = LoadOperand(InstHdl.getOpnd(1));
+
+    Value *Dest = Builder.CreateSelect(isSet, Src0, OldV);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_cmovbe(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmovbe\n";
-    exit(-1);
+    // CF == 1 OR ZF == 1
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *CZ = Builder.CreateAnd(Flag, ConstInt(Int64Ty, CF_BIT | ZF_BIT));
+    Value *isSet = Builder.CreateICmpNE(CZ, ConstInt(Int64Ty, 0));
+
+    // if condition is satisfied, prepare src value.
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    // if condition is not satisfied, prepare the former value.
+    Value *OldV = LoadOperand(InstHdl.getOpnd(1));
+
+    Value *Dest = Builder.CreateSelect(isSet, Src0, OldV);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_fcmovbe(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fcmovbe\n";
     exit(-1);
@@ -174,9 +268,10 @@ void X86Translator::translate_fcmovb(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fcmovb\n";
     exit(-1);
 }
+
 void X86Translator::translate_cmove(GuestInst *Inst) {
-    X86InstHandler InstHdl(Inst);
     // ZF == 1
+    X86InstHandler InstHdl(Inst);
     Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
     Value *ZF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, ZF_BIT));
     Value *isSet = Builder.CreateICmpNE(ZF, ConstInt(Int64Ty, 0));
@@ -189,26 +284,98 @@ void X86Translator::translate_cmove(GuestInst *Inst) {
     Value *Dest = Builder.CreateSelect(isSet, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_fcmove(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fcmove\n";
     exit(-1);
 }
+
 void X86Translator::translate_cmovg(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmovg\n";
-    exit(-1);
+    // ZF == 0 AND SF == OF
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *ZF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, ZF_BIT));
+    Value *ZFIsZero = Builder.CreateICmpEQ(ZF, ConstInt(Int64Ty, 0));
+    Value *SF = Builder.CreateLShr(Flag, ConstInt(Int64Ty, SF_SHIFT));
+    Value *OF = Builder.CreateLShr(Flag, ConstInt(Int64Ty, OF_SHIFT));
+    SF = Builder.CreateAnd(SF, ConstInt(SF->getType(), 1));
+    OF = Builder.CreateAnd(OF, ConstInt(OF->getType(), 1));
+    Value *SXorO = Builder.CreateXor(SF, OF);
+    Value *SEqualsO = Builder.CreateICmpEQ(SXorO, ConstInt(SXorO->getType(), 0));
+    Value *Cond = Builder.CreateAnd(ZFIsZero, SEqualsO);
+
+    // if condition is satisfied, prepare src value.
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    // if condition is not satisfied, prepare the former value.
+    Value *OldV = LoadOperand(InstHdl.getOpnd(1));
+
+    Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_cmovge(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmovge\n";
-    exit(-1);
+    // SF == OF
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *SF = Builder.CreateLShr(Flag, ConstInt(Int64Ty, SF_SHIFT));
+    Value *OF = Builder.CreateLShr(Flag, ConstInt(Int64Ty, OF_SHIFT));
+    SF = Builder.CreateAnd(SF, ConstInt(SF->getType(), 1));
+    OF = Builder.CreateAnd(OF, ConstInt(OF->getType(), 1));
+    Value *SXorO = Builder.CreateXor(SF, OF);
+    Value *SEqualsO = Builder.CreateICmpEQ(SXorO, ConstInt(SXorO->getType(), 0));
+
+    // if condition is satisfied, prepare src value.
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    // if condition is not satisfied, prepare the former value.
+    Value *OldV = LoadOperand(InstHdl.getOpnd(1));
+
+    Value *Dest = Builder.CreateSelect(SEqualsO, Src0, OldV);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_cmovl(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmovl\n";
-    exit(-1);
+    // SF != OF
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *SF = Builder.CreateLShr(Flag, ConstInt(Int64Ty, SF_SHIFT));
+    Value *OF = Builder.CreateLShr(Flag, ConstInt(Int64Ty, OF_SHIFT));
+    SF = Builder.CreateAnd(SF, ConstInt(SF->getType(), 1));
+    OF = Builder.CreateAnd(OF, ConstInt(OF->getType(), 1));
+    Value *SXorO = Builder.CreateXor(SF, OF);
+    Value *SDiffO = Builder.CreateICmpNE(SXorO, ConstInt(SXorO->getType(), 0));
+
+    // if condition is satisfied, prepare src value.
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    // if condition is not satisfied, prepare the former value.
+    Value *OldV = LoadOperand(InstHdl.getOpnd(1));
+
+    Value *Dest = Builder.CreateSelect(SDiffO, Src0, OldV);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_cmovle(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmovle\n";
-    exit(-1);
+    // ZF == 1 OR SF != OF
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *ZF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, ZF_BIT));
+    Value *ZFIsSet = Builder.CreateICmpNE(ZF, ConstInt(Int64Ty, 0));
+    Value *SF = Builder.CreateLShr(Flag, ConstInt(Int64Ty, SF_SHIFT));
+    Value *OF = Builder.CreateLShr(Flag, ConstInt(Int64Ty, OF_SHIFT));
+    SF = Builder.CreateAnd(SF, ConstInt(SF->getType(), 1));
+    OF = Builder.CreateAnd(OF, ConstInt(OF->getType(), 1));
+    Value *SXorO = Builder.CreateXor(SF, OF);
+    Value *SDiffO = Builder.CreateICmpNE(SXorO, ConstInt(SXorO->getType(), 0));
+    Value *Cond = Builder.CreateOr(ZFIsSet, SDiffO);
+
+    // if condition is satisfied, prepare src value.
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    // if condition is not satisfied, prepare the former value.
+    Value *OldV = LoadOperand(InstHdl.getOpnd(1));
+
+    Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_fcmovnbe(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fcmovnbe\n";
     exit(-1);
@@ -217,6 +384,7 @@ void X86Translator::translate_fcmovnb(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fcmovnb\n";
     exit(-1);
 }
+
 void X86Translator::translate_cmovne(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     // ZF == 0
@@ -232,39 +400,114 @@ void X86Translator::translate_cmovne(GuestInst *Inst) {
     Value *Dest = Builder.CreateSelect(isZero, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_fcmovne(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fcmovne\n";
     exit(-1);
 }
+
 void X86Translator::translate_cmovno(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmovno\n";
-    exit(-1);
+    // OF == 0
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *OF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, OF_BIT));
+    Value *isZero = Builder.CreateICmpEQ(OF, ConstInt(Int64Ty, 0));
+
+    // if condition is satisfied, prepare src value.
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    // if condition is not satisfied, prepare the former value.
+    Value *OldV = LoadOperand(InstHdl.getOpnd(1));
+
+    Value *Dest = Builder.CreateSelect(isZero, Src0, OldV);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_cmovnp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmovnp\n";
-    exit(-1);
+    // PF == 0
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *PF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, PF_BIT));
+    Value *isZero = Builder.CreateICmpEQ(PF, ConstInt(Int64Ty, 0));
+
+    // if condition is satisfied, prepare src value.
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    // if condition is not satisfied, prepare the former value.
+    Value *OldV = LoadOperand(InstHdl.getOpnd(1));
+
+    Value *Dest = Builder.CreateSelect(isZero, Src0, OldV);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_fcmovnu(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fcmovnu\n";
     exit(-1);
 }
+
 void X86Translator::translate_cmovns(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmovns\n";
-    exit(-1);
+    // SF == 0
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *SF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, SF_BIT));
+    Value *isZero = Builder.CreateICmpEQ(SF, ConstInt(Int64Ty, 0));
+
+    // if condition is satisfied, prepare src value.
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    // if condition is not satisfied, prepare the former value.
+    Value *OldV = LoadOperand(InstHdl.getOpnd(1));
+
+    Value *Dest = Builder.CreateSelect(isZero, Src0, OldV);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_cmovo(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmovo\n";
-    exit(-1);
+    // OF == 1
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *OF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, OF_BIT));
+    Value *isSet = Builder.CreateICmpNE(OF, ConstInt(Int64Ty, 0));
+
+    // if condition is satisfied, prepare src value.
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    // if condition is not satisfied, prepare the former value.
+    Value *OldV = LoadOperand(InstHdl.getOpnd(1));
+
+    Value *Dest = Builder.CreateSelect(isSet, Src0, OldV);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_cmovp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmovp\n";
-    exit(-1);
+    // PF == 1
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *PF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, PF_BIT));
+    Value *isSet = Builder.CreateICmpNE(PF, ConstInt(Int64Ty, 0));
+
+    // if condition is satisfied, prepare src value.
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    // if condition is not satisfied, prepare the former value.
+    Value *OldV = LoadOperand(InstHdl.getOpnd(1));
+
+    Value *Dest = Builder.CreateSelect(isSet, Src0, OldV);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_fcmovu(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fcmovu\n";
     exit(-1);
 }
+
 void X86Translator::translate_cmovs(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmovs\n";
-    exit(-1);
+    // SF == 1
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *SF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, SF_BIT));
+    Value *isSet = Builder.CreateICmpNE(SF, ConstInt(Int64Ty, 0));
+
+    // if condition is satisfied, prepare src value.
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    // if condition is not satisfied, prepare the former value.
+    Value *OldV = LoadOperand(InstHdl.getOpnd(1));
+
+    Value *Dest = Builder.CreateSelect(isSet, Src0, OldV);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
 }

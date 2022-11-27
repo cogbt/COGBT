@@ -47,7 +47,7 @@ public:
     /// isGPR - Judge if Opnd is a GPR register.
     bool isGPR();
 
-    /// getOpndSize - Get the size of Opnd.
+    /// getOpndSize - Get the size(in bytes) of Opnd.
     int getOpndSize() {
         return Opnd->size;
     }
