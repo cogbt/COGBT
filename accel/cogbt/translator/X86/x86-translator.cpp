@@ -544,6 +544,19 @@ void X86Translator::GenCF(GuestInst *Inst, Value *Dest, Value *Src0,
         StoreGMRValue(NewEflag, X86Config::EFLAG);
         break;
     }
+    case X86_INS_IMUL: {
+        // if Dest != SEXT Src then CF is set to 1.
+        Value *SExtSrc = Builder.CreateSExt(Src0, Dest->getType());
+        Value *isDiff = Builder.CreateICmpNE(Dest, SExtSrc);
+        Value *CFBit = Builder.CreateSelect(isDiff, ConstInt(Int64Ty, CF_BIT),
+                                            ConstInt(Int64Ty, 0));
+
+        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getCFMask());
+        Value *NewEflag = Builder.CreateOr(ClearEflag, CFBit);
+        StoreGMRValue(NewEflag, X86Config::EFLAG);
+        break;
+    }
 
     }
 }
@@ -601,12 +614,25 @@ void X86Translator::GenOF(GuestInst *Inst, Value *Dest, Value *Src0,
         Value *isSet =
             Builder.CreateICmpNE(UpperHalf, ConstInt(UpperHalf->getType(), 0));
 
-        Value *CFBit = Builder.CreateSelect(isSet, ConstInt(Int64Ty, CF_BIT),
+        Value *OFBit = Builder.CreateSelect(isSet, ConstInt(Int64Ty, OF_BIT),
+                                            ConstInt(Int64Ty, 0));
+
+        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getOFMask());
+        Value *NewEflag = Builder.CreateOr(ClearEflag, OFBit);
+        StoreGMRValue(NewEflag, X86Config::EFLAG);
+        break;
+    }
+    case X86_INS_IMUL: {
+        // if Dest != SEXT Src then OF is set to 1.
+        Value *SExtSrc = Builder.CreateSExt(Src0, Dest->getType());
+        Value *isDiff = Builder.CreateICmpNE(Dest, SExtSrc);
+        Value *OFBit = Builder.CreateSelect(isDiff, ConstInt(Int64Ty, OF_BIT),
                                             ConstInt(Int64Ty, 0));
 
         Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
         Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getCFMask());
-        Value *NewEflag = Builder.CreateOr(ClearEflag, CFBit);
+        Value *NewEflag = Builder.CreateOr(ClearEflag, OFBit);
         StoreGMRValue(NewEflag, X86Config::EFLAG);
         break;
     }

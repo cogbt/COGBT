@@ -138,6 +138,111 @@ void X86Translator::translate_mul(GuestInst *Inst) {
     CalcEflag(Inst, Dest, High, Low);
 }
 
+void X86Translator::translate_imul(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    int OpndNum = InstHdl.getOpndNum();
+    if (OpndNum == 1) {
+        Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+        Value *Src1 = LoadGMRValue(Src0->getType(), X86Config::RAX);
+        Value *Dest = nullptr, *High = nullptr, *Low = nullptr;
+        switch (Src0->getType()->getIntegerBitWidth()) {
+        case 8: {
+            Src0 = Builder.CreateSExt(Src0, Int16Ty);
+            Src1 = Builder.CreateSExt(Src1, Int16Ty);
+            Dest = Builder.CreateMul(Src0, Src1);
+            // store Dest into low 16bit of RAX
+            Value *RAX = LoadGMRValue(Int64Ty, X86Config::RAX);
+            RAX = Builder.CreateAnd(RAX, ConstInt(Int64Ty, 0xffffffffffff0000));
+            Value *Res = Builder.CreateZExt(Dest, Int64Ty);
+            RAX = Builder.CreateOr(RAX, Res);
+            StoreGMRValue(RAX, X86Config::RAX);
+            break;
+        }
+        case 16: {
+            Src0 = Builder.CreateSExt(Src0, Int32Ty);
+            Src1 = Builder.CreateSExt(Src1, Int32Ty);
+            Dest = Builder.CreateMul(Src0, Src1);
+            // Store Dest into DX:AX
+            Value *RAX = LoadGMRValue(Int64Ty, X86Config::RAX);
+            RAX = Builder.CreateAnd(RAX, ConstInt(Int64Ty, 0xffffffffffff0000));
+            Low = Builder.CreateTrunc(Dest, Int16Ty);
+            Low = Builder.CreateZExt(Low, Int64Ty);
+            RAX = Builder.CreateOr(RAX, Low);
+            StoreGMRValue(RAX, X86Config::RAX);
+
+            Value *RDX = LoadGMRValue(Int64Ty, X86Config::RDX);
+            RDX = Builder.CreateAnd(RDX, ConstInt(Int64Ty, 0xffffffffffff0000));
+            High = Builder.CreateLShr(Dest, ConstInt(Int32Ty, 16));
+            High = Builder.CreateTrunc(High, Int16Ty);
+            High = Builder.CreateZExt(High, Int64Ty);
+            RDX = Builder.CreateOr(RDX, High);
+            StoreGMRValue(RDX, X86Config::RDX);
+            break;
+        }
+        case 32: {
+            Src0 = Builder.CreateSExt(Src0, Int64Ty);
+            Src1 = Builder.CreateSExt(Src1, Int64Ty);
+            Dest = Builder.CreateMul(Src0, Src1);
+            // Store Dest into EDX:EAX
+            Low = Builder.CreateTrunc(Dest, Int32Ty);
+            Low = Builder.CreateZExt(Low, Int64Ty);
+            StoreGMRValue(Low, X86Config::RAX);
+
+            High = Builder.CreateLShr(Dest, ConstInt(Int64Ty, 32));
+            High = Builder.CreateTrunc(High, Int32Ty);
+            High = Builder.CreateZExt(High, Int64Ty);
+            StoreGMRValue(High, X86Config::RDX);
+            break;
+        }
+        case 64: {
+            Src0 = Builder.CreateSExt(Src0, Int128Ty);
+            Src1 = Builder.CreateSExt(Src1, Int128Ty);
+            Dest = Builder.CreateMul(Src0, Src1);
+            // Store Dest into RDX:RAX
+            Low = Builder.CreateTrunc(Dest, Int64Ty);
+            StoreGMRValue(Low, X86Config::RAX);
+
+            High = Builder.CreateLShr(Dest, ConstInt(Int128Ty, 64));
+            High = Builder.CreateTrunc(High, Int64Ty);
+            StoreGMRValue(High, X86Config::RDX);
+            break;
+        }
+        default:
+            llvm_unreachable("mul unknown src opnd size\n");
+        }
+        CalcEflag(Inst, Dest, High, nullptr);
+    } else if (OpndNum == 2) {
+        Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+        Value *Src1 = LoadOperand(InstHdl.getOpnd(1));
+        Value *Dest = nullptr, *TruncDest = nullptr;
+        int BitWidth = Src0->getType()->getIntegerBitWidth();
+        if (BitWidth == 16) {
+            Src0 = Builder.CreateSExt(Src0, Int32Ty);
+            Src1 = Builder.CreateSExt(Src1, Int32Ty);
+            Dest = Builder.CreateMul(Src0, Src1);
+            TruncDest = Builder.CreateTrunc(Dest, Int16Ty);
+            StoreOperand(TruncDest, InstHdl.getOpnd(1));
+        } else if (BitWidth == 32) {
+            Src0 = Builder.CreateSExt(Src0, Int64Ty);
+            Src1 = Builder.CreateSExt(Src1, Int64Ty);
+            Dest = Builder.CreateMul(Src0, Src1);
+            TruncDest = Builder.CreateTrunc(Dest, Int32Ty);
+            StoreOperand(TruncDest, InstHdl.getOpnd(1));
+        } else {
+            assert(BitWidth == 64);
+            Src0 = Builder.CreateSExt(Src0, Int128Ty);
+            Src1 = Builder.CreateSExt(Src1, Int128Ty);
+            Dest = Builder.CreateMul(Src0, Src1);
+            TruncDest = Builder.CreateTrunc(Dest, Int64Ty);
+            StoreOperand(TruncDest, InstHdl.getOpnd(1));
+        }
+        CalcEflag(Inst, Dest, TruncDest, nullptr);
+    } else {
+        dbgs() << "Untranslated instruction imul imm\n";
+        exit(-1);
+    }
+}
+
 void X86Translator::translate_mulpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction mulpd\n";
     exit(-1);

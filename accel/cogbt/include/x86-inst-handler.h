@@ -51,6 +51,10 @@ public:
         return &Inst->detail->x86.operands[idx];
     }
 
+    int getOpndNum() {
+        return Inst->detail->x86.op_count;
+    }
+
     int getOpndSize() {
         X86OperandHandler OpndHdl(getOpnd(0));
         return OpndHdl.getOpndSize();

@@ -768,10 +768,6 @@ void X86Translator::translate_fild(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fild\n";
     exit(-1);
 }
-void X86Translator::translate_imul(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction imul\n";
-    exit(-1);
-}
 void X86Translator::translate_in(GuestInst *Inst) {
     dbgs() << "Untranslated instruction in\n";
     exit(-1);
