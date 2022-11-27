@@ -272,6 +272,36 @@ void X86Translator::translate_jrcxz(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_js(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction js\n";
-    exit(-1);
+    // SF = 1
+    X86InstHandler InstHdl(Inst);
+    BasicBlock *TargetBB =
+        BasicBlock::Create(Context, "target", TransFunc, ExitBB);
+    BasicBlock *FallThroughBB =
+        BasicBlock::Create(Context, "fallthrough", TransFunc, TargetBB);
+
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *SFVal =
+        Builder.CreateAnd(Flag, ConstInt(Flag->getType(), SF_BIT));
+    SFVal = Builder.CreateICmpNE(SFVal, ConstInt(SFVal->getType(), 0));
+    for (int GMRId = 0; GMRId < (int)GMRVals.size(); GMRId++) {
+        if (GMRVals[GMRId].isDirty()) {
+            Builder.CreateStore(GMRVals[GMRId].getValue(), GMRStates[GMRId]);
+            GMRVals[GMRId].setDirty(false);
+        }
+    }
+    Builder.CreateCondBr(SFVal, TargetBB, FallThroughBB);
+
+    Builder.SetInsertPoint(FallThroughBB);
+    Value *EnvEIP =
+        Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset()));
+    Value *EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
+    Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getNextPC()), EIPAddr);
+    Builder.CreateBr(ExitBB);
+
+    Builder.SetInsertPoint(TargetBB);
+    EnvEIP =
+        Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset()));
+    EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
+    Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getTargetPC()), EIPAddr);
+    Builder.CreateBr(ExitBB);
 }
