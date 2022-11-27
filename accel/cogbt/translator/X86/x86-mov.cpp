@@ -175,8 +175,19 @@ void X86Translator::translate_fcmovb(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_cmove(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmove\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    // ZF == 1
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *ZF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, ZF_BIT));
+    Value *isSet = Builder.CreateICmpNE(ZF, ConstInt(Int64Ty, 0));
+
+    // if condition is satisfied, prepare src value.
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    // if condition is not satisfied, prepare the former value.
+    Value *OldV = LoadOperand(InstHdl.getOpnd(1));
+
+    Value *Dest = Builder.CreateSelect(isSet, Src0, OldV);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 void X86Translator::translate_fcmove(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fcmove\n";
