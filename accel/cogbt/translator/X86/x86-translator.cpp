@@ -392,8 +392,15 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
     X86OperandHandler OpndHdl(DestOpnd);
     if (OpndHdl.isGPR()) {
         // if dest reg is 32-bit, zext it first
-        if (ResVal->getType()->isIntegerTy(32)) {
-            ResVal = Builder.CreateZExt(ResVal, Int64Ty);
+        if (OpndHdl.getOpndSize() == 4) {
+            // If src is 32-bit, zext it directly.
+            // If src is 64-bit, trunc and then zext.
+            if (ResVal->getType()->isIntegerTy(32)) {
+                ResVal = Builder.CreateZExt(ResVal, Int64Ty);
+            } else if (ResVal->getType()->isIntegerTy(64)) {
+                ResVal = Builder.CreateTrunc(ResVal, Int32Ty);
+                ResVal = Builder.CreateZExt(ResVal, Int64Ty);
+            }
         }
         StoreGMRValue(ResVal, OpndHdl.GetGMRID());
     } else if (OpndHdl.isMem()) {
