@@ -293,15 +293,15 @@ Value *X86Translator::LoadGMRValue(Type *Ty, int GMRId) {
     }
     assert(GMRVals.size() > (unsigned)GMRId);
 
-    auto CurrBB = Builder.GetInsertBlock();
-    if (!CurrBB->empty()) {
-        Builder.SetInsertPoint(&CurrBB->front());
-    }
+    /* auto CurrBB = Builder.GetInsertBlock(); */
+    /* if (!CurrBB->empty()) { */
+    /*     Builder.SetInsertPoint(&CurrBB->front()); */
+    /* } */
 
     Value *V = Builder.CreateLoad(Int64Ty, GMRStates[GMRId]);
     GMRVals[GMRId].set(V, false);
 
-    Builder.SetInsertPoint(CurrBB);
+    /* Builder.SetInsertPoint(CurrBB); */
 
     if (!Ty->isIntegerTy(64))
         V = Builder.CreateTrunc(V, Ty);
@@ -323,7 +323,8 @@ void X86Translator::StoreGMRValue(Value *V, int GMRId) {
             GMRVals[GMRId].set(Res, true);
         } else {
             // GMRVals haven't cached GMRId, so store V into GMRStates directly.
-            Value *Addr = Builder.CreateBitCast(GMRStates[GMRId], V->getType());
+            Value *Addr = Builder.CreateBitCast(GMRStates[GMRId],
+                                                V->getType()->getPointerTo());
             Builder.CreateStore(V, Addr);
         }
     }
