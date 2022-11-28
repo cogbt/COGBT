@@ -576,6 +576,18 @@ void X86Translator::GenCF(GuestInst *Inst, Value *Dest, Value *Src0,
         StoreGMRValue(NewEflag, X86Config::EFLAG);
         break;
     }
+    case X86_INS_NEG: {
+        // if Dest is zero, then CF is set to zero.
+        Value *isZero = Builder.CreateICmpEQ(Dest, ConstInt(Dest->getType(), 0));
+        Value *CFBit = Builder.CreateSelect(isZero, ConstInt(Int64Ty, CF_BIT),
+                                            ConstInt(Int64Ty, 0));
+
+        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getCFMask());
+        Value *NewEflag = Builder.CreateOr(ClearEflag, CFBit);
+        StoreGMRValue(NewEflag, X86Config::EFLAG);
+        break;
+    }
 
     }
 }
@@ -652,6 +664,21 @@ void X86Translator::GenOF(GuestInst *Inst, Value *Dest, Value *Src0,
         Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
         Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getOFMask());
         Value *NewEflag = Builder.CreateOr(ClearEflag, OFBit);
+        StoreGMRValue(NewEflag, X86Config::EFLAG);
+        break;
+    }
+    case X86_INS_NEG: {
+        // OF is set if Dest has a different sign bit with Src0
+        Value *Val = Builder.CreateAnd(Dest, Src0);
+        Val = Builder.CreateLShr(
+            Val,
+            ConstInt(Val->getType(), Val->getType()->getIntegerBitWidth() - 1));
+        Val = Builder.CreateZExt(Val, Int64Ty);
+        Val = Builder.CreateShl(Val, ConstInt(Int64Ty, OF_BIT));
+
+        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getOFMask());
+        Value *NewEflag = Builder.CreateOr(ClearEflag, Val);
         StoreGMRValue(NewEflag, X86Config::EFLAG);
         break;
     }

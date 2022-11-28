@@ -1631,16 +1631,6 @@ void X86Translator::translate_mwait(GuestInst *Inst) {
     dbgs() << "Untranslated instruction mwait\n";
     exit(-1);
 }
-void X86Translator::translate_neg(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction neg\n";
-    exit(-1);
-}
-void X86Translator::translate_nop(GuestInst *Inst) {
-}
-void X86Translator::translate_not(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction not\n";
-    exit(-1);
-}
 void X86Translator::translate_out(GuestInst *Inst) {
     dbgs() << "Untranslated instruction out\n";
     exit(-1);

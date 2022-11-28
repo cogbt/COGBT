@@ -61,3 +61,21 @@ void X86Translator::translate_shrx(GuestInst *Inst) {
     dbgs() << "Untranslated instruction shrx\n";
     exit(-1);
 }
+
+void X86Translator::translate_neg(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    Value *Dest = Builder.CreateNeg(Src);
+    StoreOperand(Dest, InstHdl.getOpnd(0));
+    CalcEflag(Inst, Dest, Src, nullptr);
+}
+
+void X86Translator::translate_nop(GuestInst *Inst) {
+}
+
+void X86Translator::translate_not(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    Value *Dest = Builder.CreateNot(Src);
+    StoreOperand(Dest, InstHdl.getOpnd(0));
+}
