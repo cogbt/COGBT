@@ -239,7 +239,13 @@ void X86Translator::FlushGMRValue(int GMRId) {
 }
 
 void X86Translator::ReloadGMRValue(int GMRId) {
-    Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GMRId));
+    assert(GMRId < (int)GMRVals.size());
+    int Off = 0;
+    if (GMRId < X86Config::EFLAG)
+        Off = GuestStateOffset(GMRId);
+    else
+        Off = GuestEflagOffset();
+    Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, Off));
     Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
     StoreGMRValue(Builder.CreateLoad(Int64Ty, Addr), GMRId);
 }
@@ -439,6 +445,10 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
 void X86Translator::AddExternalSyms() {
     EE->addGlobalMapping("PFTable", X86InstHandler::getPFTable());
     EE->addGlobalMapping("helper_raise_syscall", (uint64_t)helper_raise_syscall);
+    EE->addGlobalMapping("helper_divb_AL", (uint64_t)helper_divb_AL_wrapper);
+    EE->addGlobalMapping("helper_divw_AX", (uint64_t)helper_divw_AX_wrapper);
+    EE->addGlobalMapping("helper_divl_EAX", (uint64_t)helper_divl_EAX_wrapper);
+    EE->addGlobalMapping("helper_divq_EAX", (uint64_t)helper_divq_EAX_wrapper);
 }
 
 // CF is set if the addition of two numbers causes a carry out of the most
@@ -579,7 +589,7 @@ void X86Translator::GenOF(GuestInst *Inst, Value *Dest, Value *Src0,
     case X86_INS_TEST:
     case X86_INS_XOR: {
         Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getZFMask());
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getOFMask());
         StoreGMRValue(ClearEflag, X86Config::EFLAG);
         break;
     }
@@ -631,7 +641,7 @@ void X86Translator::GenOF(GuestInst *Inst, Value *Dest, Value *Src0,
                                             ConstInt(Int64Ty, 0));
 
         Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getCFMask());
+        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getOFMask());
         Value *NewEflag = Builder.CreateOr(ClearEflag, OFBit);
         StoreGMRValue(NewEflag, X86Config::EFLAG);
         break;

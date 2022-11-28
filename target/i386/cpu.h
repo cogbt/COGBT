@@ -2194,9 +2194,11 @@ uint32_t cpu_cc_compute_all(CPUX86State *env1, int op);
 static inline uint32_t cpu_compute_eflags(CPUX86State *env)
 {
     uint32_t eflags = env->eflags;
+#ifndef  CONFIG_COGBT
     if (tcg_enabled()) {
         eflags |= cpu_cc_compute_all(env, CC_OP) | (env->df & DF_MASK);
     }
+#endif
     return eflags;
 }
 

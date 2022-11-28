@@ -29,6 +29,7 @@
 
 static void x86_cpu_exec_enter(CPUState *cs)
 {
+#ifndef CONFIG_COGBT
     X86CPU *cpu = X86_CPU(cs);
     CPUX86State *env = &cpu->env;
 
@@ -36,6 +37,7 @@ static void x86_cpu_exec_enter(CPUState *cs)
     env->df = 1 - (2 * ((env->eflags >> 10) & 1));
     CC_OP = CC_OP_EFLAGS;
     env->eflags &= ~(DF_MASK | CC_O | CC_S | CC_Z | CC_A | CC_P | CC_C);
+#endif
 }
 
 static void x86_cpu_exec_exit(CPUState *cs)
