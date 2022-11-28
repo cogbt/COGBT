@@ -68,3 +68,8 @@ void helper_divl_EAX_wrapper(void *p, uint64_t divisor) {
 void helper_divq_EAX_wrapper(void *p, uint64_t divisor) {
     helper_divq_EAX((CPUX86State *)p, divisor);
 }
+
+extern void helper_rdtsc(CPUArchState *env);
+void helper_rdtsc_wrapper(void *p) {
+    helper_rdtsc((CPUX86State *)p);
+}

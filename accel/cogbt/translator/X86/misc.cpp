@@ -2074,10 +2074,20 @@ void X86Translator::translate_rdseed(GuestInst *Inst) {
     dbgs() << "Untranslated instruction rdseed\n";
     exit(-1);
 }
+
 void X86Translator::translate_rdtsc(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction rdtsc\n";
-    exit(-1);
+    FunctionType *FuncTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+#if (LLVM_VERSION_MAJOR > 8)
+    FunctionCallee F = Mod->getOrInsertFunction("helper_rdtsc", FuncTy);
+    Builder.CreateCall(FuncTy, F.getCallee(), CPUEnv);
+#else
+    Value *Func = Mod->getOrInsertFunction("helper_rdtsc", FuncTy);
+    Builder.CreateCall(Func, CPUEnv);
+#endif
+    ReloadGMRValue(X86Config::RAX);
+    ReloadGMRValue(X86Config::RDX);
 }
+
 void X86Translator::translate_rdtscp(GuestInst *Inst) {
     dbgs() << "Untranslated instruction rdtscp\n";
     exit(-1);

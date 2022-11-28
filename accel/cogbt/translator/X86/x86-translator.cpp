@@ -471,6 +471,7 @@ void X86Translator::AddExternalSyms() {
     EE->addGlobalMapping("helper_divw_AX", (uint64_t)helper_divw_AX_wrapper);
     EE->addGlobalMapping("helper_divl_EAX", (uint64_t)helper_divl_EAX_wrapper);
     EE->addGlobalMapping("helper_divq_EAX", (uint64_t)helper_divq_EAX_wrapper);
+    EE->addGlobalMapping("helper_rdtsc", (uint64_t)helper_rdtsc_wrapper);
 }
 
 // CF is set if the addition of two numbers causes a carry out of the most

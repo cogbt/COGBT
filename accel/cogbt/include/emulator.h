@@ -21,6 +21,7 @@ void helper_divb_AL_wrapper(void *p, uint64_t divisor);
 void helper_divw_AX_wrapper(void *p, uint64_t divisor);
 void helper_divl_EAX_wrapper(void *p, uint64_t divisor);
 void helper_divq_EAX_wrapper(void *p, uint64_t divisor);
+void helper_rdtsc_wrapper(void *p);
 #ifdef __cplusplus
 }
 #endif
