@@ -340,11 +340,11 @@ Value *X86Translator::CalcMemAddr(X86Operand *Opnd) {
     // Memory operand has segment register, load its segment base addr.
     if (Opnd->mem.segment != X86_REG_INVALID) {
         Value *Addr = Builder.CreateGEP(
-            Int64Ty, CPUEnv,
+            Int8Ty, CPUEnv,
             ConstantInt::get(Int64Ty, GuestSegOffset(Opnd->mem.segment)));
+        Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
         Seg = Builder.CreateLoad(Int64Ty, Addr);
         MemAddr = Seg;
-        assert(0 && "Unhandled mem opnd with seg reg");
     }
     // Base field is valid, calculate base.
     if (Opnd->mem.base != X86_REG_INVALID) {
@@ -667,19 +667,19 @@ void X86Translator::GenOF(GuestInst *Inst, Value *Dest, Value *Src0,
         StoreGMRValue(NewEflag, X86Config::EFLAG);
         break;
     }
-    case X86_INS_NEG: {
+    case X86_INS_NEG: { // TODO
         // OF is set if Dest has a different sign bit with Src0
-        Value *Val = Builder.CreateAnd(Dest, Src0);
-        Val = Builder.CreateLShr(
-            Val,
-            ConstInt(Val->getType(), Val->getType()->getIntegerBitWidth() - 1));
-        Val = Builder.CreateZExt(Val, Int64Ty);
-        Val = Builder.CreateShl(Val, ConstInt(Int64Ty, OF_BIT));
+        /* Value *Val = Builder.CreateAnd(Dest, Src0); */
+        /* Val = Builder.CreateLShr( */
+        /*     Val, */
+        /*     ConstInt(Val->getType(), Val->getType()->getIntegerBitWidth() - 1)); */
+        /* Val = Builder.CreateZExt(Val, Int64Ty); */
+        /* Val = Builder.CreateShl(Val, ConstInt(Int64Ty, OF_BIT)); */
 
-        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getOFMask());
-        Value *NewEflag = Builder.CreateOr(ClearEflag, Val);
-        StoreGMRValue(NewEflag, X86Config::EFLAG);
+        /* Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG); */
+        /* Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getOFMask()); */
+        /* Value *NewEflag = Builder.CreateOr(ClearEflag, Val); */
+        /* StoreGMRValue(NewEflag, X86Config::EFLAG); */
         break;
     }
     case X86_INS_SHR: // TODO

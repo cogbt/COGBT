@@ -468,10 +468,6 @@ void X86Translator::translate_data16(GuestInst *Inst) {
     dbgs() << "Untranslated instruction data16\n";
     exit(-1);
 }
-void X86Translator::translate_dec(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction dec\n";
-    exit(-1);
-}
 void X86Translator::translate_dppd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction dppd\n";
     exit(-1);

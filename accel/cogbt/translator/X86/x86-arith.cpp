@@ -393,6 +393,15 @@ void X86Translator::translate_fdivrp(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fdivrp\n";
     exit(-1);
 }
+
+void X86Translator::translate_dec(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    Value *Dest = Builder.CreateSub(Src, ConstInt(Src->getType(), 1));
+    StoreOperand(Dest, InstHdl.getOpnd(0));
+    CalcEflag(Inst, Dest, Src, ConstInt(Src->getType(), 1));
+}
+
 void X86Translator::translate_divsd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction divsd\n";
     exit(-1);
