@@ -61,47 +61,119 @@ void X86Translator::translate_setge(GuestInst *Inst) {
     SF = Builder.CreateAnd(SF, ConstInt(SF->getType(), 1));
     OF = Builder.CreateAnd(OF, ConstInt(OF->getType(), 1));
     Value *Val = Builder.CreateICmpEQ(SF, OF);
+    Val = Builder.CreateZExt(Val, GetOpndLLVMType(InstHdl.getOpnd(0)));
     StoreOperand(Val, InstHdl.getOpnd(0));
 }
 
 void X86Translator::translate_setg(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction setg\n";
-    exit(-1);
+    // ZF == 0 and SF == OF
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *ZF = Builder.CreateLShr(Flag, ConstInt(Flag->getType(), ZF_SHIFT));
+    Value *SF = Builder.CreateLShr(Flag, ConstInt(Flag->getType(), SF_SHIFT));
+    Value *OF = Builder.CreateLShr(Flag, ConstInt(Flag->getType(), OF_SHIFT));
+    ZF = Builder.CreateAnd(ZF, ConstInt(ZF->getType(), 1));
+    SF = Builder.CreateAnd(SF, ConstInt(SF->getType(), 1));
+    OF = Builder.CreateAnd(OF, ConstInt(OF->getType(), 1));
+    Value *Val = Builder.CreateOr(ZF, Builder.CreateXor(SF, OF));
+    Val = Builder.CreateICmpEQ(Val, ConstInt(Val->getType(), 0));
+    Val = Builder.CreateZExt(Val, GetOpndLLVMType(InstHdl.getOpnd(0)));
+    StoreOperand(Val, InstHdl.getOpnd(0));
 }
+
 void X86Translator::translate_setle(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction setle\n";
-    exit(-1);
+    // ZF == 1 Or SF != OF
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *ZF = Builder.CreateLShr(Flag, ConstInt(Flag->getType(), ZF_SHIFT));
+    Value *SF = Builder.CreateLShr(Flag, ConstInt(Flag->getType(), SF_SHIFT));
+    Value *OF = Builder.CreateLShr(Flag, ConstInt(Flag->getType(), OF_SHIFT));
+    ZF = Builder.CreateAnd(ZF, ConstInt(ZF->getType(), 1));
+    SF = Builder.CreateAnd(SF, ConstInt(SF->getType(), 1));
+    OF = Builder.CreateAnd(OF, ConstInt(OF->getType(), 1));
+    Value *Val = Builder.CreateOr(ZF, Builder.CreateXor(SF, OF));
+    Val = Builder.CreateICmpNE(Val, ConstInt(Val->getType(), 0));
+    Val = Builder.CreateZExt(Val, GetOpndLLVMType(InstHdl.getOpnd(0)));
+    StoreOperand(Val, InstHdl.getOpnd(0));
 }
+
 void X86Translator::translate_setl(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction setl\n";
-    exit(-1);
+    // SF != OF
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *SF = Builder.CreateLShr(Flag, ConstInt(Flag->getType(), SF_SHIFT));
+    Value *OF = Builder.CreateLShr(Flag, ConstInt(Flag->getType(), OF_SHIFT));
+    SF = Builder.CreateAnd(SF, ConstInt(SF->getType(), 1));
+    OF = Builder.CreateAnd(OF, ConstInt(OF->getType(), 1));
+    Value *Val = Builder.CreateICmpNE(SF, OF);
+    Val = Builder.CreateZExt(Val, GetOpndLLVMType(InstHdl.getOpnd(0)));
+    StoreOperand(Val, InstHdl.getOpnd(0));
 }
+
 void X86Translator::translate_setne(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction setne\n";
-    exit(-1);
+    // ZF == 0
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *ZF = Builder.CreateLShr(Flag, ConstInt(Flag->getType(), ZF_SHIFT));
+    Value *Val = Builder.CreateAnd(ZF, ConstInt(ZF->getType(), 1));
+    Val = Builder.CreateSub(ConstInt(Val->getType(), 1), Val);
+    StoreOperand(Val, InstHdl.getOpnd(0));
 }
+
 void X86Translator::translate_setno(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction setno\n";
-    exit(-1);
+    // OF == 0
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *OF = Builder.CreateLShr(Flag, ConstInt(Flag->getType(), OF_SHIFT));
+    Value *Val = Builder.CreateAnd(OF, ConstInt(OF->getType(), 1));
+    Val = Builder.CreateSub(ConstInt(Val->getType(), 1), Val);
+    StoreOperand(Val, InstHdl.getOpnd(0));
 }
+
 void X86Translator::translate_setnp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction setnp\n";
-    exit(-1);
+    // PF == 0
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *PF = Builder.CreateLShr(Flag, ConstInt(Flag->getType(), PF_SHIFT));
+    Value *Val = Builder.CreateAnd(PF, ConstInt(PF->getType(), 1));
+    Val = Builder.CreateSub(ConstInt(Val->getType(), 1), Val);
+    StoreOperand(Val, InstHdl.getOpnd(0));
 }
+
 void X86Translator::translate_setns(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction setns\n";
-    exit(-1);
+    // SF == 0
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *SF = Builder.CreateLShr(Flag, ConstInt(Flag->getType(), SF_SHIFT));
+    Value *Val = Builder.CreateAnd(SF, ConstInt(SF->getType(), 1));
+    Val = Builder.CreateSub(ConstInt(Val->getType(), 1), Val);
+    StoreOperand(Val, InstHdl.getOpnd(0));
 }
+
 void X86Translator::translate_seto(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction seto\n";
-    exit(-1);
+    // OF == 1
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *Val = Builder.CreateLShr(Flag, ConstInt(Flag->getType(), OF_SHIFT));
+    Val = Builder.CreateAnd(Val, ConstInt(Val->getType(), 1));
+    StoreOperand(Val, InstHdl.getOpnd(0));
 }
+
 void X86Translator::translate_setp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction setp\n";
-    exit(-1);
+    // PF == 1
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *Val = Builder.CreateLShr(Flag, ConstInt(Flag->getType(), PF_SHIFT));
+    Val = Builder.CreateAnd(Val, ConstInt(Val->getType(), 1));
+    StoreOperand(Val, InstHdl.getOpnd(0));
 }
+
 void X86Translator::translate_sets(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction sets\n";
-    exit(-1);
+    // SF == 1
+    X86InstHandler InstHdl(Inst);
+    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    Value *Val = Builder.CreateLShr(Flag, ConstInt(Flag->getType(), SF_SHIFT));
+    Val = Builder.CreateAnd(Val, ConstInt(Val->getType(), 1));
+    StoreOperand(Val, InstHdl.getOpnd(0));
 }
 
