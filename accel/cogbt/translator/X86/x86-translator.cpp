@@ -224,6 +224,19 @@ void X86Translator::GenEpilogue() {
     /* Mod->print(outs(), nullptr); */
 }
 
+void X86Translator::SyncAllGMRValue() {
+    for (int GMRId = 0; GMRId < (int)GMRVals.size(); GMRId++) {
+        SyncGMRValue(GMRId);
+    }
+}
+
+void X86Translator::SyncGMRValue(int GMRId) {
+    if (GMRVals[GMRId].isDirty()) {
+        Builder.CreateStore(GMRVals[GMRId].getValue(), GMRStates[GMRId]);
+        GMRVals[GMRId].setDirty(false);
+    }
+}
+
 void X86Translator::FlushGMRValue(int GMRId) {
     assert(GMRId < (int)GMRVals.size());
     int Off = 0;
@@ -616,6 +629,7 @@ void X86Translator::GenOF(GuestInst *Inst, Value *Dest, Value *Src0,
     }
     case X86_INS_SUB:
     case X86_INS_CMP:
+    case X86_INS_CMPXCHG:
     case X86_INS_DEC: {
         /// Src1 OP Src0 -> Dest overflow
         /// iff. Src1 has a different sign bit than Src0 and Dest.

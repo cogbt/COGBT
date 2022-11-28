@@ -511,3 +511,45 @@ void X86Translator::translate_cmovs(GuestInst *Inst) {
     Value *Dest = Builder.CreateSelect(isSet, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
+void X86Translator::translate_cmpxchg16b(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction cmpxchg16b\n";
+    exit(-1);
+}
+
+// FIXME! This implementation is not thread safe.
+void X86Translator::translate_cmpxchg(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    BasicBlock *SuccBB = BasicBlock::Create(Context, "succ", TransFunc, ExitBB);
+    BasicBlock *FailBB = BasicBlock::Create(Context, "fail", TransFunc, SuccBB);
+    BasicBlock *JoinBB = BasicBlock::Create(Context, "Join", TransFunc, FailBB);
+
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    Value *Src1 = LoadOperand(InstHdl.getOpnd(1));
+    Value *Accumulator = LoadGMRValue(Src1->getType(), X86Config::RAX);
+    Value *CmpRes = Builder.CreateSub(Accumulator, Src1);
+    Value *isSame = Builder.CreateICmpEQ(Accumulator, Src1);
+    // Sync all dirty GMRValues into GMRStates.
+    SyncAllGMRValue();
+    Builder.CreateCondBr(isSame, SuccBB, FailBB);
+
+    Builder.SetInsertPoint(SuccBB);
+    // Move Src to Dest
+    StoreOperand(Src0, InstHdl.getOpnd(1));
+    SyncAllGMRValue();
+    Builder.CreateBr(JoinBB);
+
+    Builder.SetInsertPoint(FailBB);
+    // Move Dest to Accumulator
+    StoreGMRValue(Src1, X86Config::RAX);
+    SyncAllGMRValue();
+    Builder.CreateBr(JoinBB);
+
+    Builder.SetInsertPoint(JoinBB);
+    CalcEflag(Inst, CmpRes, Src1, Accumulator);
+}
+
+void X86Translator::translate_cmpxchg8b(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction cmpxchg8b\n";
+    exit(-1);
+}

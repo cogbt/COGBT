@@ -78,10 +78,14 @@ private:
     void GenCF(GuestInst *Inst, Value *Dest, Value *Src1, Value *Src2);
     void GenOF(GuestInst *Inst, Value *Dest, Value *Src1, Value *Src2);
 
-    /// FlushGMRValue - Sync GMR value into CPUX86State.
+    /// FlushGMRValue - Flush GMR value into CPUX86State.
     /// ReloadGMRValue - Reload GMR value from CPUX86State.
     void FlushGMRValue(int GMRId);
     void ReloadGMRValue(int GMRId);
+
+    /// SyncGMRValue - Sync GMR value into GMRStates.
+    void SyncGMRValue(int GMRId);
+    void SyncAllGMRValue();
 };
 
 #endif

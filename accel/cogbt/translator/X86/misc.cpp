@@ -291,18 +291,6 @@ void X86Translator::translate_cmpsw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cmpsw\n";
     exit(-1);
 }
-void X86Translator::translate_cmpxchg16b(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpxchg16b\n";
-    exit(-1);
-}
-void X86Translator::translate_cmpxchg(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpxchg\n";
-    exit(-1);
-}
-void X86Translator::translate_cmpxchg8b(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpxchg8b\n";
-    exit(-1);
-}
 void X86Translator::translate_comisd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction comisd\n";
     exit(-1);
