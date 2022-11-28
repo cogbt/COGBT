@@ -416,6 +416,14 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd) {
 void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
     assert(ResVal && "StoreOperand stores an empty value!");
     X86OperandHandler OpndHdl(DestOpnd);
+    assert(ResVal->getType()->getIntegerBitWidth() >=
+           (unsigned)OpndHdl.getOpndSize() * 8);
+    // Trunc ResVal to the same bitwidth as DestOpnd.
+    if (ResVal->getType()->getIntegerBitWidth() >
+        (unsigned)(OpndHdl.getOpndSize() << 3)) {
+        ResVal = Builder.CreateTrunc(ResVal, GetOpndLLVMType(DestOpnd));
+    }
+
     if (OpndHdl.isGPR()) {
         // if dest reg is 32-bit, zext it first
         if (OpndHdl.getOpndSize() == 4) {

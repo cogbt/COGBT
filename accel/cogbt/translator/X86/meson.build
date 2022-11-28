@@ -7,5 +7,6 @@ cogbt_ss.add(files(
   'x86-arith.cpp',
   'x86-jcc.cpp',
   'x86-mov.cpp',
+  'x86-setcc.cpp',
   'misc.cpp',
 ))
