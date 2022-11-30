@@ -273,6 +273,10 @@ Type *X86Translator::GetOpndLLVMType(X86Operand *Opnd) {
         return Int32Ty;
     case 8:
         return Int64Ty;
+    case 16:
+        return Int128Ty;
+    case 32:
+        return Int256Ty;
     default:
         llvm_unreachable("Unexpected operand size(not 1,2,4,8 bytes)");
     }
@@ -464,6 +468,36 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
     }
 }
 
+void X86Translator::FlushXMMT0(Value *XMMV) {
+    assert(XMMV->getType()->getIntegerBitWidth() == 128 &&
+           "XMM value shoudld be 128 bit width");
+    int off = GuestXMMT0Offset();
+    Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
+    Addr = Builder.CreateBitCast(Addr, Int128PtrTy);
+    Builder.CreateStore(XMMV, Addr);
+}
+
+void X86Translator::FlushMMXT0(Value *MMXV) {
+    assert(MMXV->getType()->getIntegerBitWidth() == 64 &&
+           "MMX value shoudld be 64 bit width");
+    int off = GuestMMXT0Offset();
+    Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
+    Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
+    Builder.CreateStore(MMXV, Addr);
+}
+
+Value *X86Translator::CallFunc(FunctionType *FuncTy, std::string Name,
+        ArrayRef<Value *> Args) {
+#if (LLVM_VERSION_MAJOR > 8)
+    FunctionCallee F = Mod->getOrInsertFunction(Name, FuncTy);
+    Value *CallInst = Builder.CreateCall(FuncTy, F.getCallee(), Args);
+#else
+    Value *Func = Mod->getOrInsertFunction(Name, FuncTy);
+    Value *CallInst = Builder.CreateCall(Func, Args);
+#endif
+    return CallInst;
+}
+
 void X86Translator::AddExternalSyms() {
     EE->addGlobalMapping("PFTable", X86InstHandler::getPFTable());
     EE->addGlobalMapping("helper_raise_syscall", (uint64_t)helper_raise_syscall);
@@ -472,6 +506,8 @@ void X86Translator::AddExternalSyms() {
     EE->addGlobalMapping("helper_divl_EAX", (uint64_t)helper_divl_EAX_wrapper);
     EE->addGlobalMapping("helper_divq_EAX", (uint64_t)helper_divq_EAX_wrapper);
     EE->addGlobalMapping("helper_rdtsc", (uint64_t)helper_rdtsc_wrapper);
+    EE->addGlobalMapping("helper_pxor_xmm", (uint64_t)helper_pxor_xmm_wrapper);
+    EE->addGlobalMapping("helper_pxor_mmx", (uint64_t)helper_pxor_mmx_wrapper);
 }
 
 // CF is set if the addition of two numbers causes a carry out of the most

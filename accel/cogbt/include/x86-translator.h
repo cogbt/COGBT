@@ -16,8 +16,7 @@ public:
         }
               //"x86_64-pc-linux-gnu") {}
 
-private:
-    /// Currently translated instruction.
+private: /// Currently translated instruction.
     GuestInst *CurrInst;
 
     /// InitializeFunction - Initialize the basic framework of the translation
@@ -86,6 +85,16 @@ private:
     /// SyncGMRValue - Sync GMR value into GMRStates.
     void SyncGMRValue(int GMRId);
     void SyncAllGMRValue();
+
+    /// FlushXMMT0 - In qemu, some simd helper use xmm_t0 and mmx_t0 as implicit
+    /// source operand, so translator need to flush the source value into them
+    /// and then call helpers.
+    void FlushXMMT0(Value *XMMV);
+    void FlushMMXT0(Value *MMXV);
+
+    /// CallFunc - Generate llvm IRs to call a llvm function, maybe a helper.
+    Value *CallFunc(FunctionType *FuncTy, std::string Name,
+                    ArrayRef<Value *> Args);
 };
 
 #endif

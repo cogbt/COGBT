@@ -1599,10 +1599,6 @@ void X86Translator::translate_punpcklwd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction punpcklwd\n";
     exit(-1);
 }
-void X86Translator::translate_pxor(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pxor\n";
-    exit(-1);
-}
 void X86Translator::translate_monitor(GuestInst *Inst) {
     dbgs() << "Untranslated instruction monitor\n";
     exit(-1);

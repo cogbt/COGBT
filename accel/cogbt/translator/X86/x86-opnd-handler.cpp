@@ -60,6 +60,48 @@ int X86OperandHandler::GetGMRID() {
     return NormalizeGuestReg(Opnd->reg);
 }
 
+int X86OperandHandler::GetXMMID() {
+    if (Opnd->type != X86_OP_REG)
+        return -1;
+    switch (Opnd->reg) {
+        case X86_REG_XMM0: return 0;
+        case X86_REG_XMM1: return 1;
+        case X86_REG_XMM2: return 2;
+        case X86_REG_XMM3: return 3;
+        case X86_REG_XMM4: return 4;
+        case X86_REG_XMM5: return 5;
+        case X86_REG_XMM6: return 6;
+        case X86_REG_XMM7: return 7;
+        case X86_REG_XMM8: return 8;
+        case X86_REG_XMM9: return 9;
+        case X86_REG_XMM10: return 10;
+        case X86_REG_XMM11: return 11;
+        case X86_REG_XMM12: return 12;
+        case X86_REG_XMM13: return 13;
+        case X86_REG_XMM14: return 14;
+        case X86_REG_XMM15: return 15;
+        default:
+            return -1;
+    }
+}
+
+int X86OperandHandler::GetMMXID() {
+    if (Opnd->type != X86_OP_REG)
+        return -1;
+    switch (Opnd->reg) {
+        case X86_REG_MM0: return 0;
+        case X86_REG_MM1: return 1;
+        case X86_REG_MM2: return 2;
+        case X86_REG_MM3: return 3;
+        case X86_REG_MM4: return 4;
+        case X86_REG_MM5: return 5;
+        case X86_REG_MM6: return 6;
+        case X86_REG_MM7: return 7;
+        default:
+            return -1;
+    }
+}
+
 bool X86OperandHandler::isGPR() {
     if (Opnd->type != X86_OP_REG)
         return false;
@@ -107,6 +149,32 @@ bool X86OperandHandler::isGPR() {
     HANDLE_REG(R15)
 #undef HANDLE_REG
     return true;
+    }
+}
+
+bool X86OperandHandler::isXMM() {
+    if (Opnd->type != X86_OP_REG)
+        return 0;
+    switch (Opnd->reg) {
+        case X86_REG_XMM0:
+        case X86_REG_XMM1:
+        case X86_REG_XMM2:
+        case X86_REG_XMM3:
+        case X86_REG_XMM4:
+        case X86_REG_XMM5:
+        case X86_REG_XMM6:
+        case X86_REG_XMM7:
+        case X86_REG_XMM8:
+        case X86_REG_XMM9:
+        case X86_REG_XMM10:
+        case X86_REG_XMM11:
+        case X86_REG_XMM12:
+        case X86_REG_XMM13:
+        case X86_REG_XMM14:
+        case X86_REG_XMM15:
+            return 1;
+        default:
+            return 0;
     }
 }
 

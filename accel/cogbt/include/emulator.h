@@ -15,6 +15,8 @@ int GuestStateOffset(int Idx);
 int GuestEflagOffset(void);
 int GuestSegOffset(int SegIdx);
 int GuestEIPOffset(void);
+int GuestXMMT0Offset(void);
+int GuestMMXT0Offset(void);
 
 void helper_raise_syscall(void *p, uint64_t next_eip);
 void helper_divb_AL_wrapper(void *p, uint64_t divisor);
@@ -22,6 +24,8 @@ void helper_divw_AX_wrapper(void *p, uint64_t divisor);
 void helper_divl_EAX_wrapper(void *p, uint64_t divisor);
 void helper_divq_EAX_wrapper(void *p, uint64_t divisor);
 void helper_rdtsc_wrapper(void *p);
+void helper_pxor_xmm_wrapper(void *p, int dest, int src);
+void helper_pxor_mmx_wrapper(void *p, int dest, int src);
 #ifdef __cplusplus
 }
 #endif

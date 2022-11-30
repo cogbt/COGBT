@@ -21,6 +21,14 @@ public:
     /// return -1.
     int GetGMRID();
 
+    /// GetXMMID - If operand is a x86 xmm register, return its index(0-15), -1
+    /// otherwise.
+    int GetXMMID();
+
+    /// GetMMXID - If operand is a x86 mmx register, return its index(0-7), -1
+    /// otherwise.
+    int GetMMXID();
+
     /// GetBaseReg - If opnd is a memory operand, return the base reg id. -1
     /// otherwise.
     int GetBaseReg();
@@ -46,6 +54,9 @@ public:
 
     /// isGPR - Judge if Opnd is a GPR register.
     bool isGPR();
+
+    /// isXMM - Judge if Opnd is a XMM register.
+    bool isXMM();
 
     /// getOpndSize - Get the size(in bytes) of Opnd.
     int getOpndSize() {
