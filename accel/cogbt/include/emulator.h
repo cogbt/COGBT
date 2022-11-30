@@ -17,6 +17,7 @@ int GuestSegOffset(int SegIdx);
 int GuestEIPOffset(void);
 int GuestXMMT0Offset(void);
 int GuestMMXT0Offset(void);
+int GuestXMMOffset(int idx);
 
 void helper_raise_syscall(void *p, uint64_t next_eip);
 void helper_divb_AL_wrapper(void *p, uint64_t divisor);

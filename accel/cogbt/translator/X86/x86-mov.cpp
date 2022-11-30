@@ -73,10 +73,6 @@ void X86Translator::translate_movdqa(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movdqa\n";
     exit(-1);
 }
-void X86Translator::translate_movdqu(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movdqu\n";
-    exit(-1);
-}
 void X86Translator::translate_movhlps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movhlps\n";
     exit(-1);

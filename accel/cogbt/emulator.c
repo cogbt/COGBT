@@ -31,6 +31,10 @@ int GuestMMXT0Offset(void) {
     return offsetof(CPUX86State, mmx_t0);
 }
 
+int GuestXMMOffset(int idx) {
+    return offsetof(CPUX86State, xmm_regs[idx]);
+}
+
 int GuestSegOffset(int seg_idx) {
     switch (seg_idx) {
     case X86_REG_ES:

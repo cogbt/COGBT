@@ -37,3 +37,10 @@ void X86Translator::translate_pxor(GuestInst *Inst) {
         }
     }
 }
+
+void X86Translator::translate_movdqu(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    StoreOperand(Src, InstHdl.getOpnd(1));
+}

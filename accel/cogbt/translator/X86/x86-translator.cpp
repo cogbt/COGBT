@@ -419,6 +419,14 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd) {
     } else if (OpndHdl.isReg()) {
         if (OpndHdl.isGPR()) {
             Res = LoadGMRValue(LLVMTy, OpndHdl.GetGMRID());
+        } else if (OpndHdl.isXMM()) {
+            // The current implementation is to read xmm reg from CPUX86State
+            // directly.
+            int off = GuestXMMOffset(OpndHdl.GetXMMID());
+            Value *Addr =
+                Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
+            Addr = Builder.CreateBitCast(Addr, Int128PtrTy);
+            Res = Builder.CreateLoad(Int128Ty, Addr);
         } else {
             llvm_unreachable("Unhandled register operand type!");
         }
@@ -463,6 +471,13 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
         MemAddr =
             Builder.CreateIntToPtr(MemAddr, ResVal->getType()->getPointerTo());
         Builder.CreateStore(ResVal, MemAddr);
+    } else if (OpndHdl.isXMM()) {
+        // Current implementation is to store value into CPUX86State directly.
+        int off = GuestXMMOffset(OpndHdl.GetXMMID());
+        Value *Addr =
+            Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
+        Addr = Builder.CreateBitCast(Addr, Int128PtrTy);
+        Builder.CreateStore(ResVal, Addr);
     } else {
         llvm_unreachable("Unhandled StoreOperand type!");
     }
