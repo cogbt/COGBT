@@ -525,6 +525,8 @@ void X86Translator::AddExternalSyms() {
     EE->addGlobalMapping("helper_pxor_mmx", (uint64_t)helper_pxor_mmx_wrapper);
     EE->addGlobalMapping("helper_pcmpeqb_xmm", (uint64_t)helper_pcmpeqb_xmm_wrapper);
     EE->addGlobalMapping("helper_pcmpeqb_mmx", (uint64_t)helper_pcmpeqb_mmx_wrapper);
+    EE->addGlobalMapping("helper_pmovmskb_xmm", (uint64_t)helper_pmovmskb_xmm_wrapper);
+    EE->addGlobalMapping("helper_pmovmskb_mmx", (uint64_t)helper_pmovmskb_mmx_wrapper);
 }
 
 // CF is set if the addition of two numbers causes a carry out of the most
