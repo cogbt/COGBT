@@ -744,10 +744,6 @@ void X86Translator::translate_in(GuestInst *Inst) {
     dbgs() << "Untranslated instruction in\n";
     exit(-1);
 }
-void X86Translator::translate_inc(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction inc\n";
-    exit(-1);
-}
 void X86Translator::translate_insb(GuestInst *Inst) {
     dbgs() << "Untranslated instruction insb\n";
     exit(-1);

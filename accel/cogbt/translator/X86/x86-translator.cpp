@@ -755,6 +755,7 @@ void X86Translator::GenOF(GuestInst *Inst, Value *Dest, Value *Src0,
     case X86_INS_SHR: // TODO
     case X86_INS_SAR: // TODO
     case X86_INS_ADD: // TODO
+    case X86_INS_INC: // TODO
     case X86_INS_SHL: // TODO
         break;
 

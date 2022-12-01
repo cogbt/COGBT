@@ -399,7 +399,15 @@ void X86Translator::translate_dec(GuestInst *Inst) {
     Value *Src = LoadOperand(InstHdl.getOpnd(0));
     Value *Dest = Builder.CreateSub(Src, ConstInt(Src->getType(), 1));
     StoreOperand(Dest, InstHdl.getOpnd(0));
-    CalcEflag(Inst, Dest, Src, ConstInt(Src->getType(), 1));
+    CalcEflag(Inst, Dest, ConstInt(Src->getType(), 1), Src);
+}
+
+void X86Translator::translate_inc(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    Value *Dest = Builder.CreateAdd(Src, ConstInt(Src->getType(), 1));
+    StoreOperand(Dest, InstHdl.getOpnd(0));
+    CalcEflag(Inst, Dest, ConstInt(Src->getType(), 1), Src);
 }
 
 void X86Translator::translate_divsd(GuestInst *Inst) {
