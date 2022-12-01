@@ -110,9 +110,9 @@ void X86Translator::translate_bsf(GuestInst *Inst) {
     Value *isZero = Builder.CreateICmpEQ(Src, ConstInt(Src->getType(), 0));
     Value *Src64 = Src;
     if (Src->getType()->getIntegerBitWidth() != 64)
-        Builder.CreateZExt(Src, Int64Ty);
-    FunctionType *FuncTy = FunctionType::get(Int64Ty, Int64Ty, false);
-    Value *Idx = CallFunc(FuncTy, "llvm.cttz.i64", Src64);
+        Src64 = Builder.CreateZExt(Src, Int64Ty);
+    FunctionType *FuncTy = FunctionType::get(Int64Ty, {Int64Ty,Int1Ty}, false);
+    Value *Idx = CallFunc(FuncTy, "llvm.cttz.i64", {Src64, ConstInt(Int1Ty, 0)});
     if (Src->getType()->getIntegerBitWidth() != 64)
         Idx = Builder.CreateTrunc(Idx, Src->getType());
 

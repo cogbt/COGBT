@@ -12,6 +12,7 @@
 #include <string>
 
 void LLVMTranslator::InitializeTypes() {
+    Int1Ty = Type::getInt1Ty(Context);
     Int8Ty = Type::getInt8Ty(Context);
     Int16Ty = Type::getInt16Ty(Context);
     Int32Ty = Type::getInt32Ty(Context);
