@@ -112,7 +112,7 @@ void helper_pcmpeqb_xmm_wrapper(void *p, int dest, int src) {
     if (src != -1) { // src is not memory
         s = &env->xmm_regs[src];
     }
-    helper_pxor_xmm(env, d, s);
+    helper_pcmpeqb_xmm(env, d, s);
 }
 void helper_pcmpeqb_mmx_wrapper(void *p, int dest, int src) {
     assert(0 && "Unhandled pcmpeqb_mmx\n");
