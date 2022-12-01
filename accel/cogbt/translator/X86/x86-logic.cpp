@@ -94,12 +94,38 @@ void X86Translator::translate_neg(GuestInst *Inst) {
     CalcEflag(Inst, Dest, Src, nullptr);
 }
 
-void X86Translator::translate_nop(GuestInst *Inst) {
-}
+void X86Translator::translate_nop(GuestInst *Inst) {}
 
 void X86Translator::translate_not(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     Value *Src = LoadOperand(InstHdl.getOpnd(0));
     Value *Dest = Builder.CreateNot(Src);
     StoreOperand(Dest, InstHdl.getOpnd(0));
+}
+
+void X86Translator::translate_bsf(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    Value *Dest = LoadOperand(InstHdl.getOpnd(1));
+    Value *isZero = Builder.CreateICmpEQ(Src, ConstInt(Src->getType(), 0));
+    Value *Src64 = Src;
+    if (Src->getType()->getIntegerBitWidth() != 64)
+        Builder.CreateZExt(Src, Int64Ty);
+    FunctionType *FuncTy = FunctionType::get(Int64Ty, Int64Ty, false);
+    Value *Idx = CallFunc(FuncTy, "llvm.cttz.i64", Src64);
+    if (Src->getType()->getIntegerBitWidth() != 64)
+        Idx = Builder.CreateTrunc(Idx, Src->getType());
+
+    Dest = Builder.CreateSelect(isZero, Dest, Idx);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
+    CalcEflag(Inst, Src, nullptr, nullptr);
+}
+
+void X86Translator::translate_bsr(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction bsr\n";
+    exit(-1);
+}
+void X86Translator::translate_bswap(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction bswap\n";
+    exit(-1);
 }

@@ -157,18 +157,6 @@ void X86Translator::translate_bound(GuestInst *Inst) {
     dbgs() << "Untranslated instruction bound\n";
     exit(-1);
 }
-void X86Translator::translate_bsf(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction bsf\n";
-    exit(-1);
-}
-void X86Translator::translate_bsr(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction bsr\n";
-    exit(-1);
-}
-void X86Translator::translate_bswap(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction bswap\n";
-    exit(-1);
-}
 void X86Translator::translate_bt(GuestInst *Inst) {
     dbgs() << "Untranslated instruction bt\n";
     exit(-1);
