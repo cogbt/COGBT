@@ -58,6 +58,9 @@ public:
     /// isXMM - Judge if Opnd is a XMM register.
     bool isXMM();
 
+    /// isMMX - Judeg if Opnd is a MMX register.
+    bool isMMX();
+
     /// getOpndSize - Get the size(in bytes) of Opnd.
     int getOpndSize() {
         return Opnd->size;

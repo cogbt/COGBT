@@ -18,6 +18,46 @@ void X86Translator::translate_movabs(GuestInst *Inst) {
     StoreOperand(Src, InstHdl.getOpnd(1));
 }
 
+void X86Translator::translate_movd(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+    Value *Src = nullptr, *Dest = nullptr;
+    if (SrcOpnd.isXMM() || SrcOpnd.isMMX()) { // Dest must be r/m32
+        Src = LoadOperand(InstHdl.getOpnd(0), Int32Ty);
+        StoreOperand(Src, InstHdl.getOpnd(1));
+    } else if (DestOpnd.isXMM()) {
+        Src = LoadOperand(InstHdl.getOpnd(0)); // Src must be r/m32
+        Dest = Builder.CreateZExt(Src, Int128Ty);
+        StoreOperand(Dest, InstHdl.getOpnd(1));
+    } else { // Dest must be mmx
+        assert(DestOpnd.isMMX() && "movd dest must be mmx");
+        assert(0 && "movd mmx unfinished!");
+        // TODO
+        /* Src = LoadOperand(InstHdl.getOpnd(0)); // Src must be r/m32 */
+    }
+}
+
+void X86Translator::translate_movq(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+    Value *Src = LoadOperand(InstHdl.getOpnd(0), Int64Ty);
+    Value *Dest = nullptr;
+    if (DestOpnd.isXMM()) {
+        Dest = Builder.CreateZExt(Src, Int128Ty);
+        StoreOperand(Dest, InstHdl.getOpnd(1));
+    } else { // Dest must be mmx
+        assert(DestOpnd.isMMX() && "movd dest must be mmx");
+        assert(0 && "movd mmx unfinished!");
+        // TODO
+        /* Src = LoadOperand(InstHdl.getOpnd(0)); // Src must be r/m32 */
+    }
+
+}
+
 void X86Translator::translate_movbe(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     Value *Src = LoadOperand(InstHdl.getOpnd(0));

@@ -65,7 +65,7 @@ private: /// Currently translated instruction.
 
     /// LoadOperand - Generate llvm IRs to load a x86 operand and return the
     /// loaded value.
-    Value *LoadOperand(X86Operand *SrcOpnd);
+    Value *LoadOperand(X86Operand *SrcOpnd, Type *LoadTy = nullptr);
 
     /// StoreOperand - Generate llvm IRs to store a value into a x86 operand.
     void StoreOperand(Value *val, X86Operand *DestOpnd);

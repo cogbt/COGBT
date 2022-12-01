@@ -407,8 +407,8 @@ Value *X86Translator::CalcMemAddr(X86Operand *Opnd) {
     return MemAddr;
 }
 
-Value *X86Translator::LoadOperand(X86Operand *Opnd) {
-    Type *LLVMTy = GetOpndLLVMType(Opnd);
+Value *X86Translator::LoadOperand(X86Operand *Opnd, Type *LoadTy) {
+    Type *LLVMTy = !LoadTy ? GetOpndLLVMType(Opnd) : LoadTy;
     X86OperandHandler OpndHdl(Opnd);
 
     Value *Res = nullptr;
@@ -425,8 +425,8 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd) {
             int off = GuestXMMOffset(OpndHdl.GetXMMID());
             Value *Addr =
                 Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
-            Addr = Builder.CreateBitCast(Addr, Int128PtrTy);
-            Res = Builder.CreateLoad(Int128Ty, Addr);
+            Addr = Builder.CreateBitCast(Addr, LLVMTy->getPointerTo());
+            Res = Builder.CreateLoad(LLVMTy, Addr);
         } else {
             llvm_unreachable("Unhandled register operand type!");
         }
@@ -439,14 +439,21 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd) {
     return Res;
 }
 
+// If DestOpnd is MMX or XMM register, then the dest operand type depends on
+// ResVal, Otherwise the type of DestOpnd is the real type.
 void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
-    assert(ResVal && "StoreOperand stores an empty value!");
     X86OperandHandler OpndHdl(DestOpnd);
-    assert(ResVal->getType()->getIntegerBitWidth() >=
-           (unsigned)OpndHdl.getOpndSize() * 8);
-    // Trunc ResVal to the same bitwidth as DestOpnd.
-    if (ResVal->getType()->getIntegerBitWidth() >
-        (unsigned)(OpndHdl.getOpndSize() << 3)) {
+
+    // If DestOpnd isn't MMX or XMM, then the bitwidth of ResVal is greater or
+    // equal than DestOpnd.
+    assert(OpndHdl.isMMX() || OpndHdl.isXMM() || 
+           ResVal->getType()->getIntegerBitWidth() >=
+               (unsigned)OpndHdl.getOpndSize() * 8);
+
+    // If Dest isn't MMX/XMM, Trunc ResVal to the same bitwidth as DestOpnd.
+    if (!OpndHdl.isMMX() && !OpndHdl.isXMM() &&
+        ResVal->getType()->getIntegerBitWidth() >
+            (unsigned)(OpndHdl.getOpndSize() << 3)) {
         ResVal = Builder.CreateTrunc(ResVal, GetOpndLLVMType(DestOpnd));
     }
 
@@ -476,7 +483,7 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
         int off = GuestXMMOffset(OpndHdl.GetXMMID());
         Value *Addr =
             Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
-        Addr = Builder.CreateBitCast(Addr, Int128PtrTy);
+        Addr = Builder.CreateBitCast(Addr, ResVal->getType()->getPointerTo());
         Builder.CreateStore(ResVal, Addr);
     } else {
         llvm_unreachable("Unhandled StoreOperand type!");

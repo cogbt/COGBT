@@ -1264,10 +1264,6 @@ void X86Translator::translate_maskmovq(GuestInst *Inst) {
     dbgs() << "Untranslated instruction maskmovq\n";
     exit(-1);
 }
-void X86Translator::translate_movd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movd\n";
-    exit(-1);
-}
 void X86Translator::translate_movdq2q(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movdq2q\n";
     exit(-1);
@@ -1279,13 +1275,6 @@ void X86Translator::translate_movntq(GuestInst *Inst) {
 void X86Translator::translate_movq2dq(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movq2dq\n";
     exit(-1);
-}
-void X86Translator::translate_movq(GuestInst *Inst) {
-    X86InstHandler InstHdl(Inst);
-    Value *Src = LoadOperand(InstHdl.getOpnd(1));
-    Value *Dest = Builder.CreateOr(Src, ConstInt(Src->getType(), 0));
-    StoreOperand(Dest, InstHdl.getOpnd(1));
-    // CalcEflag();
 }
 void X86Translator::translate_pabsb(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pabsb\n";

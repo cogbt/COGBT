@@ -178,6 +178,24 @@ bool X86OperandHandler::isXMM() {
     }
 }
 
+bool X86OperandHandler::isMMX() {
+    if (Opnd->type != X86_OP_REG)
+        return 0;
+    switch (Opnd->reg) {
+        case X86_REG_MM0:
+        case X86_REG_MM1:
+        case X86_REG_MM2:
+        case X86_REG_MM3:
+        case X86_REG_MM4:
+        case X86_REG_MM5:
+        case X86_REG_MM6:
+        case X86_REG_MM7:
+            return 1;
+        default:
+            return 0;
+    }
+}
+
 int X86OperandHandler::GetBaseReg() {
     if (Opnd->type != X86_OP_MEM) {
         llvm_unreachable("x86 operand is not a mem opnd!");
