@@ -125,3 +125,30 @@ void helper_pmovmskb_xmm_wrapper(void *p, int index) {
 void helper_pmovmskb_mmx_wrapper(void *p, int index) {
     assert(0 && "Unhandled pmovmskb_mmx\n");
 }
+
+void helper_punpcklbw_xmm_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_punpcklbw_xmm(env, d, s);
+}
+void helper_punpcklbw_mmx_wrapper(void *p, int dest, int src) {
+    assert(0 && "Unfinished pxor_mmx\n");
+}
+
+void helper_punpcklwd_xmm_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_punpcklwd_xmm(env, d, s);
+}
+
+void helper_punpcklwd_mmx_wrapper(void *p, int dest, int src) {
+    assert(0 && "Unfinished pxor_mmx\n");
+}

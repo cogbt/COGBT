@@ -1532,30 +1532,6 @@ void X86Translator::translate_psubw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction psubw\n";
     exit(-1);
 }
-void X86Translator::translate_punpckhbw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction punpckhbw\n";
-    exit(-1);
-}
-void X86Translator::translate_punpckhdq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction punpckhdq\n";
-    exit(-1);
-}
-void X86Translator::translate_punpckhwd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction punpckhwd\n";
-    exit(-1);
-}
-void X86Translator::translate_punpcklbw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction punpcklbw\n";
-    exit(-1);
-}
-void X86Translator::translate_punpckldq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction punpckldq\n";
-    exit(-1);
-}
-void X86Translator::translate_punpcklwd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction punpcklwd\n";
-    exit(-1);
-}
 void X86Translator::translate_monitor(GuestInst *Inst) {
     dbgs() << "Untranslated instruction monitor\n";
     exit(-1);

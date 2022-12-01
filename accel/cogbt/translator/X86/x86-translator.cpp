@@ -490,21 +490,19 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
     }
 }
 
-void X86Translator::FlushXMMT0(Value *XMMV) {
-    assert(XMMV->getType()->getIntegerBitWidth() == 128 &&
-           "XMM value shoudld be 128 bit width");
+void X86Translator::FlushXMMT0(Value *XMMV, Type *FlushTy) {
+    if (!FlushTy) FlushTy = Int128PtrTy;
     int off = GuestXMMT0Offset();
     Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
-    Addr = Builder.CreateBitCast(Addr, Int128PtrTy);
+    Addr = Builder.CreateBitCast(Addr, FlushTy);
     Builder.CreateStore(XMMV, Addr);
 }
 
-void X86Translator::FlushMMXT0(Value *MMXV) {
-    assert(MMXV->getType()->getIntegerBitWidth() == 64 &&
-           "MMX value shoudld be 64 bit width");
+void X86Translator::FlushMMXT0(Value *MMXV, Type *FlushTy) {
+    if (!FlushTy) FlushTy = Int64PtrTy;
     int off = GuestMMXT0Offset();
     Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
-    Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
+    Addr = Builder.CreateBitCast(Addr, FlushTy);
     Builder.CreateStore(MMXV, Addr);
 }
 
@@ -534,6 +532,10 @@ void X86Translator::AddExternalSyms() {
     EE->addGlobalMapping("helper_pcmpeqb_mmx", (uint64_t)helper_pcmpeqb_mmx_wrapper);
     EE->addGlobalMapping("helper_pmovmskb_xmm", (uint64_t)helper_pmovmskb_xmm_wrapper);
     EE->addGlobalMapping("helper_pmovmskb_mmx", (uint64_t)helper_pmovmskb_mmx_wrapper);
+    EE->addGlobalMapping("helper_punpcklbw_xmm", (uint64_t)helper_punpcklbw_xmm_wrapper);
+    EE->addGlobalMapping("helper_punpcklbw_mmx", (uint64_t)helper_punpcklbw_mmx_wrapper);
+    EE->addGlobalMapping("helper_punpcklwd_xmm", (uint64_t)helper_punpcklwd_xmm_wrapper);
+    EE->addGlobalMapping("helper_punpcklwd_mmx", (uint64_t)helper_punpcklwd_mmx_wrapper);
 }
 
 // CF is set if the addition of two numbers causes a carry out of the most

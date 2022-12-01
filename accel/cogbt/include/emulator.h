@@ -31,6 +31,10 @@ void helper_pcmpeqb_xmm_wrapper(void *p, int dest, int src);
 void helper_pcmpeqb_mmx_wrapper(void *p, int dest, int src);
 void helper_pmovmskb_xmm_wrapper(void *p, int index);
 void helper_pmovmskb_mmx_wrapper(void *p, int index);
+void helper_punpcklbw_xmm_wrapper(void *p, int dest, int src);
+void helper_punpcklbw_mmx_wrapper(void *p, int dest, int src);
+void helper_punpcklwd_xmm_wrapper(void *p, int dest, int src);
+void helper_punpcklwd_mmx_wrapper(void *p, int dest, int src);
 #ifdef __cplusplus
 }
 #endif

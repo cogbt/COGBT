@@ -89,8 +89,8 @@ private: /// Currently translated instruction.
     /// FlushXMMT0 - In qemu, some simd helper use xmm_t0 and mmx_t0 as implicit
     /// source operand, so translator need to flush the source value into them
     /// and then call helpers.
-    void FlushXMMT0(Value *XMMV);
-    void FlushMMXT0(Value *MMXV);
+    void FlushXMMT0(Value *XMMV, Type *FlushTy = nullptr);
+    void FlushMMXT0(Value *MMXV, Type *FlushTy = nullptr);
 
     /// CallFunc - Generate llvm IRs to call a llvm function, maybe a helper.
     Value *CallFunc(FunctionType *FuncTy, std::string Name,
