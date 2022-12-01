@@ -1889,18 +1889,6 @@ void X86Translator::translate_prefetchw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction prefetchw\n";
     exit(-1);
 }
-void X86Translator::translate_pshufd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pshufd\n";
-    exit(-1);
-}
-void X86Translator::translate_pshufhw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pshufhw\n";
-    exit(-1);
-}
-void X86Translator::translate_pshuflw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pshuflw\n";
-    exit(-1);
-}
 void X86Translator::translate_pslldq(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pslldq\n";
     exit(-1);

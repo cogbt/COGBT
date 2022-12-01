@@ -152,3 +152,10 @@ void helper_punpcklwd_xmm_wrapper(void *p, int dest, int src) {
 void helper_punpcklwd_mmx_wrapper(void *p, int dest, int src) {
     assert(0 && "Unfinished pxor_mmx\n");
 }
+
+void helper_pshufd_xmm_wrapper(void *p, int dest, int src, int order) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_regs[src];
+    helper_pshufd_xmm(d, s, order);
+}

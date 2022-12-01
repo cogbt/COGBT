@@ -536,6 +536,7 @@ void X86Translator::AddExternalSyms() {
     EE->addGlobalMapping("helper_punpcklbw_mmx", (uint64_t)helper_punpcklbw_mmx_wrapper);
     EE->addGlobalMapping("helper_punpcklwd_xmm", (uint64_t)helper_punpcklwd_xmm_wrapper);
     EE->addGlobalMapping("helper_punpcklwd_mmx", (uint64_t)helper_punpcklwd_mmx_wrapper);
+    EE->addGlobalMapping("helper_pshufd", (uint64_t)helper_pshufd_xmm_wrapper);
 }
 
 // CF is set if the addition of two numbers causes a carry out of the most

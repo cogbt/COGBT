@@ -201,3 +201,35 @@ void X86Translator::translate_punpcklwd(GuestInst *Inst) {
         }
     }
 }
+
+void X86Translator::translate_pshufd(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    Src0 = Builder.CreateZExtOrTrunc(Src0, Int32Ty);
+
+    X86OperandHandler Src1Opnd(InstHdl.getOpnd(1));
+    Value *Src1 = nullptr;
+    if (Src1Opnd.isMem()) {
+        Src1 = LoadOperand(InstHdl.getOpnd(1));
+        FlushXMMT0(Src1);
+        Src1 = ConstInt(Int64Ty, -1);
+    } else {
+        Src1 = ConstInt(Int64Ty, Src1Opnd.GetXMMID());
+    }
+
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+    Value *Dest = ConstInt(Int64Ty, DestOpnd.GetXMMID());
+
+    FunctionType *FuncTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty, Int32Ty}, false);
+    CallFunc(FuncTy, "helper_pshufd", {CPUEnv, Dest, Src1, Src0});
+}
+
+void X86Translator::translate_pshufhw(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction pshufhw\n";
+    exit(-1);
+}
+void X86Translator::translate_pshuflw(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction pshuflw\n";
+    exit(-1);
+}
