@@ -2124,10 +2124,6 @@ void X86Translator::translate_salc(GuestInst *Inst) {
     dbgs() << "Untranslated instruction salc\n";
     exit(-1);
 }
-void X86Translator::translate_sar(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction sar\n";
-    exit(-1);
-}
 void X86Translator::translate_sarx(GuestInst *Inst) {
     dbgs() << "Untranslated instruction sarx\n";
     exit(-1);

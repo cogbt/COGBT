@@ -27,6 +27,20 @@ void X86Translator::translate_or(GuestInst *Inst) {
     CalcEflag(Inst, Dest, Src0, Src1);
 }
 
+void X86Translator::translate_sar(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    Value *Src1 = LoadOperand(InstHdl.getOpnd(1));
+    int Src0Size = Src0->getType()->getIntegerBitWidth();
+    int Src1Size = Src1->getType()->getIntegerBitWidth();
+    if (Src0Size < Src1Size) {
+        Src0 = Builder.CreateZExt(Src0, Src1->getType());
+    }
+    Value *Dest = Builder.CreateAShr(Src1, Src0);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
+    CalcEflag(Inst, Dest, Src0, Src1);
+}
+
 void X86Translator::translate_shr(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
