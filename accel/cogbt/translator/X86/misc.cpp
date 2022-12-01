@@ -1379,18 +1379,6 @@ void X86Translator::translate_pavgw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pavgw\n";
     exit(-1);
 }
-void X86Translator::translate_pcmpeqb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pcmpeqb\n";
-    exit(-1);
-}
-void X86Translator::translate_pcmpeqd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pcmpeqd\n";
-    exit(-1);
-}
-void X86Translator::translate_pcmpeqw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pcmpeqw\n";
-    exit(-1);
-}
 void X86Translator::translate_pcmpgtb(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pcmpgtb\n";
     exit(-1);
@@ -1457,10 +1445,6 @@ void X86Translator::translate_pminsw(GuestInst *Inst) {
 }
 void X86Translator::translate_pminub(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pminub\n";
-    exit(-1);
-}
-void X86Translator::translate_pmovmskb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pmovmskb\n";
     exit(-1);
 }
 void X86Translator::translate_pmulhrsw(GuestInst *Inst) {

@@ -103,11 +103,25 @@ void helper_pxor_xmm_wrapper(void *p, int dest, int src) {
 }
 void helper_pxor_mmx_wrapper(void *p, int dest, int src) {
     assert(0 && "Unfinished pxor_mmx\n");
-    /* CPUX86State *env = (CPUX86State *)p; */
-    /* Reg *d = &env->mmx_regs[dest]; */
-    /* Reg *s = &env->mmx_t0; */
-    /* if (src != -1) { // src is not memory */
-    /*     &env->mmx_regs[src]; */
-    /* } */
-    /* helper_pxor_xmm(env, d, s); */
+}
+
+void helper_pcmpeqb_xmm_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_pxor_xmm(env, d, s);
+}
+void helper_pcmpeqb_mmx_wrapper(void *p, int dest, int src) {
+    assert(0 && "Unhandled pcmpeqb_mmx\n");
+}
+void helper_pmovmskb_xmm_wrapper(void *p, int index) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *s = &env->xmm_regs[index];
+    helper_pmovmskb_xmm(env, s);
+}
+void helper_pmovmskb_mmx_wrapper(void *p, int index) {
+    assert(0 && "Unhandled pmovmskb_mmx\n");
 }

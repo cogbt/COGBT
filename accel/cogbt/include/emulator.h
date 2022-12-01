@@ -27,6 +27,10 @@ void helper_divq_EAX_wrapper(void *p, uint64_t divisor);
 void helper_rdtsc_wrapper(void *p);
 void helper_pxor_xmm_wrapper(void *p, int dest, int src);
 void helper_pxor_mmx_wrapper(void *p, int dest, int src);
+void helper_pcmpeqb_xmm_wrapper(void *p, int dest, int src);
+void helper_pcmpeqb_mmx_wrapper(void *p, int dest, int src);
+void helper_pmovmskb_xmm_wrapper(void *p, int index);
+void helper_pmovmskb_mmx_wrapper(void *p, int index);
 #ifdef __cplusplus
 }
 #endif
