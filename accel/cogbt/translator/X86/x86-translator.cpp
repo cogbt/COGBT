@@ -361,7 +361,7 @@ void X86Translator::StoreGMRValue(Value *V, int GMRId, bool isHSubReg) {
                                                 V->getType()->getPointerTo());
             if (isHSubReg) {
                 assert(V->getType()->getIntegerBitWidth() == 8);
-                Addr = Builder.CreateGEP(Addr, ConstInt(Int64Ty, 1));
+                Addr = Builder.CreateGEP(Int8PtrTy, Addr, ConstInt(Int64Ty, 1));
             }
             Builder.CreateStore(V, Addr);
         }
@@ -546,6 +546,11 @@ void X86Translator::AddExternalSyms() {
     EE->addGlobalMapping("helper_divw_AX", (uint64_t)helper_divw_AX_wrapper);
     EE->addGlobalMapping("helper_divl_EAX", (uint64_t)helper_divl_EAX_wrapper);
     EE->addGlobalMapping("helper_divq_EAX", (uint64_t)helper_divq_EAX_wrapper);
+    EE->addGlobalMapping("helper_idivb_AL", (uint64_t)helper_idivb_AL_wrapper);
+    EE->addGlobalMapping("helper_idivw_AX", (uint64_t)helper_idivw_AX_wrapper);
+    EE->addGlobalMapping("helper_idivl_EAX", (uint64_t)helper_idivl_EAX_wrapper);
+    EE->addGlobalMapping("helper_idivq_EAX", (uint64_t)helper_idivq_EAX_wrapper);
+
     EE->addGlobalMapping("helper_rdtsc", (uint64_t)helper_rdtsc_wrapper);
     EE->addGlobalMapping("helper_pxor_xmm", (uint64_t)helper_pxor_xmm_wrapper);
     EE->addGlobalMapping("helper_pxor_mmx", (uint64_t)helper_pxor_mmx_wrapper);

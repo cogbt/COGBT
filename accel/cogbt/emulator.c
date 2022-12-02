@@ -1,12 +1,12 @@
 #include "qemu/osdep.h"
 #include "cpu.h"
 #include "exec/exec-all.h"
-#include "emulator.h"
 #include "tcg/tcg-op.h"
 #include "exec/helper-proto.h"
 #include "exec/helper-gen.h"
 #include "target/i386/tcg/helper-tcg.h"
 #include "x86.h"
+#include "emulator.h"
 
 /* #include "exec/log.h" */
 
@@ -85,6 +85,18 @@ void helper_divl_EAX_wrapper(void *p, uint64_t divisor) {
 }
 void helper_divq_EAX_wrapper(void *p, uint64_t divisor) {
     helper_divq_EAX((CPUX86State *)p, divisor);
+}
+void helper_idivb_AL_wrapper(void *p, uint64_t divisor) {
+    helper_idivb_AL((CPUX86State *)p, divisor);
+}
+void helper_idivw_AX_wrapper(void *p, uint64_t divisor) {
+    helper_idivw_AX((CPUX86State *)p, divisor);
+}
+void helper_idivl_EAX_wrapper(void *p, uint64_t divisor) {
+    helper_idivl_EAX((CPUX86State *)p, divisor);
+}
+void helper_idivq_EAX_wrapper(void *p, uint64_t divisor) {
+    helper_idivq_EAX((CPUX86State *)p, divisor);
 }
 
 /* extern void helper_rdtsc(CPUArchState *env); */

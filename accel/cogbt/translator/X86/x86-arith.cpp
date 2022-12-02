@@ -388,6 +388,54 @@ void X86Translator::translate_div(GuestInst *Inst) {
     /* } */
 }
 
+void X86Translator::translate_idiv(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    Value *Divisor = LoadOperand(InstHdl.getOpnd(0));
+    FunctionType *FuncTy = nullptr;
+    switch (Divisor->getType()->getIntegerBitWidth()) {
+    case 8: {
+        Divisor = Builder.CreateZExt(Divisor, Int64Ty);
+        FlushGMRValue(X86Config::RAX);
+        FuncTy = FunctionType::get(VoidTy, {Int8PtrTy,Int64Ty}, false);
+        CallFunc(FuncTy, "helper_idivb_AL", {CPUEnv, Divisor});
+        ReloadGMRValue(X86Config::RAX);
+        break;
+    }
+    case 16: {
+        Divisor = Builder.CreateZExt(Divisor, Int64Ty);
+        FlushGMRValue(X86Config::RAX);
+        FlushGMRValue(X86Config::RDX);
+        FuncTy = FunctionType::get(VoidTy, {Int8PtrTy,Int64Ty}, false);
+        CallFunc(FuncTy, "helper_idivw_AX", {CPUEnv, Divisor});
+        ReloadGMRValue(X86Config::RAX);
+        ReloadGMRValue(X86Config::RDX);
+        break;
+    }
+    case 32: {
+        Divisor = Builder.CreateZExt(Divisor, Int64Ty);
+        FlushGMRValue(X86Config::RAX);
+        FlushGMRValue(X86Config::RDX);
+        FuncTy = FunctionType::get(VoidTy, {Int8PtrTy,Int64Ty}, false);
+        CallFunc(FuncTy, "helper_idivd_EAX", {CPUEnv, Divisor});
+        ReloadGMRValue(X86Config::RAX);
+        ReloadGMRValue(X86Config::RDX);
+        break;
+    }
+    case 64: {
+        Divisor = Builder.CreateZExt(Divisor, Int64Ty);
+        FlushGMRValue(X86Config::RAX);
+        FlushGMRValue(X86Config::RDX);
+        FuncTy = FunctionType::get(VoidTy, {Int8PtrTy,Int64Ty}, false);
+        CallFunc(FuncTy, "helper_idivq_EAX", {CPUEnv, Divisor});
+        ReloadGMRValue(X86Config::RAX);
+        ReloadGMRValue(X86Config::RDX);
+        break;
+    }
+    default:
+        llvm_unreachable("Unexpected bit width of div\n");
+    }
+}
+
 void X86Translator::translate_divpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction divpd\n";
     exit(-1);

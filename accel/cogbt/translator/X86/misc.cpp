@@ -735,10 +735,6 @@ void X86Translator::translate_hsubps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction hsubps\n";
     exit(-1);
 }
-void X86Translator::translate_idiv(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction idiv\n";
-    exit(-1);
-}
 void X86Translator::translate_fild(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fild\n";
     exit(-1);
