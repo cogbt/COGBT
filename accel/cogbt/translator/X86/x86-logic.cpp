@@ -142,4 +142,40 @@ void X86Translator::translate_bsr(GuestInst *Inst) {
 }
 
 void X86Translator::translate_bswap(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction bswap\n";
+    exit(-1);
+}
+
+void X86Translator::translate_rol(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    Value *Src1 = LoadOperand(InstHdl.getOpnd(1));
+    Type *Ty = Src1->getType();
+    Src0 = Builder.CreateZExtOrTrunc(Src0, Ty);
+
+    FunctionType *FuncTy = FunctionType::get(Ty, {Ty, Ty, Ty}, false);
+    std::string IntrinsicName("");
+    if (Ty->getIntegerBitWidth() == 8) {
+        IntrinsicName = "llvm.fshl.i8";
+    } else if (Ty->getIntegerBitWidth() == 16) {
+        IntrinsicName = "llvm.fshl.i16";
+    } else if (Ty->getIntegerBitWidth() == 32) {
+        IntrinsicName = "llvm.fshl.i32";
+    } else {
+        IntrinsicName = "llvm.fshl.i64";
+    }
+    Value *Dest = CallFunc(FuncTy, IntrinsicName, {Src1, Src1, Src0});
+    StoreOperand(Dest, InstHdl.getOpnd(1));
+    CalcEflag(Inst, Dest, Src0, Src1);
+}
+
+void X86Translator::translate_ror(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction ror\n";
+    exit(-1);
+}
+
+void X86Translator::translate_rorx(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction rorx\n";
+    exit(-1);
 }

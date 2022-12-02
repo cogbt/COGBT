@@ -670,6 +670,8 @@ void X86Translator::GenCF(GuestInst *Inst, Value *Dest, Value *Src0,
         StoreGMRValue(NewEflag, X86Config::EFLAG);
         break;
     }
+    case X86_INS_ROL: //TODO
+        break;
 
     }
 }
@@ -771,6 +773,7 @@ void X86Translator::GenOF(GuestInst *Inst, Value *Dest, Value *Src0,
     case X86_INS_ADD: // TODO
     case X86_INS_INC: // TODO
     case X86_INS_SHL: // TODO
+    case X86_INS_ROL: //TODO
         break;
 
     }

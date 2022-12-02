@@ -2009,18 +2009,6 @@ void X86Translator::translate_rdtscp(GuestInst *Inst) {
     dbgs() << "Untranslated instruction rdtscp\n";
     exit(-1);
 }
-void X86Translator::translate_rol(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction rol\n";
-    exit(-1);
-}
-void X86Translator::translate_ror(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction ror\n";
-    exit(-1);
-}
-void X86Translator::translate_rorx(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction rorx\n";
-    exit(-1);
-}
 void X86Translator::translate_roundpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction roundpd\n";
     exit(-1);
