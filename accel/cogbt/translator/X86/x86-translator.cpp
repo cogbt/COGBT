@@ -564,6 +564,7 @@ void X86Translator::GenCF(GuestInst *Inst, Value *Dest, Value *Src0,
     case X86_INS_SCASW:
     case X86_INS_SCASD:
     case X86_INS_SUB:
+    case X86_INS_SBB:
     case X86_INS_CMPSB:
     case X86_INS_CMPSW:
     case X86_INS_CMPSD:
@@ -696,6 +697,7 @@ void X86Translator::GenOF(GuestInst *Inst, Value *Dest, Value *Src0,
         break;
     }
     case X86_INS_SUB:
+    case X86_INS_SBB:
     case X86_INS_CMP:
     case X86_INS_CMPXCHG:
     case X86_INS_DEC: {
