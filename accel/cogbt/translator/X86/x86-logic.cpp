@@ -132,10 +132,9 @@ void X86Translator::translate_bsr(GuestInst *Inst) {
     FunctionType *FuncTy = FunctionType::get(Int64Ty, {Int64Ty,Int1Ty}, false);
     Value *Idx = CallFunc(FuncTy, "llvm.ctlz.i64", {Src64, ConstInt(Int1Ty, 0)});
     if (Src->getType()->getIntegerBitWidth() != 64) {
-        int diff = 64 - Src->getType()->getIntegerBitWidth();
         Idx = Builder.CreateTrunc(Idx, Src->getType());
-        Idx = Builder.CreateSub(Idx, ConstInt(Idx->getType(), diff));
     }
+    Idx = Builder.CreateSub(ConstInt(Idx->getType(), 63), Idx);
 
     Dest = Builder.CreateSelect(isZero, Dest, Idx);
     StoreOperand(Dest, InstHdl.getOpnd(1));
