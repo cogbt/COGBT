@@ -68,6 +68,7 @@ void X86Translator::InitializeFunction(StringRef Name) {
         // Sync these values into mapped host physical registers.
         SetPhysicalRegValue(HostRegNames[GMRToHMR(i)], GMRVal);
     }
+    SetPhysicalRegValue(HostRegNames[HostS2], CPUEnv);
 
     // Call Epilogue to do context switch.
     Builder.CreateCall(Mod->getFunction("epilogue"));
