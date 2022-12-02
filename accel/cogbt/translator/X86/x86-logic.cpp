@@ -122,10 +122,25 @@ void X86Translator::translate_bsf(GuestInst *Inst) {
 }
 
 void X86Translator::translate_bsr(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction bsr\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    Value *Dest = LoadOperand(InstHdl.getOpnd(1));
+    Value *isZero = Builder.CreateICmpEQ(Src, ConstInt(Src->getType(), 0));
+    Value *Src64 = Src;
+    if (Src->getType()->getIntegerBitWidth() != 64)
+        Src64 = Builder.CreateZExt(Src, Int64Ty);
+    FunctionType *FuncTy = FunctionType::get(Int64Ty, {Int64Ty,Int1Ty}, false);
+    Value *Idx = CallFunc(FuncTy, "llvm.ctlz.i64", {Src64, ConstInt(Int1Ty, 0)});
+    if (Src->getType()->getIntegerBitWidth() != 64) {
+        int diff = 64 - Src->getType()->getIntegerBitWidth();
+        Idx = Builder.CreateTrunc(Idx, Src->getType());
+        Idx = Builder.CreateSub(Idx, ConstInt(Idx->getType(), diff));
+    }
+
+    Dest = Builder.CreateSelect(isZero, Dest, Idx);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
+    CalcEflag(Inst, Src, nullptr, nullptr);
 }
+
 void X86Translator::translate_bswap(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction bswap\n";
-    exit(-1);
 }
