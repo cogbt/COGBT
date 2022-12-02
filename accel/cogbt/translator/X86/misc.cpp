@@ -352,10 +352,13 @@ void X86Translator::translate_cpuid(GuestInst *Inst) {
     Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
     StoreGMRValue(Builder.CreateLoad(Int64Ty, Addr), X86Config::RDX);
 }
+
 void X86Translator::translate_cqo(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cqo\n";
-    exit(-1);
+    Value *Src = LoadGMRValue(Int64Ty, X86Config::RAX);
+    Src = Builder.CreateAShr(Src, ConstInt(Int64Ty, 63));
+    StoreGMRValue(Src, X86Config::RDX);
 }
+
 void X86Translator::translate_crc32(GuestInst *Inst) {
     dbgs() << "Untranslated instruction crc32\n";
     exit(-1);
