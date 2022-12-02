@@ -111,10 +111,13 @@ void X86Translator::translate_movddup(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movddup\n";
     exit(-1);
 }
+
 void X86Translator::translate_movdqa(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movdqa\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    StoreOperand(Src, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_movhlps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movhlps\n";
     exit(-1);
