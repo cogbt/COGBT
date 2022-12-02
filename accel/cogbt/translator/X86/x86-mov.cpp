@@ -49,11 +49,13 @@ void X86Translator::translate_movq(GuestInst *Inst) {
     if (DestOpnd.isXMM()) {
         Dest = Builder.CreateZExt(Src, Int128Ty);
         StoreOperand(Dest, InstHdl.getOpnd(1));
-    } else { // Dest must be mmx
+    } else if (DestOpnd.isMMX()) { // Dest must be mmx
         assert(DestOpnd.isMMX() && "movd dest must be mmx");
         assert(0 && "movd mmx unfinished!");
         // TODO
         /* Src = LoadOperand(InstHdl.getOpnd(0)); // Src must be r/m32 */
+    } else { // Dest is r/m64
+        StoreOperand(Src, InstHdl.getOpnd(1));
     }
 
 }
