@@ -171,8 +171,27 @@ void X86Translator::translate_rol(GuestInst *Inst) {
 }
 
 void X86Translator::translate_ror(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction ror\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    Value *Src1 = LoadOperand(InstHdl.getOpnd(1));
+    Type *Ty = Src1->getType();
+    Src0 = Builder.CreateZExtOrTrunc(Src0, Ty);
+
+    FunctionType *FuncTy = FunctionType::get(Ty, {Ty, Ty, Ty}, false);
+    std::string IntrinsicName("");
+    if (Ty->getIntegerBitWidth() == 8) {
+        IntrinsicName = "llvm.fshr.i8";
+    } else if (Ty->getIntegerBitWidth() == 16) {
+        IntrinsicName = "llvm.fshr.i16";
+    } else if (Ty->getIntegerBitWidth() == 32) {
+        IntrinsicName = "llvm.fshr.i32";
+    } else {
+        IntrinsicName = "llvm.fshr.i64";
+    }
+    Value *Dest = CallFunc(FuncTy, IntrinsicName, {Src1, Src1, Src0});
+    StoreOperand(Dest, InstHdl.getOpnd(1));
+    CalcEflag(Inst, Dest, Src0, Src1);
 }
 
 void X86Translator::translate_rorx(GuestInst *Inst) {
