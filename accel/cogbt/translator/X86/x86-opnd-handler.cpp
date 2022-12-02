@@ -52,6 +52,21 @@ int X86OperandHandler::NormalizeGuestReg(int GuestRegID) {
     }
 }
 
+bool X86OperandHandler::isHSubReg() {
+    if (Opnd->type != X86_OP_REG) {
+        llvm_unreachable("x86 operand is not a reg!");
+    }
+    switch (Opnd->reg) {
+    case X86_REG_AH:
+    case X86_REG_BH:
+    case X86_REG_CH:
+    case X86_REG_DH:
+        return true;
+    default:
+        return false;
+    }
+}
+
 int X86OperandHandler::GetGMRID() {
     if (Opnd->type != X86_OP_REG) {
         llvm_unreachable("x86 operand is not a reg!");

@@ -179,3 +179,11 @@ void X86Translator::translate_rorx(GuestInst *Inst) {
     dbgs() << "Untranslated instruction rorx\n";
     exit(-1);
 }
+
+void X86Translator::translate_test(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
+    Value *Src1 = LoadOperand(InstHdl.getOpnd(1));
+    Value *Dest = Builder.CreateAnd(Src0, Src1);
+    CalcEflag(Inst, Dest, Src0, Src1);
+}

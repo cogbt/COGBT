@@ -55,6 +55,9 @@ public:
     /// isGPR - Judge if Opnd is a GPR register.
     bool isGPR();
 
+    /// isHSubReg - Judge if Opnd is GPR AH,BH,CH,DH,SIH,DIH
+    bool isHSubReg();
+
     /// isXMM - Judge if Opnd is a XMM register.
     bool isXMM();
 

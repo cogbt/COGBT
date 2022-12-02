@@ -54,10 +54,10 @@ private: /// Currently translated instruction.
     /// LoadGMRValue - Load the GMR value from GMRStates. If GMRVals have cached
     /// this value, return it directly. Otherwise load it from GMRStates first.
     /// NOTE! \p Ty should be integer type.
-    Value *LoadGMRValue(Type *Ty, int GMRId);
+    Value *LoadGMRValue(Type *Ty, int GMRId, bool isHSubReg = false);
 
     /// StoreGMRValue - Store value V to GMRVals.
-    void StoreGMRValue(Value *V, int GMRId);
+    void StoreGMRValue(Value *V, int GMRId, bool isHSubReg = false);
 
     /// CalcMemAddr - Generate llvm IRs to calculate memory address of a memory
     /// operand.

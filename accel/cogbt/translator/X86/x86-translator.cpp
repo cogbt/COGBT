@@ -299,13 +299,18 @@ Type *X86Translator::GetOpndLLVMType(int size) {
     }
 }
 
-Value *X86Translator::LoadGMRValue(Type *Ty, int GMRId) {
+Value *X86Translator::LoadGMRValue(Type *Ty, int GMRId, bool isHSubReg) {
     assert(Ty->isIntegerTy() && "Type is not a integer type!");
     if (GMRVals[GMRId].hasValue()) {
         Value *V = GMRVals[GMRId].getValue();
         if (Ty->isIntegerTy(64)) {
             return V;
         } else {
+            if (isHSubReg) {
+                assert(Ty->getIntegerBitWidth() == 8 && "HSubReg should be 8 bit");
+                V = Builder.CreateLShr(V, ConstInt(V->getType(), 8));
+                V = Builder.CreateAnd(V, ConstInt(V->getType(), 0xff));
+            }
             V = Builder.CreateTrunc(V, Ty);
             return V;
         }
@@ -322,12 +327,15 @@ Value *X86Translator::LoadGMRValue(Type *Ty, int GMRId) {
 
     /* Builder.SetInsertPoint(CurrBB); */
 
-    if (!Ty->isIntegerTy(64))
+    if (!Ty->isIntegerTy(64)) {
+        if (isHSubReg)
+            V = Builder.CreateAShr(V, ConstInt(Int64Ty, 8));
         V = Builder.CreateTrunc(V, Ty);
+    }
     return V;
 }
 
-void X86Translator::StoreGMRValue(Value *V, int GMRId) {
+void X86Translator::StoreGMRValue(Value *V, int GMRId, bool isHSubReg) {
     assert(V->getType()->isIntegerTy() && "V is not a interger type!");
     assert((unsigned)GMRId < GMRVals.size() && "GMRId is too large!");
 
@@ -336,14 +344,25 @@ void X86Translator::StoreGMRValue(Value *V, int GMRId) {
     } else {
         if (GMRVals[GMRId].hasValue()) {
             uint64_t mask = ~((1ULL << V->getType()->getIntegerBitWidth()) - 1);
+            if (isHSubReg) {
+                mask = 0xffffffffffff00ff;
+                assert(V->getType()->getIntegerBitWidth() == 8);
+                V = Builder.CreateZExt(V, Int64Ty);
+                V = Builder.CreateShl(V, ConstInt(Int64Ty, 8));
+            } else
+                V = Builder.CreateZExt(V, Int64Ty);
             Value *OldV = Builder.CreateAnd(GMRVals[GMRId].getValue(),
                                             ConstantInt::get(Int64Ty, mask));
-            Value *Res = Builder.CreateOr(OldV, Builder.CreateZExt(V, Int64Ty));
+            Value *Res = Builder.CreateOr(OldV, V);
             GMRVals[GMRId].set(Res, true);
         } else {
             // GMRVals haven't cached GMRId, so store V into GMRStates directly.
             Value *Addr = Builder.CreateBitCast(GMRStates[GMRId],
                                                 V->getType()->getPointerTo());
+            if (isHSubReg) {
+                assert(V->getType()->getIntegerBitWidth() == 8);
+                Addr = Builder.CreateGEP(Addr, ConstInt(Int64Ty, 1));
+            }
             Builder.CreateStore(V, Addr);
         }
     }
@@ -420,7 +439,7 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd, Type *LoadTy) {
                                 ConstantInt::get(LLVMTy, Opnd->imm));
     } else if (OpndHdl.isReg()) {
         if (OpndHdl.isGPR()) {
-            Res = LoadGMRValue(LLVMTy, OpndHdl.GetGMRID());
+            Res = LoadGMRValue(LLVMTy, OpndHdl.GetGMRID(), OpndHdl.isHSubReg());
         } else if (OpndHdl.isXMM()) {
             // The current implementation is to read xmm reg from CPUX86State
             // directly.
@@ -471,7 +490,7 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
                 ResVal = Builder.CreateZExt(ResVal, Int64Ty);
             }
         }
-        StoreGMRValue(ResVal, OpndHdl.GetGMRID());
+        StoreGMRValue(ResVal, OpndHdl.GetGMRID(), OpndHdl.isHSubReg());
     } else if (OpndHdl.isMem()) {
         Value *MemAddr = CalcMemAddr(DestOpnd);
         /* if (!ResVal->getType()->isIntegerTy(64)) { */
