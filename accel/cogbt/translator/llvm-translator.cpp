@@ -8,8 +8,34 @@
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include "llvm/Support/Host.h"
+#include "llvm/Support/FileSystem.h"
 #include <memory>
 #include <string>
+
+void LLVMTranslator::InitializeTarget() {
+    // Initialize the target registry etc.
+    InitializeAllTargetInfos();
+    InitializeAllTargets();
+    InitializeAllTargetMCs();
+    InitializeAllAsmParsers();
+    InitializeAllAsmPrinters();
+
+    // Initialize TargetTriple.
+    TargetTriple = llvm::sys::getDefaultTargetTriple();
+
+    // Initialize TheTarget.
+    std::string Error;
+    TheTarget = TargetRegistry::lookupTarget(TargetTriple, Error);
+    if (!TheTarget) {
+        llvm_unreachable(Error.c_str());
+    }
+
+    // Initialize TM.
+    TargetOptions opt;
+    auto RM = Optional<Reloc::Model>();
+    TM = TheTarget->createTargetMachine(TargetTriple, "generic", "", opt, RM);
+}
 
 void LLVMTranslator::InitializeTypes() {
     Int1Ty = Type::getInt1Ty(Context);
@@ -31,14 +57,16 @@ void LLVMTranslator::InitializeModule() {
     Mod.reset(new Module("cogbt", Context));
     RawMod = Mod.get();
 
-#ifdef CONFIG_HOST_X86
-    Mod->setTargetTriple("x86_64-pc-linux-gnu");
-    Mod->setDataLayout("e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-"
-                       "n8:16:32:64-S128");
-#else
-    Mod->setTargetTriple("loongarch64-unknown-linux-gnu");
-    Mod->setDataLayout("e-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128");
-#endif
+/* #ifdef CONFIG_HOST_X86 */
+/*     Mod->setTargetTriple("x86_64-pc-linux-gnu"); */
+/*     Mod->setDataLayout("e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-" */
+/*                        "n8:16:32:64-S128"); */
+/* #else */
+/*     Mod->setTargetTriple("loongarch64-unknown-linux-gnu"); */
+/*     Mod->setDataLayout("e-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128"); */
+/* #endif */
+    Mod->setTargetTriple(TargetTriple);
+    Mod->setDataLayout(TM->createDataLayout());
 
     // Import external symbols.
     DeclareExternalSymbols();
@@ -130,6 +158,30 @@ void LLVMTranslator::DeleteJIT(JITEventListener *Listener) {
     delete EE;
 }
 
+void LLVMTranslator::EmitObjectCode() {
+    auto Filename = "output.o";
+    std::error_code EC;
+    raw_fd_ostream dest(Filename, EC, sys::fs::OF_None);
+
+    if (EC) {
+        errs() << "Could not open file: " << EC.message();
+        exit(-1);
+    }
+
+    legacy::PassManager pass;
+    auto FileType = CGFT_ObjectFile;
+
+    if (TM->addPassesToEmitFile(pass, dest, nullptr, FileType)) {
+        errs() << "TheTargetMachine can't emit a file of this type";
+        exit(-1);
+    }
+
+    pass.run(*Mod);
+    dest.flush();
+
+    outs() << "Wrote " << Filename << "\n";
+}
+
 uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
     if (DBG.DebugIR()) {
         dbgs() << "+------------------------------------------------+\n";
@@ -147,6 +199,7 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
         }
 
     }
+    EmitObjectCode();
 
     assert(TransFunc && "No translation function in module.");
     JITNotificationInfo NI;

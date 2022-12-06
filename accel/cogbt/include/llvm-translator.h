@@ -11,6 +11,15 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 
+#include "llvm/Target/TargetMachine.h"
+
+#if (LLVM_VERSION_MAJOR > 8)
+#include "llvm/MC/MCTargetOptionsCommandFlags.h"
+#include "llvm/MC/TargetRegistry.h"
+#else
+#include "llvm/Support/TargetRegistry.h"
+#endif
+
 using namespace llvm;
 
 //===----------------------------------------------------------------------===//
@@ -64,6 +73,7 @@ public:
         : DBG(), Epilogue(0), Builder(Context),
           CodeCache(CacheBegin, CacheSize), HostDisAsm(HostTripleName),
           GuestDisAsm(GuestTripleName) {
+      InitializeTarget();
       InitializeTypes();
     }
     virtual ~LLVMTranslator() = default;
@@ -104,11 +114,18 @@ public:
 
 protected:
     /// @name Core Member Variables
+    std::string TargetTriple;    ///< LLVM backend target triple.
+    const Target *TheTarget;     ///< LLVM backend target.
+    TargetMachine *TM;           ///< Machine description cogbt is targeting.
     LLVMContext Context;
     std::unique_ptr<Module> Mod; ///< Container of all translated IR.
     Module *RawMod;              ///< Raw pointer of Mod.
     TranslationUnit *TU;         ///< Guest translation unit to handle.
     uintptr_t Epilogue;          ///< Epilogue code address.
+
+    /// InitializeTarget - Initialize the target of the cogbt backend according
+    /// to current machine.
+    void InitializeTarget();
 
     /// @name Guest->IR converter submodule
     Function *TransFunc;            ///< Translation function.
@@ -166,6 +183,9 @@ protected:
     /// @name Debug submodule
     Disassembler HostDisAsm;
     Disassembler GuestDisAsm;
+
+    /// @name AOT submodule
+    void EmitObjectCode();
 };
 
 #endif
