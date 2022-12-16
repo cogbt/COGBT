@@ -332,6 +332,18 @@ void aot_gen(const char *pf) {
     LLVMTranslator *Translator = create_llvm_translator(0, 0);
     llvm_initialize(Translator);
     for (TranslationUnit *TU : TUs) {
+        if (debug_guest_inst(Translator)) {
+            fprintf(stderr, "+--------------------------------------------+\n");
+            fprintf(stderr, "|               Guest Function               |\n");
+            fprintf(stderr, "+--------------------------------------------+\n");
+            for (auto bit = TU->begin(); bit != TU->end(); ++bit) {
+                for (auto iit = bit->begin(); iit != bit->end(); ++iit) {
+                    fprintf(stderr, "0x%lx  %s\t%s\n", (*iit)->address,
+                            (*iit)->mnemonic, (*iit)->op_str);
+                }
+                fprintf(stderr, "------------------------------------------\n");
+            }
+        }
         llvm_set_tu(Translator, TU);
         llvm_translate(Translator);
     }
