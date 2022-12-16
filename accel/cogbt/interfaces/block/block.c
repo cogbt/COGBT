@@ -6,8 +6,8 @@
 #define DISASSEMBLE_DEBUG
 
 /* capsthone handler, will be used in some cs API. */
-csh handle;
-TranslationUnit *global_tu;
+static csh handle;
+static TranslationUnit *global_tu;
 
 void cogbt_block_init(void) {
     cs_open(CS_ARCH_X86, CS_MODE_64, &handle);

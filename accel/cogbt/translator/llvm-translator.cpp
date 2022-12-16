@@ -1,6 +1,7 @@
 #include "llvm-translator.h"
 #include "jit-eventlistener.h"
 #include "host-info.h"
+#include "emulator.h"
 #include "memory-manager.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/InlineAsm.h"
@@ -199,7 +200,10 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
         }
 
     }
-    EmitObjectCode();
+    if (aotmode) {
+        EmitObjectCode();
+        return nullptr;
+    }
 
     assert(TransFunc && "No translation function in module.");
     JITNotificationInfo NI;

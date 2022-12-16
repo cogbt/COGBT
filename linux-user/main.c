@@ -60,6 +60,7 @@
 
 #ifdef CONFIG_COGBT
 #include "block.h"
+#include "function.h"
 #endif
 
 #ifndef AT_FLAGS_PRESERVE_ARGV0
@@ -127,6 +128,14 @@ static void usage(int exitcode);
 
 static const char *interp_prefix = CONFIG_QEMU_INTERP_PREFIX;
 const char *qemu_uname_release;
+
+#ifdef CONFIG_COGBT
+/* Used to record cogbt running mode, jit or aot, default is jit.
+ * When running on aot mode, -m option should be set to aot and this
+ * flag should be set 1. 
+ */
+int aotmode = 0;
+#endif
 
 /* XXX: on x86 MAP_GROWSDOWN only works if ESP <= address + 32, so
    we allocate a bigger stack. Need a better solution, for example
@@ -421,6 +430,14 @@ static void handle_arg_abi_call0(const char *arg)
 }
 #endif
 
+#ifdef CONFIG_COGBT
+static void handle_arg_runmode(const char *arg)
+{
+    if (strcmp(arg, "aot") == 0) {
+        aotmode = 1;
+    } else aotmode = 0;
+}
+#endif
 static QemuPluginList plugins = QTAILQ_HEAD_INITIALIZER(plugins);
 
 #ifdef CONFIG_PLUGIN
@@ -490,6 +507,10 @@ static const struct qemu_argument arg_table[] = {
 #if defined(TARGET_XTENSA)
     {"xtensa-abi-call0", "QEMU_XTENSA_ABI_CALL0", false, handle_arg_abi_call0,
      "",           "assume CALL0 Xtensa ABI"},
+#endif
+#ifdef CONFIG_COGBT
+    {"m",          "COGBT_RUNMODE",    true, handle_arg_runmode,
+     "",           "set cogbt runmode to jit/aot, default is jit"},
 #endif
     {NULL, NULL, false, NULL, NULL, NULL}
 };
@@ -899,6 +920,15 @@ int main(int argc, char **argv, char **envp)
     syscall_init();
     signal_init();
 #ifdef CONFIG_COGBT
+    if (aotmode) {
+        cogbt_function_init();
+        char json_path[255];
+        strcpy(json_path, exec_path);
+        strcat(json_path, ".json");
+        func_tu_json_parse(json_path);
+        aot_gen(json_path);
+        return 0;
+    }
     cogbt_block_init();
 #endif
 
