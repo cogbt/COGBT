@@ -170,7 +170,7 @@ void LLVMTranslator::EmitObjectCode() {
     }
 
     legacy::PassManager pass;
-    auto FileType = CGFT_ObjectFile;
+    auto FileType = llvm::TargetMachine::CGFT_ObjectFile;
 
     if (TM->addPassesToEmitFile(pass, dest, nullptr, FileType)) {
         errs() << "TheTargetMachine can't emit a file of this type";

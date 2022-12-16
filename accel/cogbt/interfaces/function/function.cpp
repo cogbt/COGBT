@@ -246,7 +246,6 @@ static void GenJsonFunc(JsonFunc &JF, std::vector<std::string> &Blocks) {
             cs_free(pins, 1);
         JF.addJsonBlock(JsonBlock(Entry, Exit, InsNum));
     }
-    JF.dump();
 }
 
 static void GenTU(JsonFunc &JF, TranslationUnit *TU) {
