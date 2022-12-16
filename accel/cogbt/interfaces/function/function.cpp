@@ -9,6 +9,7 @@
 #include <iostream>
 #include <set>
 #include <deque>
+#include <algorithm>
 
 // capsthone handler, will be used in some cs API.
 static csh handle;
@@ -49,11 +50,13 @@ public:
 //===---------------------------------------------------------------------====//
 class JsonFunc {
     std::string Name;
-    uint64_t EntryPoint, ExitPoint;
+    uint64_t EntryPoint, ExitPoint = 0;
+    std::vector<std::string> BlockStrs;
     std::set<JsonBlock> Blocks;
 public:
-    JsonFunc(std::string Name, uint64_t EntryPoint, uint64_t ExitPoint = 0)
-        : Name(Name), EntryPoint(EntryPoint), ExitPoint(ExitPoint) {
+    JsonFunc(std::string Name, uint64_t EntryPoint,
+             std::vector<std::string> &BS)
+        : Name(Name), EntryPoint(EntryPoint), BlockStrs(std::move(BS)) {
         Blocks.clear();
     }
 
@@ -61,12 +64,19 @@ public:
     uint64_t getExitPoint() { return ExitPoint; }
     void setEntryPoint(uint64_t EntryPoint) { this->EntryPoint = EntryPoint; }
     void setExitPoint(uint64_t ExitPoint) { this->ExitPoint = ExitPoint; }
+    /* void setBoundary(uint64_t Boundary) { this->Boundary = Boundary; } */
+
+    void formalize(uint64_t Boundary);
 
     void addJsonBlock(const JsonBlock &JB) { Blocks.insert(JB); }
 
     using Iterator = std::set<JsonBlock>::iterator;
     Iterator begin() { return Blocks.begin(); }
     Iterator end() { return Blocks.end(); }
+
+    bool operator<(const JsonFunc &JF) const {
+        return EntryPoint < JF.EntryPoint;
+    }
 
     void dump() {
         fprintf(stderr, "Json Func :\n");
@@ -166,18 +176,18 @@ static void parseFuncValue(const char *&scanner, std::string &Name,
     while (isspace(*scanner)) ++scanner;
 }
 
-static void GenJsonFunc(JsonFunc &JF, std::vector<std::string> &Blocks) {
+void JsonFunc::formalize(uint64_t Boundary) {
     std::set<uint64_t> Visited, Unvisited;
     std::deque<uint64_t> WorkList;
-    for (auto &s : Blocks) {
+    for (auto &s : BlockStrs) {
         uint64_t Entry = stol(s, nullptr, 16);
         WorkList.push_back(Entry);
         Unvisited.insert(Entry);
     }
 
     // If json doesn't contain function exit point, Find it here.
-    if (JF.getExitPoint() == 0) {
-        uint64_t Exit = *Unvisited.rbegin();
+    if (ExitPoint == 0) {
+        uint64_t Exit = *Unvisited.rbegin(); // last block in this function.
         cs_insn *pins = nullptr;
         do {
             if (pins)
@@ -185,12 +195,12 @@ static void GenJsonFunc(JsonFunc &JF, std::vector<std::string> &Blocks) {
             int res = cs_disasm(handle, (uint8_t *)Exit, 15, Exit, 1, &pins);
             assert(res && "cs_disasm error");
             Exit = pins->address + pins->size;
-        } while (!guest_inst_is_cfi(pins));
-        JF.setExitPoint(Exit);
+        } while (!guest_inst_is_cfi(pins) && Exit < Boundary);
+        ExitPoint = Exit;
     }
 
     // Calculate instruction boundary bitmap.
-    BitMap BM(JF.getExitPoint() - JF.getEntryPoint());
+    BitMap BM(ExitPoint - EntryPoint);
     while (!WorkList.empty()) {
         uint64_t Entry = WorkList.front();
         WorkList.pop_front();
@@ -198,13 +208,13 @@ static void GenJsonFunc(JsonFunc &JF, std::vector<std::string> &Blocks) {
         if (Visited.count(Entry))
             continue;
         Visited.insert(Entry);
-        uint64_t pc = Entry;
         // disassemble to find a terminator.
+        uint64_t pc = Entry;
         cs_insn *pins = nullptr;
         do {
             if (pins)
                 cs_free(pins, 1);
-            BM.set(pc - JF.getEntryPoint());
+            BM.set(pc - EntryPoint);
             int res = cs_disasm(handle, (uint8_t *)pc, 15, pc, 1, &pins);
             assert(res && "cs_disasm error");
             pc = pins->address + pins->size;
@@ -215,22 +225,22 @@ static void GenJsonFunc(JsonFunc &JF, std::vector<std::string> &Blocks) {
             // into the terminator of the basic block
             if (cs_insn_group(handle, pins, CS_GRP_CALL) ||
                 cs_insn_group(handle, pins, CS_GRP_INT)) {
-                if (!Unvisited.count(pc)) {
-                    WorkList.push_back(pc);
-                    Unvisited.insert(pc);
-                }
+              if (!Unvisited.count(pc) && !Visited.count(pc) &&
+                  pc < ExitPoint) {
+                WorkList.push_back(pc);
+                Unvisited.insert(pc);
+              }
             }
-        } while (!guest_inst_is_terminator(pins));
+        } while (!guest_inst_is_terminator(pins) && pc < ExitPoint);
         if (pins)
             cs_free(pins, 1);
-        /* JF.addJsonBlock(JsonBlock(entry, pc)); */
     }
 
     // Split overlapping basic blocks.
     assert(Unvisited.empty() && WorkList.empty());
     for (auto it = Visited.begin(); it != Visited.end(); ) {
         uint64_t Entry = *it;
-        uint64_t NextEntry = *++it;
+        uint64_t NextEntry = ++it == Visited.end() ? ExitPoint : *it;
         uint64_t Exit = Entry;
         uint64_t InsNum = 0;
         cs_insn *pins = nullptr;
@@ -241,17 +251,20 @@ static void GenJsonFunc(JsonFunc &JF, std::vector<std::string> &Blocks) {
             assert(res && "cs_disasm error");
             ++InsNum;
             Exit = pins->address + pins->size;
-        } while (!guest_inst_is_terminator(pins) && Exit != NextEntry);
+        } while (!guest_inst_is_terminator(pins) && Exit < NextEntry);
         if (pins)
             cs_free(pins, 1);
-        JF.addJsonBlock(JsonBlock(Entry, Exit, InsNum));
+        Blocks.insert(JsonBlock(Entry, Exit, InsNum));
+        /* addJsonBlock(JsonBlock(Entry, Exit, InsNum)); */
     }
 }
 
 static void GenTU(JsonFunc &JF, TranslationUnit *TU) {
+    JF.dump(); //debug
     for (auto it = JF.begin(); it != JF.end(); ++it) {
         uint64_t Entry = it->getEntry();
         uint64_t InsNum = it->getInsNum();
+        /* fprintf(stderr, "InsNum is %ld\n", InsNum); //debug */
         cs_insn **insns = (cs_insn **)calloc(InsNum, sizeof(cs_insn *));
 
         for (int i = 0; i < (int)InsNum; i++) {
@@ -317,15 +330,21 @@ void func_tu_json_parse(const char *pf) {
         parseFuncValue(scanner, Name, EntryPoint, Blocks);
 
         // generate JsonFunc
-        JsonFunc JF(Name, stol(EntryPoint, nullptr, 16));
-        GenJsonFunc(JF, Blocks);
+        JsonFunc JF(Name, stol(EntryPoint, nullptr, 16), Blocks);
+        JsonFuncs.push_back(std::move(JF));
+    }
+    std::sort(JsonFuncs.begin(), JsonFuncs.end());
 
-        // generate TU
+    // 3. generate TU
+    for (int i = 0; i < (int)JsonFuncs.size(); i++) {
+        uint64_t FuncBoundary = -1;
+        if (i+1 < (int)JsonFuncs.size())
+            FuncBoundary = JsonFuncs[i+1].getEntryPoint();
+        JsonFuncs[i].formalize(FuncBoundary);
         TranslationUnit *TU = new TranslationUnit();
-        GenTU(JF, TU);
+        GenTU(JsonFuncs[i], TU);
         TUs.push_back(TU);
     }
-
 }
 
 void aot_gen(const char *pf) {
@@ -341,13 +360,12 @@ void aot_gen(const char *pf) {
                     fprintf(stderr, "0x%lx  %s\t%s\n", (*iit)->address,
                             (*iit)->mnemonic, (*iit)->op_str);
                 }
-                fprintf(stderr, "------------------------------------------\n");
             }
         }
-        llvm_set_tu(Translator, TU);
-        llvm_translate(Translator);
+        /* llvm_set_tu(Translator, TU); */
+        /* llvm_translate(Translator); */
     }
-    llvm_compile(Translator, true);
+    /* llvm_compile(Translator, true); */
 }
 
 /* bool guest_inst_is_terminator(cs_insn *insn) { */
