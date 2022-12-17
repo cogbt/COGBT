@@ -362,8 +362,8 @@ void aot_gen(const char *pf) {
                 }
             }
         }
-        /* llvm_set_tu(Translator, TU); */
-        /* llvm_translate(Translator); */
+        llvm_set_tu(Translator, TU);
+        llvm_translate(Translator);
     }
     /* llvm_compile(Translator, true); */
 }

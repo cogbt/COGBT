@@ -15,6 +15,13 @@ void X86Translator::DeclareExternalSymbols() {
 }
 
 void X86Translator::InitializeFunction(StringRef Name) {
+    TransFunc = nullptr;
+    for (auto &V : GMRStates)
+        V = nullptr;
+    for (auto &V : GMRVals)
+        V.clear();
+    ExitBB = EntryBB = CurrBB = nullptr;
+
     // Create translation function with (void (*)()) type, C calling convention,
     // and cogbt attribute.
     FunctionType *FuncTy = FunctionType::get(VoidTy, false);
@@ -419,10 +426,15 @@ Value *X86Translator::CalcMemAddr(X86Operand *Opnd) {
             MemAddr = Builder.CreateAdd(MemAddr, Index);
     }
     // Disp field is valud, add this offset.
-    if (Opnd->mem.disp) {
+    /* if (Opnd->mem.disp) { */
+    if (!MemAddr) {
+        MemAddr = Builder.CreateAdd(ConstInt(Int64Ty, 0),
+                                    ConstInt(Int64Ty, Opnd->mem.disp));
+    } else {
         MemAddr = Builder.CreateAdd(MemAddr,
-                                    ConstantInt::get(Int64Ty, Opnd->mem.disp));
+                                    ConstInt(Int64Ty, Opnd->mem.disp));
     }
+    /* } */
 
     /* MemAddr = Builder.CreateIntToPtr(MemAddr, LLVMTy->getPointerTo()); */
     return MemAddr;
