@@ -3433,6 +3433,7 @@ foreach target : target_dirs
       if 'CONFIG_COGBT' in config_target
         target_inc += include_directories('accel/cogbt/include')
         target_inc += include_directories('accel/cogbt/interfaces/include')
+        target_inc += include_directories('/home/qwqcxh/practice/llvm/lib/include')
       endif
     endif
     if 'CONFIG_BSD_USER' in config_target

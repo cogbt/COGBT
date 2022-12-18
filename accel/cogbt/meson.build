@@ -1,6 +1,8 @@
 cogbt_ss = ss.source_set()
 
-llvm_dep = dependency('llvm', version : '>=8.0')
+# llvm_dep = dependency('llvm', version : '>=8.0')
+llvm_dep = meson.get_compiler('cpp').find_library('LLVM-8', 
+  dirs: '/home/qwqcxh/practice/llvm/lib', required: true)
 cogbt_ss.add(llvm_dep)
 
 cogbt_ss.add(files(
