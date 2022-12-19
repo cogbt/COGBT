@@ -2309,10 +2309,9 @@ void X86Translator::translate_t1mskc(GuestInst *Inst) {
     dbgs() << "Untranslated instruction t1mskc\n";
     exit(-1);
 }
-void X86Translator::translate_ud2(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction ud2\n";
-    exit(-1);
-}
+
+void X86Translator::translate_ud2(GuestInst *Inst) {}
+
 void X86Translator::translate_ftst(GuestInst *Inst) {
     dbgs() << "Untranslated instruction ftst\n";
     exit(-1);
@@ -5501,11 +5500,6 @@ void X86Translator::translate_ud0(GuestInst *Inst) {
     dbgs() << "Untranslated instruction ud0\n";
     exit(-1);
 }
-void X86Translator::translate_endbr32(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction endbr32\n";
-    exit(-1);
-}
-void X86Translator::translate_endbr64(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction endbr64\n";
-    exit(-1);
-}
+
+void X86Translator::translate_endbr32(GuestInst *Inst) {}
+void X86Translator::translate_endbr64(GuestInst *Inst) {}

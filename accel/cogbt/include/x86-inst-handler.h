@@ -6,6 +6,8 @@
 #include <capstone.h>
 
 extern "C" bool guest_inst_is_terminator(cs_insn *insn);
+extern "C" int aotmode;
+extern bool func_tu_inst_is_terminator(cs_insn *insn);
 
 #define CF_SHIFT 0
 #define PF_SHIFT 2
@@ -71,7 +73,10 @@ public:
     }
 
     bool isTerminator() {
-        return guest_inst_is_terminator(Inst);
+        if (aotmode)
+            return func_tu_inst_is_terminator(Inst);
+        else
+            return guest_inst_is_terminator(Inst);
     }
 private:
     GuestInst *Inst;

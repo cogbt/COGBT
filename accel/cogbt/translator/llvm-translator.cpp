@@ -13,6 +13,7 @@
 #include "llvm/Support/FileSystem.h"
 #include <memory>
 #include <string>
+#include <sstream>
 
 void LLVMTranslator::InitializeTarget() {
     // Initialize the target registry etc.
@@ -23,7 +24,11 @@ void LLVMTranslator::InitializeTarget() {
     InitializeAllAsmPrinters();
 
     // Initialize TargetTriple.
+#if 0
     TargetTriple = llvm::sys::getDefaultTargetTriple();
+#else
+    TargetTriple = "loongarch64-unknown-linux-gnu";
+#endif
 
     // Initialize TheTarget.
     std::string Error;
@@ -63,11 +68,11 @@ void LLVMTranslator::InitializeModule() {
 /*     Mod->setDataLayout("e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-" */
 /*                        "n8:16:32:64-S128"); */
 /* #else */
-/*     Mod->setTargetTriple("loongarch64-unknown-linux-gnu"); */
-/*     Mod->setDataLayout("e-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128"); */
+    Mod->setTargetTriple("loongarch64-unknown-linux-gnu");
+    Mod->setDataLayout("e-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128");
 /* #endif */
-    Mod->setTargetTriple(TargetTriple);
-    Mod->setDataLayout(TM->createDataLayout());
+    /* Mod->setTargetTriple(TargetTriple); */
+    /* Mod->setDataLayout(TM->createDataLayout()); */
 
     // Import external symbols.
     DeclareExternalSymbols();
@@ -86,7 +91,10 @@ void LLVMTranslator::InitializeBlock(GuestBlock &Block) {
     for (auto &GMRVal : GMRVals)
         GMRVal.clear();
     uint64_t PC = Block.GetBlockEntry();
-    CurrBB = BasicBlock::Create(Context, std::to_string(PC), TransFunc, ExitBB);
+    std::stringstream ss;
+    ss << std::hex << PC;
+    std::string Name(ss.str());
+    CurrBB = BasicBlock::Create(Context, Name, TransFunc, ExitBB);
     if (PC == TU->GetTUEntry()) {
         dyn_cast<BranchInst>(EntryBB->getTerminator())->setSuccessor(0, CurrBB);
     }
@@ -160,7 +168,9 @@ void LLVMTranslator::DeleteJIT(JITEventListener *Listener) {
 }
 
 void LLVMTranslator::EmitObjectCode() {
-    auto Filename = "output.o";
+    std::stringstream ss;
+    ss << std::hex << TU->GetTUEntry();
+    auto Filename(ss.str() + ".o");//"output.o";
     std::error_code EC;
     raw_fd_ostream dest(Filename, EC, sys::fs::OF_None);
 
@@ -192,7 +202,10 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
         dbgs() << "+------------------------------------------------+\n";
         dbgs() << "|                 LLVM  IR                       |\n";
         dbgs() << "+------------------------------------------------+\n";
-        Mod->print(dbgs(), nullptr);
+        if (aotmode)
+            TransFunc->print(dbgs(), nullptr);
+        else
+            Mod->print(dbgs(), nullptr);
     }
     if (UseOptmizer) {
         Optimize();
@@ -200,7 +213,10 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
             dbgs() << "+------------------------------------------------+\n";
             dbgs() << "|                 LLVM  IR  OPT                  |\n";
             dbgs() << "+------------------------------------------------+\n";
-            Mod->print(dbgs(), nullptr);
+            if (aotmode)
+                TransFunc->print(dbgs(), nullptr);
+            else
+                Mod->print(dbgs(), nullptr);
         }
 
     }

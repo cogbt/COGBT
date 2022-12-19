@@ -2,6 +2,7 @@
 #include "emulator.h"
 #include "host-info.h"
 #include "llvm/IR/InlineAsm.h"
+#include <sstream>
 
 void X86Translator::DeclareExternalSymbols() {
     Mod->getOrInsertGlobal("PFTable", ArrayType::get(Int8Ty, 256));
@@ -872,7 +873,11 @@ void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src0,
 }
 
 void X86Translator::Translate() {
-    InitializeFunction(std::to_string(TU->GetTUEntry()));
+    std::stringstream ss;
+    ss << std::hex << TU->GetTUEntry();
+    std::string Entry(ss.str());
+    /* InitializeFunction(std::to_string(TU->GetTUEntry())); */
+    InitializeFunction(Entry);
     for (auto &block : *TU) {
         assert(TU->size() && "TU size is expected to be non-zero!");
         InitializeBlock(block);
@@ -910,4 +915,5 @@ void X86Translator::Translate() {
             Builder.CreateBr(ExitBB);
         }
     }
+    /* TransFunc->dump(); */
 }

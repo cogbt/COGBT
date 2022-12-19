@@ -15,12 +15,12 @@
 static csh handle;
 static vector<TranslationUnit *> TUs;
 
-static bool guest_inst_is_cfi(cs_insn *insn) {
+static bool func_tu_inst_is_cfi(cs_insn *insn) {
     return cs_insn_group(handle, insn, CS_GRP_JUMP) ||
            cs_insn_group(handle, insn, CS_GRP_RET);
 }
 
-static bool guest_inst_is_terminator(cs_insn *insn) {
+bool func_tu_inst_is_terminator(cs_insn *insn) {
     return cs_insn_group(handle, insn, CS_GRP_JUMP) ||
            cs_insn_group(handle, insn, CS_GRP_CALL) ||
            cs_insn_group(handle, insn, CS_GRP_RET) ||
@@ -195,7 +195,7 @@ void JsonFunc::formalize(uint64_t Boundary) {
             int res = cs_disasm(handle, (uint8_t *)Exit, 15, Exit, 1, &pins);
             assert(res && "cs_disasm error");
             Exit = pins->address + pins->size;
-        } while (!guest_inst_is_cfi(pins) && Exit < Boundary);
+        } while (!func_tu_inst_is_cfi(pins) && Exit < Boundary);
         ExitPoint = Exit;
     }
 
@@ -231,7 +231,7 @@ void JsonFunc::formalize(uint64_t Boundary) {
                 Unvisited.insert(pc);
               }
             }
-        } while (!guest_inst_is_terminator(pins) && pc < ExitPoint);
+        } while (!func_tu_inst_is_terminator(pins) && pc < ExitPoint);
         if (pins)
             cs_free(pins, 1);
     }
@@ -251,7 +251,7 @@ void JsonFunc::formalize(uint64_t Boundary) {
             assert(res && "cs_disasm error");
             ++InsNum;
             Exit = pins->address + pins->size;
-        } while (!guest_inst_is_terminator(pins) && Exit < NextEntry);
+        } while (!func_tu_inst_is_terminator(pins) && Exit < NextEntry);
         if (pins)
             cs_free(pins, 1);
         Blocks.insert(JsonBlock(Entry, Exit, InsNum));
@@ -260,7 +260,8 @@ void JsonFunc::formalize(uint64_t Boundary) {
 }
 
 static void GenTU(JsonFunc &JF, TranslationUnit *TU) {
-    JF.dump(); //debug
+    /* JF.dump(); //debug */
+    tu_init(TU);
     for (auto it = JF.begin(); it != JF.end(); ++it) {
         uint64_t Entry = it->getEntry();
         uint64_t InsNum = it->getInsNum();
@@ -277,7 +278,6 @@ static void GenTU(JsonFunc &JF, TranslationUnit *TU) {
             Entry = insns[i]->address + insns[i]->size;
         }
         assert(Entry == it->getExit());
-        tu_init(TU);
         GuestBlock *block = guest_tu_create_block(TU);
         for (int i = 0; i < (int)InsNum; i++) {
             guest_block_add_inst(block, insns[i]);
@@ -364,11 +364,11 @@ void aot_gen(const char *pf) {
         }
         llvm_set_tu(Translator, TU);
         llvm_translate(Translator);
+        llvm_compile(Translator, true);
     }
-    /* llvm_compile(Translator, true); */
 }
 
-/* bool guest_inst_is_terminator(cs_insn *insn) { */
+/* bool func_tu_inst_is_terminator(cs_insn *insn) { */
 /*     return cs_insn_group(handle, insn, CS_GRP_JUMP) || */
 /*            cs_insn_group(handle, insn, CS_GRP_RET) || */
 /*            cs_insn_group(handle, insn, CS_GRP_CALL) || */
