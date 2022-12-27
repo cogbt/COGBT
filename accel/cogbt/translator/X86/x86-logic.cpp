@@ -91,7 +91,7 @@ void X86Translator::translate_neg(GuestInst *Inst) {
     Value *Src = LoadOperand(InstHdl.getOpnd(0));
     Value *Dest = Builder.CreateNeg(Src);
     StoreOperand(Dest, InstHdl.getOpnd(0));
-    CalcEflag(Inst, Dest, Src, nullptr);
+    CalcEflag(Inst, Dest, Src, ConstInt(Src->getType(), 0));
 }
 
 void X86Translator::translate_nop(GuestInst *Inst) {}
@@ -118,7 +118,10 @@ void X86Translator::translate_bsf(GuestInst *Inst) {
 
     Dest = Builder.CreateSelect(isZero, Dest, Idx);
     StoreOperand(Dest, InstHdl.getOpnd(1));
-    CalcEflag(Inst, Src, nullptr, nullptr);
+    /* CalcEflag(Inst, Src, nullptr, nullptr); */
+    Value *ZF = Builder.CreateSelect(isZero, ConstInt(Int64Ty, -1),
+                                     ConstInt(Int64Ty, 0));
+    SetLBTFlag(ZF, 0x8);
 }
 
 void X86Translator::translate_bsr(GuestInst *Inst) {
@@ -138,7 +141,10 @@ void X86Translator::translate_bsr(GuestInst *Inst) {
 
     Dest = Builder.CreateSelect(isZero, Dest, Idx);
     StoreOperand(Dest, InstHdl.getOpnd(1));
-    CalcEflag(Inst, Src, nullptr, nullptr);
+    /* CalcEflag(Inst, Src, nullptr, nullptr); */
+    Value *ZF = Builder.CreateSelect(isZero, ConstInt(Int64Ty, -1),
+                                     ConstInt(Int64Ty, 0));
+    SetLBTFlag(ZF, 0x8);
 }
 
 void X86Translator::translate_bswap(GuestInst *Inst) {

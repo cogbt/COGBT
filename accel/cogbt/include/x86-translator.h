@@ -73,6 +73,9 @@ private: /// Currently translated instruction.
     /// CalcEflag - Generate llvm IRs to define all eflags.
     void CalcEflag(GuestInst *Inst, Value *Dest, Value *Src1, Value *Src2);
 
+    /// GetLBTIntrinsic - Generate a LBT Intrinsic to calculate eflag.
+    void GetLBTIntrinsic(StringRef Name, Value *Src0, Value *Src1);
+
     /// GenCF/OF - Generate llvm IRs to define CF/OF eflag.
     void GenCF(GuestInst *Inst, Value *Dest, Value *Src1, Value *Src2);
     void GenOF(GuestInst *Inst, Value *Dest, Value *Src1, Value *Src2);
@@ -95,6 +98,12 @@ private: /// Currently translated instruction.
     /// CallFunc - Generate llvm IRs to call a llvm function, maybe a helper.
     Value *CallFunc(FunctionType *FuncTy, std::string Name,
                     ArrayRef<Value *> Args);
+
+    /// SetLBTFlag - Move value \p FV into inner LBT Flag register.
+    void SetLBTFlag(Value *FV, int mask = 0x3f);
+
+    /// GetLBTFlag - Get inner LBT Flag register value.
+    Value *GetLBTFlag(int mask = 0x3f);
 };
 
 #endif

@@ -91,6 +91,19 @@ void X86Translator::InitializeFunction(StringRef Name) {
     /* Mod->print(outs(), nullptr); */
 }
 
+void X86Translator::SetLBTFlag(Value *FV, int mask) {
+    FunctionType *FuncTy = FunctionType::get(VoidTy, {Int64Ty, Int32Ty}, false);
+    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86mtflag", FuncTy);
+    Builder.CreateCall(FuncTy, Func, {FV, ConstInt(Int32Ty, mask)});
+}
+
+Value *X86Translator::GetLBTFlag(int mask) {
+    FunctionType *FuncTy = FunctionType::get(Int64Ty, Int32Ty, false);
+    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86mfflag", FuncTy);
+    Value *V = Builder.CreateCall(FuncTy, Func, ConstInt(Int32Ty, mask));
+    return V;
+}
+
 void X86Translator::GenPrologue() {
     InitializeModule();
 
@@ -154,6 +167,7 @@ void X86Translator::GenPrologue() {
         SetPhysicalRegValue(HostRegNames[GMRToHMR(i)], GuestVals[i]);
     }
     SetPhysicalRegValue(HostRegNames[EFLAGReg], GuestVals[EFLAG]);
+    SetLBTFlag(GuestVals[EFLAG]);
     SetPhysicalRegValue(HostRegNames[ENVReg], HostRegValues[HostA0]);
     // $r4 maybe modified, sync it.
     SetPhysicalRegValue(HostRegNames[HostA1], CodeEntry);
@@ -167,6 +181,7 @@ void X86Translator::GenPrologue() {
 
     // debug
     /* Mod->print(outs(), nullptr); */
+    /* exit(0); //test */
 }
 
 void X86Translator::GenEpilogue() {
@@ -190,6 +205,12 @@ void X86Translator::GenEpilogue() {
     vector<Value *> GuestVals(GetNumGMRs());
     for (int i = 0; i < GetNumGMRs(); i++) {
         GuestVals[i] = GetPhysicalRegValue(HostRegNames[GMRToHMR(i)]);
+        if (i == X86Config::EFLAG) {
+            Value *LBTFlag = GetLBTFlag();
+            Value *DF =
+                Builder.CreateAnd(GuestVals[i], ConstInt(Int64Ty, DF_BIT|0x202));
+            GuestVals[i] = Builder.CreateOr(LBTFlag, DF);
+        }
     }
 
     CPUEnv = GetPhysicalRegValue(HostRegNames[ENVReg]);
@@ -577,298 +598,189 @@ void X86Translator::AddExternalSyms() {
     EE->addGlobalMapping("helper_pshufd", (uint64_t)helper_pshufd_xmm_wrapper);
 }
 
-// CF is set if the addition of two numbers causes a carry out of the most
-// significant bits added or substraction of two numbers requires a borrow
-// into the most significant bits substracted.
-void X86Translator::GenCF(GuestInst *Inst, Value *Dest, Value *Src0,
-                          Value *Src1) {
-    X86InstHandler InstHdl(Inst);
-    switch (Inst->id) {
-    default:
-        printf("0x%lx  %s\t%s\n", Inst->address, Inst->mnemonic, Inst->op_str);
-        llvm_unreachable("GenCF Unhandled Inst ID\n");
-    case X86_INS_AND: // CF is cleared
-    case X86_INS_OR:
-    case X86_INS_TEST:
-    case X86_INS_XOR: {
-        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getCFMask());
-        StoreGMRValue(ClearEflag, X86Config::EFLAG);
-        break;
-    }
-    case X86_INS_SCASB:
-    case X86_INS_SCASW:
-    case X86_INS_SCASD:
-    case X86_INS_SUB:
-    case X86_INS_SBB:
-    case X86_INS_CMPSB:
-    case X86_INS_CMPSW:
-    case X86_INS_CMPSD:
-    case X86_INS_CMP:
-    case X86_INS_CMPXCHG:
-    case X86_INS_DEC: {
-        Value *IsLess = Builder.CreateICmpULT(Src1, Src0);
-        Value *CFBit = Builder.CreateSelect(IsLess, ConstInt(Int64Ty, CF_BIT),
-                                            ConstInt(Int64Ty, 0));
-        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getCFMask());
-        Value *NewEflag = Builder.CreateOr(ClearEflag, CFBit);
-        StoreGMRValue(NewEflag, X86Config::EFLAG);
-        break;
-    }
-    case X86_INS_SHL:
-    case X86_INS_SAL: {
-        // CF contains the value of the last bit shifted left out of the
-        // destination operand.
-        Value *Shift = Builder.CreateAdd(Src0, ConstInt(Src1->getType(), -1));
-        Value *LB = Builder.CreateShl(Src1, Shift);
-        LB = Builder.CreateLShr(LB,
-            ConstInt(LB->getType(), Src1->getType()->getIntegerBitWidth() - 1));
-        LB = Builder.CreateAnd(LB, ConstInt(LB->getType(), 1));
-        Value *CFBit = Builder.CreateZExt(LB, Int64Ty);
-
-        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getCFMask());
-        Value *NewEflag = Builder.CreateOr(ClearEflag, CFBit);
-        StoreGMRValue(NewEflag, X86Config::EFLAG);
-        break;
-    }
-    case X86_INS_SHR:
-    case X86_INS_SAR: {
-        /// CF contains the value of the last bit shifted out of the destination
-        /// opnd.
-        Value *Shift = Builder.CreateAdd(Src0, ConstInt(Src1->getType(), -1));
-        Value *LB = Builder.CreateLShr(Src1, Shift);
-        LB = Builder.CreateAnd(LB, ConstInt(LB->getType(), 1));
-        Value *CFBit = Builder.CreateZExt(LB, Int64Ty);
-
-        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getCFMask());
-        Value *NewEflag = Builder.CreateOr(ClearEflag, CFBit);
-        StoreGMRValue(NewEflag, X86Config::EFLAG);
-        break;
-    }
-    case X86_INS_ADD:
-    case X86_INS_XADD: {
-        /// dest < src
-        Value *isLess = Builder.CreateICmpULT(Dest, Src0);
-        Value *CFBit = Builder.CreateZExt(isLess, Int64Ty);
-
-        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getCFMask());
-        Value *NewEflag = Builder.CreateOr(ClearEflag, CFBit);
-        StoreGMRValue(NewEflag, X86Config::EFLAG);
-        break;
-    }
-    case X86_INS_MUL: {
-        // If upper half == 1 then CF = 1
-        Value *UpperHalf = nullptr;
-        if (!Src0) {
-            assert(Dest->getType()->getIntegerBitWidth() == 16 && "mul error");
-            UpperHalf = Builder.CreateLShr(Dest, ConstInt(Dest->getType(), 8));
-        } else {
-            UpperHalf = Src0;
-        }
-        Value *isSet =
-            Builder.CreateICmpNE(UpperHalf, ConstInt(UpperHalf->getType(), 0));
-
-        Value *CFBit = Builder.CreateSelect(isSet, ConstInt(Int64Ty, CF_BIT),
-                                            ConstInt(Int64Ty, 0));
-
-        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getCFMask());
-        Value *NewEflag = Builder.CreateOr(ClearEflag, CFBit);
-        StoreGMRValue(NewEflag, X86Config::EFLAG);
-        break;
-    }
-    case X86_INS_IMUL: {
-        // if Dest != SEXT Src then CF is set to 1.
-        Value *SExtSrc = Builder.CreateSExt(Src0, Dest->getType());
-        Value *isDiff = Builder.CreateICmpNE(Dest, SExtSrc);
-        Value *CFBit = Builder.CreateSelect(isDiff, ConstInt(Int64Ty, CF_BIT),
-                                            ConstInt(Int64Ty, 0));
-
-        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getCFMask());
-        Value *NewEflag = Builder.CreateOr(ClearEflag, CFBit);
-        StoreGMRValue(NewEflag, X86Config::EFLAG);
-        break;
-    }
-    case X86_INS_NEG: {
-        // if Dest is zero, then CF is set to zero.
-        Value *isZero = Builder.CreateICmpEQ(Dest, ConstInt(Dest->getType(), 0));
-        Value *CFBit = Builder.CreateSelect(isZero, ConstInt(Int64Ty, CF_BIT),
-                                            ConstInt(Int64Ty, 0));
-
-        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getCFMask());
-        Value *NewEflag = Builder.CreateOr(ClearEflag, CFBit);
-        StoreGMRValue(NewEflag, X86Config::EFLAG);
-        break;
-    }
-    case X86_INS_ROL: //TODO
-    case X86_INS_ROR: //TODO
-        break;
+void X86Translator::GetLBTIntrinsic(StringRef Name, Value *Src0, Value *Src1) {
+    if (Src1) {
+        FunctionType *FTy =
+            FunctionType::get(VoidTy, {Src1->getType(), Src0->getType()}, false);
+        Value *Func = Mod->getOrInsertFunction(Name, FTy);
+        Builder.CreateCall(FTy, Func, {Src1, Src0});
+    } else {
+        FunctionType *FTy =
+            FunctionType::get(VoidTy, {Src0->getType()}, false);
+        Value *Func = Mod->getOrInsertFunction(Name, FTy);
+        Builder.CreateCall(FTy, Func, {Src0});
 
     }
 }
 
-// If the sum of two numbers with the sign bits off yields a result number with
-// the sign bit on, the "overflow" flag is turned on.
-// 0100 + 0100 = 1000 (overflow flag is turned on)
-//
-// If the sum of two numbers with the sign bits on yields a result number with
-// the sign bit off, the "overflow" flag is turned on.
-// 1000 + 1000 = 0000 (overflow flag is turned on)
-void X86Translator::GenOF(GuestInst *Inst, Value *Dest, Value *Src0,
-                          Value *Src1) {
-    X86InstHandler InstHdl(Inst);
-    switch (Inst->id) {
-    default:
-        llvm_unreachable("GenOF Unhandled Inst ID\n");
-    case X86_INS_AND: // OF is cleared
-    case X86_INS_OR:
-    case X86_INS_TEST:
-    case X86_INS_XOR: {
-        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getOFMask());
-        StoreGMRValue(ClearEflag, X86Config::EFLAG);
-        break;
-    }
-    case X86_INS_SUB:
-    case X86_INS_SBB:
-    case X86_INS_CMP:
-    case X86_INS_CMPXCHG:
-    case X86_INS_DEC: {
-        /// Src1 OP Src0 -> Dest overflow
-        /// iff. Src1 has a different sign bit than Src0 and Dest.
-        Value *SrcDiff = Builder.CreateXor(Src1, Src0);
-        Value *DestDiff = Builder.CreateXor(Src1, Dest);
-        Value *Overflow = Builder.CreateAnd(SrcDiff, DestDiff);
-        Value *IsOverflow =
-            Builder.CreateICmpSLT(Overflow, ConstInt(Dest->getType(), 0));
-        Value *OFBit = Builder.CreateSelect(
-            IsOverflow, ConstInt(Int64Ty, OF_BIT), ConstInt(Int64Ty, 0));
-
-        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getOFMask());
-        Value *NewEflag = Builder.CreateOr(ClearEflag, OFBit);
-        StoreGMRValue(NewEflag, X86Config::EFLAG);
-        break;
-    }
-    case X86_INS_MUL: {
-        // If upper half == 1 then OF = 1
-        Value *UpperHalf = nullptr;
-        if (!Src0) {
-            assert(Dest->getType()->getIntegerBitWidth() == 16 && "mul error");
-            UpperHalf = Builder.CreateLShr(Dest, ConstInt(Dest->getType(), 8));
-        } else {
-            UpperHalf = Src0;
-        }
-        Value *isSet =
-            Builder.CreateICmpNE(UpperHalf, ConstInt(UpperHalf->getType(), 0));
-
-        Value *OFBit = Builder.CreateSelect(isSet, ConstInt(Int64Ty, OF_BIT),
-                                            ConstInt(Int64Ty, 0));
-
-        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getOFMask());
-        Value *NewEflag = Builder.CreateOr(ClearEflag, OFBit);
-        StoreGMRValue(NewEflag, X86Config::EFLAG);
-        break;
-    }
-    case X86_INS_IMUL: {
-        // if Dest != SEXT Src then OF is set to 1.
-        Value *SExtSrc = Builder.CreateSExt(Src0, Dest->getType());
-        Value *isDiff = Builder.CreateICmpNE(Dest, SExtSrc);
-        Value *OFBit = Builder.CreateSelect(isDiff, ConstInt(Int64Ty, OF_BIT),
-                                            ConstInt(Int64Ty, 0));
-
-        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getOFMask());
-        Value *NewEflag = Builder.CreateOr(ClearEflag, OFBit);
-        StoreGMRValue(NewEflag, X86Config::EFLAG);
-        break;
-    }
-    case X86_INS_NEG: { // TODO
-        // OF is set if Dest has a different sign bit with Src0
-        /* Value *Val = Builder.CreateAnd(Dest, Src0); */
-        /* Val = Builder.CreateLShr( */
-        /*     Val, */
-        /*     ConstInt(Val->getType(), Val->getType()->getIntegerBitWidth() - 1)); */
-        /* Val = Builder.CreateZExt(Val, Int64Ty); */
-        /* Val = Builder.CreateShl(Val, ConstInt(Int64Ty, OF_BIT)); */
-
-        /* Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG); */
-        /* Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getOFMask()); */
-        /* Value *NewEflag = Builder.CreateOr(ClearEflag, Val); */
-        /* StoreGMRValue(NewEflag, X86Config::EFLAG); */
-        break;
-    }
-    case X86_INS_SHR: // TODO
-    case X86_INS_SAR: // TODO
-    case X86_INS_ADD: // TODO
-    case X86_INS_INC: // TODO
-    case X86_INS_SHL: // TODO
-    case X86_INS_ROL: //TODO
-    case X86_INS_ROR: //TODO
-        break;
-
+std::string GetSuffixAccordingType(Type *Ty) {
+    switch (Ty->getIntegerBitWidth()) {
+    case 8: return ".b";
+    case 16: return ".h";
+    case 32: return ".w";
+    case 64: return ".d";
+    default: llvm_unreachable("Error LBT Type!");
     }
 }
 
 void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src0,
                               Value *Src1) {
+    Type *Src0Ty = nullptr, *Src1Ty = nullptr;
+    if (Src0)
+        Src0Ty = Src0->getType();
+    if (Src1)
+        Src1Ty = Src1->getType();
+    if (Src0 && Src0->getType()->getIntegerBitWidth() != 64)
+        Src0 = Builder.CreateSExt(Src0, Int64Ty);
+    if (Src1 && Src1->getType()->getIntegerBitWidth() != 64)
+        Src1 = Builder.CreateSExt(Src1, Int64Ty);
+
     X86InstHandler InstHdl(Inst);
-    if (InstHdl.CFisDefined()) {
-        GenCF(Inst, Dest, Src0, Src1);
+    std::string Name;
+    switch (Inst->id) {
+    case X86_INS_ADD:
+    case X86_INS_XADD:
+        Name = std::string("llvm.loongarch.x86add") +
+               GetSuffixAccordingType(Src1Ty);
+        GetLBTIntrinsic(Name, Src0, Src1);
+        break;
+    case X86_INS_ADC:
+        Name = std::string("llvm.loongarch.x86adc") +
+               GetSuffixAccordingType(Src1Ty);
+        GetLBTIntrinsic(Name, Src0, Src1);
+        break;
+    case X86_INS_INC:
+        Name = std::string("llvm.loongarch.x86inc") +
+               GetSuffixAccordingType(Src0Ty);
+        GetLBTIntrinsic(Name, Src0, Src1);
+        break;
+    case X86_INS_DEC:
+        Name = std::string("llvm.loongarch.x86dec") +
+               GetSuffixAccordingType(Src0Ty);
+        GetLBTIntrinsic(Name, Src0, Src1);
+        break;
+    case X86_INS_CMPSB:
+    case X86_INS_CMPSW:
+    case X86_INS_CMPSD:
+    case X86_INS_CMPSQ:
+    case X86_INS_SCASB:
+    case X86_INS_SCASW:
+    case X86_INS_SCASD:
+    case X86_INS_SCASQ:
+    case X86_INS_CMPXCHG:
+    case X86_INS_CMPXCHG8B:
+    case X86_INS_NEG:
+    case X86_INS_CMP:
+    case X86_INS_SUB:
+        Name = std::string("llvm.loongarch.x86sub") +
+               GetSuffixAccordingType(Src1Ty);
+        GetLBTIntrinsic(Name, Src0, Src1);
+        break;
+    case X86_INS_SBB:
+        Name = std::string("llvm.loongarch.x86sbc") +
+               GetSuffixAccordingType(Src1Ty);
+        GetLBTIntrinsic(Name, Src0, Src1);
+        break;
+    case X86_INS_XOR:
+        Name = std::string("llvm.loongarch.x86xor") +
+               GetSuffixAccordingType(Src1Ty);
+        GetLBTIntrinsic(Name, Src0, Src1);
+        break;
+    case X86_INS_TEST:
+    case X86_INS_AND:
+        Name = std::string("llvm.loongarch.x86and") +
+               GetSuffixAccordingType(Src1Ty);
+        GetLBTIntrinsic(Name, Src0, Src1);
+        break;
+    case X86_INS_OR:
+        Name = std::string("llvm.loongarch.x86or") +
+               GetSuffixAccordingType(Src1Ty);
+        GetLBTIntrinsic(Name, Src0, Src1);
+        break;
+    case X86_INS_SAL:
+    case X86_INS_SHL: {
+        X86OperandHandler OpndHdl(InstHdl.getOpnd(0));
+        if (OpndHdl.isImm()) {
+            Name = std::string("llvm.loongarch.x86slli") +
+                GetSuffixAccordingType(Src1Ty);
+            GetLBTIntrinsic(Name, ConstInt(Int32Ty, OpndHdl.getIMM()), Src1);
+        } else {
+            Name = std::string("llvm.loongarch.x86sll") +
+                GetSuffixAccordingType(Src1Ty);
+            GetLBTIntrinsic(Name, Src0, Src1);
+        }
+        break;
     }
-    if (InstHdl.OFisDefined()) {
-        GenOF(Inst, Dest, Src0, Src1);
+    case X86_INS_SHR: {
+        X86OperandHandler OpndHdl(InstHdl.getOpnd(0));
+        if (OpndHdl.isImm()) {
+            Name = std::string("llvm.loongarch.x86srli") +
+                GetSuffixAccordingType(Src1Ty);
+            GetLBTIntrinsic(Name, ConstInt(Int32Ty, OpndHdl.getIMM()), Src1);
+        } else {
+            Name = std::string("llvm.loongarch.x86srl") +
+                GetSuffixAccordingType(Src1Ty);
+            GetLBTIntrinsic(Name, Src0, Src1);
+        }
+        break;
     }
-    if (InstHdl.ZFisDefined()) {
-        Value *IsZero =
-            Builder.CreateICmpEQ(Dest, ConstInt(Dest->getType(), 0));
-        Value *ZFBit = Builder.CreateSelect(IsZero, ConstInt(Int64Ty, ZF_BIT),
-                                            ConstInt(Int64Ty, 0));
-        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getZFMask());
-        Value *NewEflag = Builder.CreateOr(ClearEflag, ZFBit);
-        StoreGMRValue(NewEflag, X86Config::EFLAG);
+    case X86_INS_SAR: {
+        X86OperandHandler OpndHdl(InstHdl.getOpnd(0));
+        if (OpndHdl.isImm()) {
+            Name = std::string("llvm.loongarch.x86srai") +
+                GetSuffixAccordingType(Src1->getType());
+            GetLBTIntrinsic(Name, ConstInt(Int32Ty, OpndHdl.getIMM()), Src1);
+        } else {
+            Name = std::string("llvm.loongarch.x86sra") +
+                GetSuffixAccordingType(Src1Ty);
+            GetLBTIntrinsic(Name, Src0, Src1);
+        }
+        break;
     }
-    if (InstHdl.AFisDefined()) {
-        /* Value *AFBit = Builder.CreateXor(Dest, Builder.CreateXor(Src0, Src1)); */
-        /* AFBit = Builder.CreateAnd(AFBit, ConstInt(Int64Ty, AF_BIT)); */
-        /* Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG); */
-        /* Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getAFMask()); */
-        /* Value *NewEflag = Builder.CreateOr(ClearEflag, AFBit); */
-        /* StoreGMRValue(NewEflag, X86Config::EFLAG); */
+    case X86_INS_RCL:
+        Name = std::string("llvm.loongarch.x86rcl") +
+            GetSuffixAccordingType(Src1Ty);
+        GetLBTIntrinsic(Name, Src0, Src1);
+        break;
+    case X86_INS_RCR:
+        Name = std::string("llvm.loongarch.x86rcr") +
+            GetSuffixAccordingType(Src1Ty);
+        GetLBTIntrinsic(Name, Src0, Src1);
+        break;
+    case X86_INS_MUL:
+        Name = std::string("llvm.loongarch.x86mul") +
+               GetSuffixAccordingType(Src1Ty) + "u";
+        GetLBTIntrinsic(Name, Src0, Src1);
+        break;
+    case X86_INS_IMUL:
+        Name = std::string("llvm.loongarch.x86mul") +
+               GetSuffixAccordingType(Src1Ty);
+        GetLBTIntrinsic(Name, Src0, Src1);
+        break;
+    case X86_INS_ROR:
+        Name = std::string("llvm.loongarch.x86rotr") +
+               GetSuffixAccordingType(Src1Ty);
+        GetLBTIntrinsic(Name, Src0, Src1);
+        break;
+    case X86_INS_ROL:
+        Name = std::string("llvm.loongarch.x86rotl") +
+               GetSuffixAccordingType(Src1Ty);
+        GetLBTIntrinsic(Name, Src0, Src1);
+        break;
+    case X86_INS_AAM:
+    case X86_INS_AAD:
+    case X86_INS_AAA:
+    case X86_INS_DAA:
+    case X86_INS_DAS:
+    case X86_INS_SHLD:
+    case X86_INS_SHRD:
+    default:
+        dbgs() << Inst->mnemonic << "\n";
+        llvm_unreachable("Unhandled Inst");
     }
-    if (InstHdl.PFisDefined()) {
-        /* Type *ArrTy = ArrayType::get(Int8Ty, 256); */
-        /* Value *PFT = Mod->getGlobalVariable("PFTable"); */
-        /* Value *Off = Builder.CreateAnd(Dest, ConstInt(Dest->getType(), 0xff)); */
-        /* Value *PFBytePtr = */
-        /*     Builder.CreateGEP(ArrTy, PFT, {ConstInt(Int64Ty, 0), Off}); */
-        /* Value *PFByte = Builder.CreateLoad(Int8Ty, PFBytePtr); */
-        /* Value *PFBit = Builder.CreateZExt(PFByte, Int64Ty); */
-        /* Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG); */
-        /* Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getPFMask()); */
-        /* Value *NewEflag = Builder.CreateOr(ClearEflag, PFBit); */
-        /* StoreGMRValue(NewEflag, X86Config::EFLAG); */
-    }
-    if (InstHdl.SFisDefined()) {
-        int shift = Dest->getType()->getIntegerBitWidth() - 1;
-        Value *IsSign =
-            Builder.CreateAShr(Dest, ConstInt(Dest->getType(), shift));
-        IsSign = Builder.CreateICmpNE(IsSign, ConstInt(Dest->getType(), 0));
-        Value *SFBit = Builder.CreateSelect(IsSign, ConstInt(Int64Ty, SF_BIT),
-                                            ConstInt(Int64Ty, 0));
-        Value *OldEflag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        Value *ClearEflag = Builder.CreateAnd(OldEflag, InstHdl.getSFMask());
-        Value *NewEflag = Builder.CreateOr(ClearEflag, SFBit);
-        StoreGMRValue(NewEflag, X86Config::EFLAG);
-    }
+    // debug
+    /* Value *V = GetLBTFlag(0x3f); */
+    /* StoreGMRValue(V, X86Config::EFLAG); */
 }
 
 void X86Translator::Translate() {

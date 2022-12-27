@@ -23,14 +23,13 @@ void X86Translator::translate_adc(GuestInst *Inst) {
     Value *Src1 = LoadOperand(InstHdl.getOpnd(1));
 
     // Load CF
-    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-    Value *CF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, CF_BIT));
+    Value *CF = GetLBTFlag(0x1);
     if (Src0->getType()->getIntegerBitWidth() < 64) {
         CF = Builder.CreateTrunc(CF, Src0->getType());
     }
     Value *Dest = Builder.CreateAdd(Builder.CreateAdd(Src0, Src1), CF);
+
     StoreOperand(Dest, InstHdl.getOpnd(1));
-    // FIXME! EFLAG calculate should be fixed.
     CalcEflag(Inst, Dest, Src0, Src1);
 }
 
@@ -60,8 +59,7 @@ void X86Translator::translate_sub(GuestInst *Inst) {
 void X86Translator::translate_sbb(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
-    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-    Value *CF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, CF_BIT));
+    Value *CF = GetLBTFlag(0x1);
     if (Src0->getType()->getIntegerBitWidth() != 64) {
         CF = Builder.CreateTrunc(CF, Src0->getType());
     }
@@ -85,6 +83,7 @@ void X86Translator::translate_mul(GuestInst *Inst) {
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
     Value *Src1 = LoadGMRValue(Src0->getType(), X86Config::RAX);
     Value *Dest = nullptr, *High = nullptr, *Low = nullptr;
+    Value *FlagSrc0 = Src0, *FlagSrc1 = Src1;
     switch (Src0->getType()->getIntegerBitWidth()) {
     case 8: {
         Src0 = Builder.CreateZExt(Src0, Int16Ty);
@@ -150,7 +149,7 @@ void X86Translator::translate_mul(GuestInst *Inst) {
     default:
         llvm_unreachable("mul unknown src opnd size\n");
     }
-    CalcEflag(Inst, Dest, High, Low);
+    CalcEflag(Inst, Dest, FlagSrc0, FlagSrc1);
 }
 
 void X86Translator::translate_imul(GuestInst *Inst) {
@@ -160,6 +159,7 @@ void X86Translator::translate_imul(GuestInst *Inst) {
         Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
         Value *Src1 = LoadGMRValue(Src0->getType(), X86Config::RAX);
         Value *Dest = nullptr, *High = nullptr, *Low = nullptr;
+        Value *FlagSrc0 = Src0, *FlagSrc1 = Src1;
         switch (Src0->getType()->getIntegerBitWidth()) {
         case 8: {
             Src0 = Builder.CreateSExt(Src0, Int16Ty);
@@ -225,11 +225,12 @@ void X86Translator::translate_imul(GuestInst *Inst) {
         default:
             llvm_unreachable("mul unknown src opnd size\n");
         }
-        CalcEflag(Inst, Dest, High, nullptr);
+        CalcEflag(Inst, Dest, FlagSrc0, FlagSrc1);
     } else if (OpndNum == 2) {
         Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
         Value *Src1 = LoadOperand(InstHdl.getOpnd(1));
         Value *Dest = nullptr, *TruncDest = nullptr;
+        Value *FlagSrc0 = Src0, *FlagSrc1 = Src1;
         int BitWidth = Src0->getType()->getIntegerBitWidth();
         if (BitWidth == 16) {
             Src0 = Builder.CreateSExt(Src0, Int32Ty);
@@ -251,13 +252,25 @@ void X86Translator::translate_imul(GuestInst *Inst) {
             TruncDest = Builder.CreateTrunc(Dest, Int64Ty);
             StoreOperand(TruncDest, InstHdl.getOpnd(1));
         }
-        CalcEflag(Inst, Dest, TruncDest, nullptr);
+        CalcEflag(Inst, Dest, FlagSrc0, FlagSrc1);
     } else {
         dbgs() << "Untranslated instruction imul imm\n";
         exit(-1);
     }
 }
 
+void X86Translator::translate_daa(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction daa\n";
+    exit(-1);
+}
+void X86Translator::translate_das(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction das\n";
+    exit(-1);
+}
+void X86Translator::translate_xadd(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction xadd\n";
+    exit(-1);
+}
 void X86Translator::translate_mulpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction mulpd\n";
     exit(-1);
@@ -300,13 +313,7 @@ void X86Translator::translate_div(GuestInst *Inst) {
         Divisor = Builder.CreateZExt(Divisor, Int64Ty);
         FlushGMRValue(X86Config::RAX);
         FuncTy = FunctionType::get(VoidTy, {Int8PtrTy,Int64Ty}, false);
-#if (LLVM_VERSION_MAJOR > 8)
-        FunctionCallee F = Mod->getOrInsertFunction("helper_divb_AL", FuncTy);
-        Builder.CreateCall(FuncTy, F.getCallee(), {CPUEnv, Divisor});
-#else
-        Value *Func = Mod->getOrInsertFunction("helper_divb_AL", FuncTy);
-        Builder.CreateCall(Func, {CPUEnv, Divisor});
-#endif
+        CallFunc(FuncTy, "helper_divb_AL", {CPUEnv, Divisor});
         ReloadGMRValue(X86Config::RAX);
         break;
     }
@@ -315,13 +322,7 @@ void X86Translator::translate_div(GuestInst *Inst) {
         FlushGMRValue(X86Config::RAX);
         FlushGMRValue(X86Config::RDX);
         FuncTy = FunctionType::get(VoidTy, {Int8PtrTy,Int64Ty}, false);
-#if (LLVM_VERSION_MAJOR > 8)
-        FunctionCallee F = Mod->getOrInsertFunction("helper_divw_AX", FuncTy);
-        Builder.CreateCall(FuncTy, F.getCallee(), {CPUEnv, Divisor});
-#else
-        Value *Func = Mod->getOrInsertFunction("helper_divw_AX", FuncTy);
-        Builder.CreateCall(Func, {CPUEnv, Divisor});
-#endif
+        CallFunc(FuncTy, "helper_divw_AX", {CPUEnv, Divisor});
         ReloadGMRValue(X86Config::RAX);
         ReloadGMRValue(X86Config::RDX);
         break;
@@ -331,13 +332,7 @@ void X86Translator::translate_div(GuestInst *Inst) {
         FlushGMRValue(X86Config::RAX);
         FlushGMRValue(X86Config::RDX);
         FuncTy = FunctionType::get(VoidTy, {Int8PtrTy,Int64Ty}, false);
-#if (LLVM_VERSION_MAJOR > 8)
-        FunctionCallee F = Mod->getOrInsertFunction("helper_divl_EAX", FuncTy);
-        Builder.CreateCall(FuncTy, F.getCallee(), {CPUEnv, Divisor});
-#else
-        Value *Func = Mod->getOrInsertFunction("helper_divl_EAX", FuncTy);
-        Builder.CreateCall(Func, {CPUEnv, Divisor});
-#endif
+        CallFunc(FuncTy, "helper_divl_EAX", {CPUEnv, Divisor});
         ReloadGMRValue(X86Config::RAX);
         ReloadGMRValue(X86Config::RDX);
         break;
@@ -347,13 +342,7 @@ void X86Translator::translate_div(GuestInst *Inst) {
         FlushGMRValue(X86Config::RAX);
         FlushGMRValue(X86Config::RDX);
         FuncTy = FunctionType::get(VoidTy, {Int8PtrTy,Int64Ty}, false);
-#if (LLVM_VERSION_MAJOR > 8)
-        FunctionCallee F = Mod->getOrInsertFunction("helper_divq_EAX", FuncTy);
-        Builder.CreateCall(FuncTy, F.getCallee(), {CPUEnv, Divisor});
-#else
-        Value *Func = Mod->getOrInsertFunction("helper_divq_EAX", FuncTy);
-        Builder.CreateCall(Func, {CPUEnv, Divisor});
-#endif
+        CallFunc(FuncTy, "helper_divq_EAX", {CPUEnv, Divisor});
         ReloadGMRValue(X86Config::RAX);
         ReloadGMRValue(X86Config::RDX);
         break;
@@ -361,31 +350,6 @@ void X86Translator::translate_div(GuestInst *Inst) {
     default:
         llvm_unreachable("Unexpected bit width of div\n");
     }
-    /* Value *Dividend = nullptr, *Quotient = nullptr, *Remainder = nullptr; */
-    /* switch (Divisor->getType()->getIntegerBitWidth()) { */
-    /* case 8: */
-    /*     Dividend = LoadGMRValue(Int16Ty, X86Config::RAX); */
-    /*     Divisor = Builder.CreateZExt(Divisor, Int16Ty); */
-    /*     Quotient = Builder.CreateUDiv(Dividend, Divisor); */
-    /*     Remainder = Builder.CreateURem(Dividend, Divisor); */
-    /*     // Store Quotient and Remainder into AL/AH. */
-    /*     Remainder = Builder.CreateShl(Remainder, ConstInt(Int16Ty, 8)); */
-    /*     Remainder = Builder.CreateZExt(Remainder, ) */
-    /*     Value *RAX = LoadGMRValue(Int64Ty, X86Config::RAX); */
-    /*     RAX = Builder.CreateAnd(RAX, ConstInt(Int64Ty, 0xffffffffffff0000)); */
-    /*     RAX = Builder.CreateOr(RAX, Remainder); */
-
-    /*     break; */
-    /* case 16: */
-
-    /*     break; */
-    /* case 32: */
-    /*     break; */
-    /* case 64: */
-    /*     break; */
-    /* default: */
-    /*     llvm_unreachable("Unexpected bit width of div\n"); */
-    /* } */
 }
 
 void X86Translator::translate_idiv(GuestInst *Inst) {
@@ -462,7 +426,7 @@ void X86Translator::translate_dec(GuestInst *Inst) {
     Value *Src = LoadOperand(InstHdl.getOpnd(0));
     Value *Dest = Builder.CreateSub(Src, ConstInt(Src->getType(), 1));
     StoreOperand(Dest, InstHdl.getOpnd(0));
-    CalcEflag(Inst, Dest, ConstInt(Src->getType(), 1), Src);
+    CalcEflag(Inst, Dest, Src, nullptr);
 }
 
 void X86Translator::translate_inc(GuestInst *Inst) {
@@ -470,7 +434,7 @@ void X86Translator::translate_inc(GuestInst *Inst) {
     Value *Src = LoadOperand(InstHdl.getOpnd(0));
     Value *Dest = Builder.CreateAdd(Src, ConstInt(Src->getType(), 1));
     StoreOperand(Dest, InstHdl.getOpnd(0));
-    CalcEflag(Inst, Dest, ConstInt(Src->getType(), 1), Src);
+    CalcEflag(Inst, Dest, Src, nullptr);
 }
 
 void X86Translator::translate_divsd(GuestInst *Inst) {
@@ -479,17 +443,5 @@ void X86Translator::translate_divsd(GuestInst *Inst) {
 }
 void X86Translator::translate_divss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction divss\n";
-    exit(-1);
-}
-void X86Translator::translate_fdiv(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fdiv\n";
-    exit(-1);
-}
-void X86Translator::translate_fidiv(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fidiv\n";
-    exit(-1);
-}
-void X86Translator::translate_fdivp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fdivp\n";
     exit(-1);
 }

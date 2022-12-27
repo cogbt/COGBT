@@ -223,8 +223,9 @@ void X86Translator::translate_movupd(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_movups(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movups\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    StoreOperand(Src, InstHdl.getOpnd(1));
 }
 void X86Translator::translate_movzx(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
@@ -240,64 +241,64 @@ void X86Translator::translate_mpsadbw(GuestInst *Inst) {
 void X86Translator::translate_cmova(GuestInst *Inst) {
     // CF == 0 && ZF == 0
     X86InstHandler InstHdl(Inst);
-    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-    Value *CZ = Builder.CreateAnd(Flag, ConstInt(Int64Ty, CF_BIT | ZF_BIT));
-    Value *isZero = Builder.CreateICmpEQ(CZ, ConstInt(Int64Ty, 0));
+    FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
+    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setja", FTy);
+    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
     // if condition is not satisfied, prepare the former value.
     Value *OldV = LoadOperand(InstHdl.getOpnd(1));
 
-    Value *Dest = Builder.CreateSelect(isZero, Src0, OldV);
+    Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 
 void X86Translator::translate_cmovae(GuestInst *Inst) {
     // CF == 0
     X86InstHandler InstHdl(Inst);
-    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-    Value *CF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, CF_BIT));
-    Value *isZero = Builder.CreateICmpEQ(CF, ConstInt(Int64Ty, 0));
+    FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
+    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjae", FTy);
+    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
     // if condition is not satisfied, prepare the former value.
     Value *OldV = LoadOperand(InstHdl.getOpnd(1));
 
-    Value *Dest = Builder.CreateSelect(isZero, Src0, OldV);
+    Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 
 void X86Translator::translate_cmovb(GuestInst *Inst) {
     // CF == 1
     X86InstHandler InstHdl(Inst);
-    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-    Value *CF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, CF_BIT));
-    Value *isSet = Builder.CreateICmpNE(CF, ConstInt(Int64Ty, 0));
+    FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
+    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjb", FTy);
+    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
     // if condition is not satisfied, prepare the former value.
     Value *OldV = LoadOperand(InstHdl.getOpnd(1));
 
-    Value *Dest = Builder.CreateSelect(isSet, Src0, OldV);
+    Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 
 void X86Translator::translate_cmovbe(GuestInst *Inst) {
     // CF == 1 OR ZF == 1
     X86InstHandler InstHdl(Inst);
-    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-    Value *CZ = Builder.CreateAnd(Flag, ConstInt(Int64Ty, CF_BIT | ZF_BIT));
-    Value *isSet = Builder.CreateICmpNE(CZ, ConstInt(Int64Ty, 0));
+    FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
+    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjbe", FTy);
+    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
     // if condition is not satisfied, prepare the former value.
     Value *OldV = LoadOperand(InstHdl.getOpnd(1));
 
-    Value *Dest = Builder.CreateSelect(isSet, Src0, OldV);
+    Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 
@@ -313,16 +314,16 @@ void X86Translator::translate_fcmovb(GuestInst *Inst) {
 void X86Translator::translate_cmove(GuestInst *Inst) {
     // ZF == 1
     X86InstHandler InstHdl(Inst);
-    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-    Value *ZF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, ZF_BIT));
-    Value *isSet = Builder.CreateICmpNE(ZF, ConstInt(Int64Ty, 0));
+    FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
+    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setje", FTy);
+    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
     // if condition is not satisfied, prepare the former value.
     Value *OldV = LoadOperand(InstHdl.getOpnd(1));
 
-    Value *Dest = Builder.CreateSelect(isSet, Src0, OldV);
+    Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 
@@ -334,16 +335,9 @@ void X86Translator::translate_fcmove(GuestInst *Inst) {
 void X86Translator::translate_cmovg(GuestInst *Inst) {
     // ZF == 0 AND SF == OF
     X86InstHandler InstHdl(Inst);
-    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-    Value *ZF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, ZF_BIT));
-    Value *ZFIsZero = Builder.CreateICmpEQ(ZF, ConstInt(Int64Ty, 0));
-    Value *SF = Builder.CreateLShr(Flag, ConstInt(Int64Ty, SF_SHIFT));
-    Value *OF = Builder.CreateLShr(Flag, ConstInt(Int64Ty, OF_SHIFT));
-    SF = Builder.CreateAnd(SF, ConstInt(SF->getType(), 1));
-    OF = Builder.CreateAnd(OF, ConstInt(OF->getType(), 1));
-    Value *SXorO = Builder.CreateXor(SF, OF);
-    Value *SEqualsO = Builder.CreateICmpEQ(SXorO, ConstInt(SXorO->getType(), 0));
-    Value *Cond = Builder.CreateAnd(ZFIsZero, SEqualsO);
+    FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
+    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjg", FTy);
+    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
@@ -357,56 +351,41 @@ void X86Translator::translate_cmovg(GuestInst *Inst) {
 void X86Translator::translate_cmovge(GuestInst *Inst) {
     // SF == OF
     X86InstHandler InstHdl(Inst);
-    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-    Value *SF = Builder.CreateLShr(Flag, ConstInt(Int64Ty, SF_SHIFT));
-    Value *OF = Builder.CreateLShr(Flag, ConstInt(Int64Ty, OF_SHIFT));
-    SF = Builder.CreateAnd(SF, ConstInt(SF->getType(), 1));
-    OF = Builder.CreateAnd(OF, ConstInt(OF->getType(), 1));
-    Value *SXorO = Builder.CreateXor(SF, OF);
-    Value *SEqualsO = Builder.CreateICmpEQ(SXorO, ConstInt(SXorO->getType(), 0));
+    FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
+    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjge", FTy);
+    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
     // if condition is not satisfied, prepare the former value.
     Value *OldV = LoadOperand(InstHdl.getOpnd(1));
 
-    Value *Dest = Builder.CreateSelect(SEqualsO, Src0, OldV);
+    Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 
 void X86Translator::translate_cmovl(GuestInst *Inst) {
     // SF != OF
     X86InstHandler InstHdl(Inst);
-    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-    Value *SF = Builder.CreateLShr(Flag, ConstInt(Int64Ty, SF_SHIFT));
-    Value *OF = Builder.CreateLShr(Flag, ConstInt(Int64Ty, OF_SHIFT));
-    SF = Builder.CreateAnd(SF, ConstInt(SF->getType(), 1));
-    OF = Builder.CreateAnd(OF, ConstInt(OF->getType(), 1));
-    Value *SXorO = Builder.CreateXor(SF, OF);
-    Value *SDiffO = Builder.CreateICmpNE(SXorO, ConstInt(SXorO->getType(), 0));
+    FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
+    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjl", FTy);
+    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
     // if condition is not satisfied, prepare the former value.
     Value *OldV = LoadOperand(InstHdl.getOpnd(1));
 
-    Value *Dest = Builder.CreateSelect(SDiffO, Src0, OldV);
+    Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 
 void X86Translator::translate_cmovle(GuestInst *Inst) {
     // ZF == 1 OR SF != OF
     X86InstHandler InstHdl(Inst);
-    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-    Value *ZF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, ZF_BIT));
-    Value *ZFIsSet = Builder.CreateICmpNE(ZF, ConstInt(Int64Ty, 0));
-    Value *SF = Builder.CreateLShr(Flag, ConstInt(Int64Ty, SF_SHIFT));
-    Value *OF = Builder.CreateLShr(Flag, ConstInt(Int64Ty, OF_SHIFT));
-    SF = Builder.CreateAnd(SF, ConstInt(SF->getType(), 1));
-    OF = Builder.CreateAnd(OF, ConstInt(OF->getType(), 1));
-    Value *SXorO = Builder.CreateXor(SF, OF);
-    Value *SDiffO = Builder.CreateICmpNE(SXorO, ConstInt(SXorO->getType(), 0));
-    Value *Cond = Builder.CreateOr(ZFIsSet, SDiffO);
+    FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
+    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjle", FTy);
+    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
@@ -429,16 +408,16 @@ void X86Translator::translate_fcmovnb(GuestInst *Inst) {
 void X86Translator::translate_cmovne(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     // ZF == 0
-    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-    Value *ZF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, ZF_BIT));
-    Value *isZero = Builder.CreateICmpEQ(ZF, ConstInt(Int64Ty, 0));
+    FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
+    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjne", FTy);
+    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
     // if condition is not satisfied, prepare the former value.
     Value *OldV = LoadOperand(InstHdl.getOpnd(1));
 
-    Value *Dest = Builder.CreateSelect(isZero, Src0, OldV);
+    Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 
@@ -450,32 +429,32 @@ void X86Translator::translate_fcmovne(GuestInst *Inst) {
 void X86Translator::translate_cmovno(GuestInst *Inst) {
     // OF == 0
     X86InstHandler InstHdl(Inst);
-    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-    Value *OF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, OF_BIT));
-    Value *isZero = Builder.CreateICmpEQ(OF, ConstInt(Int64Ty, 0));
+    FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
+    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjno", FTy);
+    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
     // if condition is not satisfied, prepare the former value.
     Value *OldV = LoadOperand(InstHdl.getOpnd(1));
 
-    Value *Dest = Builder.CreateSelect(isZero, Src0, OldV);
+    Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 
 void X86Translator::translate_cmovnp(GuestInst *Inst) {
     // PF == 0
     X86InstHandler InstHdl(Inst);
-    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-    Value *PF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, PF_BIT));
-    Value *isZero = Builder.CreateICmpEQ(PF, ConstInt(Int64Ty, 0));
+    FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
+    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjnp", FTy);
+    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
     // if condition is not satisfied, prepare the former value.
     Value *OldV = LoadOperand(InstHdl.getOpnd(1));
 
-    Value *Dest = Builder.CreateSelect(isZero, Src0, OldV);
+    Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 
@@ -487,48 +466,48 @@ void X86Translator::translate_fcmovnu(GuestInst *Inst) {
 void X86Translator::translate_cmovns(GuestInst *Inst) {
     // SF == 0
     X86InstHandler InstHdl(Inst);
-    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-    Value *SF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, SF_BIT));
-    Value *isZero = Builder.CreateICmpEQ(SF, ConstInt(Int64Ty, 0));
+    FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
+    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjns", FTy);
+    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
     // if condition is not satisfied, prepare the former value.
     Value *OldV = LoadOperand(InstHdl.getOpnd(1));
 
-    Value *Dest = Builder.CreateSelect(isZero, Src0, OldV);
+    Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 
 void X86Translator::translate_cmovo(GuestInst *Inst) {
     // OF == 1
     X86InstHandler InstHdl(Inst);
-    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-    Value *OF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, OF_BIT));
-    Value *isSet = Builder.CreateICmpNE(OF, ConstInt(Int64Ty, 0));
+    FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
+    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjo", FTy);
+    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
     // if condition is not satisfied, prepare the former value.
     Value *OldV = LoadOperand(InstHdl.getOpnd(1));
 
-    Value *Dest = Builder.CreateSelect(isSet, Src0, OldV);
+    Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 
 void X86Translator::translate_cmovp(GuestInst *Inst) {
     // PF == 1
     X86InstHandler InstHdl(Inst);
-    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-    Value *PF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, PF_BIT));
-    Value *isSet = Builder.CreateICmpNE(PF, ConstInt(Int64Ty, 0));
+    FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
+    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjp", FTy);
+    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
     // if condition is not satisfied, prepare the former value.
     Value *OldV = LoadOperand(InstHdl.getOpnd(1));
 
-    Value *Dest = Builder.CreateSelect(isSet, Src0, OldV);
+    Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 
@@ -540,16 +519,16 @@ void X86Translator::translate_fcmovu(GuestInst *Inst) {
 void X86Translator::translate_cmovs(GuestInst *Inst) {
     // SF == 1
     X86InstHandler InstHdl(Inst);
-    Value *Flag = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-    Value *SF = Builder.CreateAnd(Flag, ConstInt(Int64Ty, SF_BIT));
-    Value *isSet = Builder.CreateICmpNE(SF, ConstInt(Int64Ty, 0));
+    FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
+    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjs", FTy);
+    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
     // if condition is not satisfied, prepare the former value.
     Value *OldV = LoadOperand(InstHdl.getOpnd(1));
 
-    Value *Dest = Builder.CreateSelect(isSet, Src0, OldV);
+    Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 
