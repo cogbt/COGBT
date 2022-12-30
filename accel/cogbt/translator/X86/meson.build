@@ -9,5 +9,6 @@ cogbt_ss.add(files(
   'x86-mov.cpp',
   'x86-setcc.cpp',
   'x86-simd.cpp',
+  'x86-farith.cpp',
   'misc.cpp',
 ))

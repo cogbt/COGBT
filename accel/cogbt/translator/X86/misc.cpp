@@ -435,14 +435,6 @@ void X86Translator::translate_cwde(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cwde\n";
     exit(-1);
 }
-void X86Translator::translate_daa(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction daa\n";
-    exit(-1);
-}
-void X86Translator::translate_das(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction das\n";
-    exit(-1);
-}
 void X86Translator::translate_data16(GuestInst *Inst) {
     dbgs() << "Untranslated instruction data16\n";
     exit(-1);
@@ -1181,10 +1173,6 @@ void X86Translator::translate_lss(GuestInst *Inst) {
 }
 void X86Translator::translate_ltr(GuestInst *Inst) {
     dbgs() << "Untranslated instruction ltr\n";
-    exit(-1);
-}
-void X86Translator::translate_xadd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction xadd\n";
     exit(-1);
 }
 void X86Translator::translate_lzcnt(GuestInst *Inst) {

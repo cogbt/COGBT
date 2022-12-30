@@ -68,6 +68,11 @@ public:
     int getOpndSize() {
         return Opnd->size;
     }
+
+    /// getIMM - Get imm operand value.
+    int64_t getIMM() {
+        return Opnd->imm;
+    }
 private:
     X86Operand *Opnd;
 };
