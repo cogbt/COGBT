@@ -293,10 +293,6 @@ void X86Translator::translate_comisd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction comisd\n";
     exit(-1);
 }
-void X86Translator::translate_comiss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction comiss\n";
-    exit(-1);
-}
 void X86Translator::translate_fcomp(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fcomp\n";
     exit(-1);

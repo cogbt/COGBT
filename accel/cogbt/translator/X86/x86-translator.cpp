@@ -281,6 +281,11 @@ void X86Translator::FlushGMRValue(int GMRId) {
         Builder.CreateGEP(Int8Ty, CPUEnv, ConstantInt::get(Int64Ty, Off));
     Value *Ptr = Builder.CreateBitCast(Addr, Int64PtrTy);
     Value *GMRV = LoadGMRValue(Int64Ty, GMRId);
+    if (GMRId == X86Config::EFLAG) {
+        Value *Flag = GetLBTFlag();
+        GMRV = Builder.CreateAnd(GMRV, ConstInt(Int64Ty, DF_BIT|0x202));
+        GMRV = Builder.CreateOr(GMRV, Flag);
+    }
     Builder.CreateStore(GMRV, Ptr, true);
 }
 
@@ -293,7 +298,13 @@ void X86Translator::ReloadGMRValue(int GMRId) {
         Off = GuestEflagOffset();
     Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, Off));
     Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
-    StoreGMRValue(Builder.CreateLoad(Int64Ty, Addr), GMRId);
+    Value *V = Builder.CreateLoad(Int64Ty, Addr);
+    if (GMRId != X86Config::EFLAG)
+        StoreGMRValue(V, GMRId);
+    else {
+        // sync to inner lbt flag register
+        SetLBTFlag(V);
+    }
 }
 
 Type *X86Translator::GetOpndLLVMType(X86Operand *Opnd) {
@@ -600,6 +611,7 @@ void X86Translator::AddExternalSyms() {
     EE->addGlobalMapping("helper_punpcklwd_xmm", (uint64_t)helper_punpcklwd_xmm_wrapper);
     EE->addGlobalMapping("helper_punpcklwd_mmx", (uint64_t)helper_punpcklwd_mmx_wrapper);
     EE->addGlobalMapping("helper_pshufd", (uint64_t)helper_pshufd_xmm_wrapper);
+    EE->addGlobalMapping("helper_comiss", (uint64_t)helper_comiss_wrapper);
 }
 
 void X86Translator::GetLBTIntrinsic(StringRef Name, Value *Src0, Value *Src1) {

@@ -1075,6 +1075,9 @@ void helper_comiss(CPUX86State *env, Reg *d, Reg *s)
     s1 = s->ZMM_S(0);
     ret = float32_compare(s0, s1, &env->sse_status);
     CC_SRC = comis_eflags[ret + 1];
+#ifdef CONFIG_COGBT
+    env->eflags = CC_SRC;
+#endif
 }
 
 void helper_ucomisd(CPUX86State *env, Reg *d, Reg *s)

@@ -42,6 +42,7 @@ void helper_punpcklbw_mmx_wrapper(void *p, int dest, int src);
 void helper_punpcklwd_xmm_wrapper(void *p, int dest, int src);
 void helper_punpcklwd_mmx_wrapper(void *p, int dest, int src);
 void helper_pshufd_xmm_wrapper(void *p, int dest, int src, int order);
+void helper_comiss_wrapper(void *p, int dest, int src);
 #ifdef __cplusplus
 }
 #endif
