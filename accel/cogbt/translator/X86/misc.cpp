@@ -208,16 +208,26 @@ void X86Translator::translate_call(GuestInst *Inst) {
     /* exit(-1); */
 }
 void X86Translator::translate_cbw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cbw\n";
-    exit(-1);
+    // AX = sign-extend of AL
+    X86InstHandler InstHdl(Inst);
+    Value *AL = LoadGMRValue(Int8Ty, X86Config::RAX);
+    Value *V = Builder.CreateSExt(AL, Int16Ty);
+    StoreGMRValue(V, X86Config::RAX);
 }
 void X86Translator::translate_cdq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cdq\n";
-    exit(-1);
+    // EDX:EAX = sign-extend of EAX
+    X86InstHandler InstHdl(Inst);
+    Value *EAX = LoadGMRValue(Int32Ty, X86Config::RAX);
+    Value *V = Builder.CreateSExt(EAX, Int64Ty);
+    V = Builder.CreateLShr(V, ConstInt(Int64Ty, 32));
+    StoreGMRValue(V, X86Config::RDX);
 }
 void X86Translator::translate_cdqe(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cdqe\n";
-    exit(-1);
+    // RAX = sign-extend of EAX
+    X86InstHandler InstHdl(Inst);
+    Value *EAX = LoadGMRValue(Int32Ty, X86Config::RAX);
+    Value *V = Builder.CreateSExt(EAX, Int64Ty);
+    StoreGMRValue(V, X86Config::RAX);
 }
 void X86Translator::translate_fchs(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fchs\n";
@@ -428,12 +438,19 @@ void X86Translator::translate_cvttss2si(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_cwd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cwd\n";
-    exit(-1);
+    // DX:AX = sign-extend of AX
+    X86InstHandler InstHdl(Inst);
+    Value *AX = LoadGMRValue(Int16Ty, X86Config::RAX);
+    Value *V = Builder.CreateAShr(AX, ConstInt(Int32Ty, 15));
+    StoreGMRValue(V, X86Config::RDX);
 }
 void X86Translator::translate_cwde(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cwde\n";
-    exit(-1);
+    // EAX = sign-extend of AX
+    X86InstHandler InstHdl(Inst);
+    Value *AX = LoadGMRValue(Int16Ty, X86Config::RAX);
+    Value *V = Builder.CreateSExt(AX, Int32Ty);
+    V = Builder.CreateZExt(V, Int64Ty);
+    StoreGMRValue(V, X86Config::RAX);
 }
 void X86Translator::translate_data16(GuestInst *Inst) {
     dbgs() << "Untranslated instruction data16\n";
@@ -673,10 +690,6 @@ void X86Translator::translate_fyl2xp1(GuestInst *Inst) {
 }
 void X86Translator::translate_movapd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movapd\n";
-    exit(-1);
-}
-void X86Translator::translate_movaps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movaps\n";
     exit(-1);
 }
 void X86Translator::translate_orpd(GuestInst *Inst) {
@@ -1287,68 +1300,8 @@ void X86Translator::translate_packuswb(GuestInst *Inst) {
     dbgs() << "Untranslated instruction packuswb\n";
     exit(-1);
 }
-void X86Translator::translate_paddb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction paddb\n";
-    exit(-1);
-}
-void X86Translator::translate_paddd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction paddd\n";
-    exit(-1);
-}
-void X86Translator::translate_paddq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction paddq\n";
-    exit(-1);
-}
-void X86Translator::translate_paddsb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction paddsb\n";
-    exit(-1);
-}
-void X86Translator::translate_paddsw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction paddsw\n";
-    exit(-1);
-}
-void X86Translator::translate_paddusb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction paddusb\n";
-    exit(-1);
-}
-void X86Translator::translate_paddusw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction paddusw\n";
-    exit(-1);
-}
-void X86Translator::translate_paddw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction paddw\n";
-    exit(-1);
-}
 void X86Translator::translate_palignr(GuestInst *Inst) {
     dbgs() << "Untranslated instruction palignr\n";
-    exit(-1);
-}
-void X86Translator::translate_pandn(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pandn\n";
-    exit(-1);
-}
-void X86Translator::translate_pand(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pand\n";
-    exit(-1);
-}
-void X86Translator::translate_pavgb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pavgb\n";
-    exit(-1);
-}
-void X86Translator::translate_pavgw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pavgw\n";
-    exit(-1);
-}
-void X86Translator::translate_pcmpgtb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pcmpgtb\n";
-    exit(-1);
-}
-void X86Translator::translate_pcmpgtd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pcmpgtd\n";
-    exit(-1);
-}
-void X86Translator::translate_pcmpgtw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pcmpgtw\n";
     exit(-1);
 }
 void X86Translator::translate_pextrw(GuestInst *Inst) {
@@ -1387,52 +1340,8 @@ void X86Translator::translate_pmaddubsw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pmaddubsw\n";
     exit(-1);
 }
-void X86Translator::translate_pmaddwd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pmaddwd\n";
-    exit(-1);
-}
-void X86Translator::translate_pmaxsw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pmaxsw\n";
-    exit(-1);
-}
-void X86Translator::translate_pmaxub(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pmaxub\n";
-    exit(-1);
-}
-void X86Translator::translate_pminsw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pminsw\n";
-    exit(-1);
-}
-void X86Translator::translate_pminub(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pminub\n";
-    exit(-1);
-}
 void X86Translator::translate_pmulhrsw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pmulhrsw\n";
-    exit(-1);
-}
-void X86Translator::translate_pmulhuw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pmulhuw\n";
-    exit(-1);
-}
-void X86Translator::translate_pmulhw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pmulhw\n";
-    exit(-1);
-}
-void X86Translator::translate_pmullw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pmullw\n";
-    exit(-1);
-}
-void X86Translator::translate_pmuludq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pmuludq\n";
-    exit(-1);
-}
-void X86Translator::translate_por(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction por\n";
-    exit(-1);
-}
-void X86Translator::translate_psadbw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction psadbw\n";
     exit(-1);
 }
 void X86Translator::translate_pshufb(GuestInst *Inst) {
@@ -1485,38 +1394,6 @@ void X86Translator::translate_psrlq(GuestInst *Inst) {
 }
 void X86Translator::translate_psrlw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction psrlw\n";
-    exit(-1);
-}
-void X86Translator::translate_psubb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction psubb\n";
-    exit(-1);
-}
-void X86Translator::translate_psubd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction psubd\n";
-    exit(-1);
-}
-void X86Translator::translate_psubq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction psubq\n";
-    exit(-1);
-}
-void X86Translator::translate_psubsb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction psubsb\n";
-    exit(-1);
-}
-void X86Translator::translate_psubsw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction psubsw\n";
-    exit(-1);
-}
-void X86Translator::translate_psubusb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction psubusb\n";
-    exit(-1);
-}
-void X86Translator::translate_psubusw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction psubusw\n";
-    exit(-1);
-}
-void X86Translator::translate_psubw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction psubw\n";
     exit(-1);
 }
 void X86Translator::translate_monitor(GuestInst *Inst) {
@@ -1801,10 +1678,6 @@ void X86Translator::translate_pmovzxwq(GuestInst *Inst) {
 }
 void X86Translator::translate_pmuldq(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pmuldq\n";
-    exit(-1);
-}
-void X86Translator::translate_pmulhrw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pmulhrw\n";
     exit(-1);
 }
 void X86Translator::translate_pmulld(GuestInst *Inst) {
@@ -2162,22 +2035,6 @@ void X86Translator::translate_sti(GuestInst *Inst) {
 }
 void X86Translator::translate_stmxcsr(GuestInst *Inst) {
     dbgs() << "Untranslated instruction stmxcsr\n";
-    exit(-1);
-}
-void X86Translator::translate_stosb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction stosb\n";
-    exit(-1);
-}
-void X86Translator::translate_stosd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction stosd\n";
-    exit(-1);
-}
-void X86Translator::translate_stosq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction stosq\n";
-    exit(-1);
-}
-void X86Translator::translate_stosw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction stosw\n";
     exit(-1);
 }
 void X86Translator::translate_str(GuestInst *Inst) {

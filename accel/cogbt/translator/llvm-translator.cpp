@@ -54,6 +54,8 @@ void LLVMTranslator::InitializeTypes() {
     Int512Ty = Type::getIntNTy(Context, 512);
     VoidTy = Type::getVoidTy(Context);
     Int8PtrTy = Type::getInt8PtrTy(Context);
+    Int16PtrTy = Type::getInt16PtrTy(Context);
+    Int32PtrTy = Type::getInt32PtrTy(Context);
     Int64PtrTy = Type::getInt64PtrTy(Context);
     Int128PtrTy = Type::getIntNPtrTy(Context, 128);
     CPUX86StatePtrTy = StructType::create(Context)->getPointerTo();

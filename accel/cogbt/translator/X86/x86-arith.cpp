@@ -254,8 +254,12 @@ void X86Translator::translate_imul(GuestInst *Inst) {
         }
         CalcEflag(Inst, Dest, FlagSrc0, FlagSrc1);
     } else {
-        dbgs() << "Untranslated instruction imul imm\n";
-        exit(-1);
+        Type *Ty = GetOpndLLVMType(InstHdl.getOpnd(1));
+        Value *Src0 = LoadOperand(InstHdl.getOpnd(0), Ty);
+        Value *Src1 = LoadOperand(InstHdl.getOpnd(1));
+        Value *Dest = Builder.CreateMul(Src0, Src1);
+        StoreOperand(Dest, InstHdl.getOpnd(2));
+        CalcEflag(Inst, Dest, Src0, Src1);
     }
 }
 

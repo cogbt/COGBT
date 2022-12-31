@@ -264,7 +264,9 @@ void X86Translator::SyncAllGMRValue() {
 void X86Translator::SyncGMRValue(int GMRId) {
     if (GMRVals[GMRId].isDirty()) {
         Builder.CreateStore(GMRVals[GMRId].getValue(), GMRStates[GMRId]);
-        GMRVals[GMRId].setDirty(false);
+        /* GMRVals[GMRId].setDirty(false); */
+        // GMRValue should be invalidated once branch.
+        GMRVals[GMRId].clear();
     }
 }
 
@@ -469,8 +471,9 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd, Type *LoadTy) {
     Value *Res = nullptr;
 
     if (OpndHdl.isImm()) {
-        Res = Builder.CreateAdd(ConstantInt::get(LLVMTy, 0),
-                                ConstantInt::get(LLVMTy, Opnd->imm));
+        Res = ConstInt(LLVMTy, Opnd->imm);
+        /* Res = Builder.CreateAdd(ConstantInt::get(LLVMTy, 0), */
+        /*                         ConstantInt::get(LLVMTy, Opnd->imm)); */
     } else if (OpndHdl.isReg()) {
         if (OpndHdl.isGPR()) {
             Res = LoadGMRValue(LLVMTy, OpndHdl.GetGMRID(), OpndHdl.isHSubReg());

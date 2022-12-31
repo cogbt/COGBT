@@ -56,7 +56,8 @@ private: /// Currently translated instruction.
     /// NOTE! \p Ty should be integer type.
     Value *LoadGMRValue(Type *Ty, int GMRId, bool isHSubReg = false);
 
-    /// StoreGMRValue - Store value V to GMRVals.
+    /// StoreGMRValue - Store value V to GMRVals, Assuming that V won't touch
+    /// other part of GMR[GMRId]
     void StoreGMRValue(Value *V, int GMRId, bool isHSubReg = false);
 
     /// CalcMemAddr - Generate llvm IRs to calculate memory address of a memory
@@ -104,6 +105,11 @@ private: /// Currently translated instruction.
 
     /// GetLBTFlag - Get inner LBT Flag register value.
     Value *GetLBTFlag(int mask = 0x3f);
+
+    /// GenMMXSSEHelper - Gen a call to tcg helper, \p Inst should have 2
+    /// operands, the first operand may be mmx/xmm/mm64/mm128, the second
+    /// operand should be mmx or xmm.
+    void GenMMXSSEHelper(std::string Name, GuestInst *Inst);
 };
 
 #endif

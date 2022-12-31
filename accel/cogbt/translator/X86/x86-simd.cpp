@@ -1,12 +1,12 @@
 #include "x86-translator.h"
 
-void X86Translator::translate_pxor(GuestInst *Inst) {
+void X86Translator::GenMMXSSEHelper(std::string Name, GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
 
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
     Value *MemVal = nullptr;
-    // helper_pxor_xxx function type.
+    // helper_Name_xxx function type.
     FunctionType *FuncTy =
         FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty}, false);
 
@@ -17,11 +17,11 @@ void X86Translator::translate_pxor(GuestInst *Inst) {
             FlushXMMT0(MemVal);
             Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
             Value *SrcXMMID = ConstInt(Int64Ty, -1); // -1 means src is xmm_t0
-            CallFunc(FuncTy, "helper_pxor_xmm", {CPUEnv, DestXMMID, SrcXMMID});
+            CallFunc(FuncTy, Name + "xmm", {CPUEnv, DestXMMID, SrcXMMID});
         } else {
             Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
             Value *SrcXMMID = ConstInt(Int64Ty, SrcOpnd.GetXMMID());
-            CallFunc(FuncTy, "helper_pxor_xmm", {CPUEnv, DestXMMID, SrcXMMID});
+            CallFunc(FuncTy, Name + "xmm", {CPUEnv, DestXMMID, SrcXMMID});
         }
 
     } else { // MMX
@@ -29,67 +29,169 @@ void X86Translator::translate_pxor(GuestInst *Inst) {
             FlushMMXT0(MemVal);
             Value *DestMMXID = ConstInt(Int64Ty, DestOpnd.GetMMXID());
             Value *SrcMMXID = ConstInt(Int64Ty, SrcOpnd.GetMMXID());
-            CallFunc(FuncTy, "helper_pxor_mmx", {CPUEnv, DestMMXID, SrcMMXID});
+            CallFunc(FuncTy, Name + "mmx", {CPUEnv, DestMMXID, SrcMMXID});
         } else {
             Value *DestMMXID = ConstInt(Int64Ty, DestOpnd.GetMMXID());
             Value *SrcMMXID = ConstInt(Int64Ty, -1);
-            CallFunc(FuncTy, "helper_pxor_mmx", {CPUEnv, DestMMXID, SrcMMXID});
+            CallFunc(FuncTy, Name + "mmx", {CPUEnv, DestMMXID, SrcMMXID});
         }
     }
 }
 
-void X86Translator::translate_movdqu(GuestInst *Inst) {
-    X86InstHandler InstHdl(Inst);
+void X86Translator::translate_paddb(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_paddb", Inst);
+}
 
-    Value *Src = LoadOperand(InstHdl.getOpnd(0));
-    StoreOperand(Src, InstHdl.getOpnd(1));
+void X86Translator::translate_paddw(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_paddw", Inst);
+}
+
+void X86Translator::translate_paddd(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_paddl", Inst);
+}
+
+void X86Translator::translate_paddq(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_paddq", Inst);
+}
+
+void X86Translator::translate_psubb(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_psubb", Inst);
+}
+
+void X86Translator::translate_psubw(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_psubw", Inst);
+}
+
+void X86Translator::translate_psubd(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_psubl", Inst);
+}
+
+void X86Translator::translate_psubq(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_psubq", Inst);
+}
+
+void X86Translator::translate_paddsb(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_paddsb", Inst);
+}
+
+void X86Translator::translate_paddsw(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_paddsw", Inst);
+}
+
+void X86Translator::translate_paddusb(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_paddusb", Inst);
+}
+
+void X86Translator::translate_paddusw(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_paddusw", Inst);
+}
+
+void X86Translator::translate_psubsb(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_psubsb", Inst);
+}
+
+void X86Translator::translate_psubsw(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_psubsw", Inst);
+}
+
+void X86Translator::translate_psubusb(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_psubusb", Inst);
+}
+
+void X86Translator::translate_psubusw(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_psubusw", Inst);
+}
+
+void X86Translator::translate_pmaxsw(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_pmaxsw", Inst);
+}
+
+void X86Translator::translate_pmaxub(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_pmaxub", Inst);
+}
+
+void X86Translator::translate_pminsw(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_pminsw", Inst);
+}
+
+void X86Translator::translate_pminub(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_pminub", Inst);
+}
+
+void X86Translator::translate_pandn(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_pandn", Inst);
+}
+
+void X86Translator::translate_pand(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_pand", Inst);
+}
+
+void X86Translator::translate_por(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_por", Inst);
+}
+
+void X86Translator::translate_pxor(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_pxor", Inst);
+}
+
+void X86Translator::translate_pcmpgtb(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_pcmpgtb", Inst);
+}
+
+void X86Translator::translate_pcmpgtd(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_pcmpgtl", Inst);
+}
+
+void X86Translator::translate_pcmpgtw(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_pcmpgtw", Inst);
 }
 
 void X86Translator::translate_pcmpeqb(GuestInst *Inst) {
-    X86InstHandler InstHdl(Inst);
-
-    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
-    Value *MemVal = nullptr;
-    // helper_pcmpeqb_xxx function type.
-    FunctionType *FuncTy =
-        FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty}, false);
-
-    if (SrcOpnd.isMem())
-        MemVal = LoadOperand(InstHdl.getOpnd(0));
-    if (DestOpnd.isXMM()) {
-        if (MemVal) {
-            FlushXMMT0(MemVal);
-            Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
-            Value *SrcXMMID = ConstInt(Int64Ty, -1); // -1 means src is xmm_t0
-            CallFunc(FuncTy, "helper_pcmpeqb_xmm", {CPUEnv, DestXMMID, SrcXMMID});
-        } else {
-            Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
-            Value *SrcXMMID = ConstInt(Int64Ty, SrcOpnd.GetXMMID());
-            CallFunc(FuncTy, "helper_pcmpeqb_xmm", {CPUEnv, DestXMMID, SrcXMMID});
-        }
-
-    } else { // MMX
-        if (MemVal) {
-            FlushMMXT0(MemVal);
-            Value *DestMMXID = ConstInt(Int64Ty, DestOpnd.GetMMXID());
-            Value *SrcMMXID = ConstInt(Int64Ty, SrcOpnd.GetMMXID());
-            CallFunc(FuncTy, "helper_pcmpeqb_mmx", {CPUEnv, DestMMXID, SrcMMXID});
-        } else {
-            Value *DestMMXID = ConstInt(Int64Ty, DestOpnd.GetMMXID());
-            Value *SrcMMXID = ConstInt(Int64Ty, -1);
-            CallFunc(FuncTy, "helper_pcmpeqb_mmx", {CPUEnv, DestMMXID, SrcMMXID});
-        }
-    }
+    GenMMXSSEHelper("helper_pcmpeqb", Inst);
 }
 
 void X86Translator::translate_pcmpeqd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pcmpeqd\n";
-    exit(-1);
+    GenMMXSSEHelper("helper_pcmpeql", Inst);
 }
+
 void X86Translator::translate_pcmpeqw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pcmpeqw\n";
-    exit(-1);
+    GenMMXSSEHelper("helper_pcmpeqw", Inst);
+}
+
+void X86Translator::translate_pmullw(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_pmullw", Inst);
+}
+
+void X86Translator::translate_pmulhrw(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_pmulhrw", Inst);
+}
+
+void X86Translator::translate_pmulhuw(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_pmulhuw", Inst);
+}
+
+void X86Translator::translate_pmulhw(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_pmulhw", Inst);
+}
+
+void X86Translator::translate_pavgb(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_pavgb", Inst);
+}
+
+void X86Translator::translate_pavgw(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_pavgw", Inst);
+}
+
+void X86Translator::translate_pmuludq(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_pmuludq", Inst);
+}
+
+void X86Translator::translate_pmaddwd(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_pmaddwd", Inst);
+}
+
+void X86Translator::translate_psadbw(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_psadbw", Inst);
 }
 
 void X86Translator::translate_pmovmskb(GuestInst *Inst) {
@@ -232,4 +334,10 @@ void X86Translator::translate_pshufhw(GuestInst *Inst) {
 void X86Translator::translate_pshuflw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pshuflw\n";
     exit(-1);
+}
+void X86Translator::translate_movdqu(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    StoreOperand(Src, InstHdl.getOpnd(1));
 }

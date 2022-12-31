@@ -78,6 +78,11 @@ public:
         else
             return guest_inst_is_terminator(Inst);
     }
+
+    // Whether this instruction has prefix rep.
+    bool hasRep() {
+        return Inst->detail->x86.prefix[0] != 0;
+    }
 private:
     GuestInst *Inst;
     static const char PFTable[256];
