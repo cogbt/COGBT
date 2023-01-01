@@ -17,11 +17,11 @@ void X86Translator::GenMMXSSEHelper(std::string Name, GuestInst *Inst) {
             FlushXMMT0(MemVal);
             Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
             Value *SrcXMMID = ConstInt(Int64Ty, -1); // -1 means src is xmm_t0
-            CallFunc(FuncTy, Name + "xmm", {CPUEnv, DestXMMID, SrcXMMID});
+            CallFunc(FuncTy, Name + "_xmm", {CPUEnv, DestXMMID, SrcXMMID});
         } else {
             Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
             Value *SrcXMMID = ConstInt(Int64Ty, SrcOpnd.GetXMMID());
-            CallFunc(FuncTy, Name + "xmm", {CPUEnv, DestXMMID, SrcXMMID});
+            CallFunc(FuncTy, Name + "_xmm", {CPUEnv, DestXMMID, SrcXMMID});
         }
 
     } else { // MMX
@@ -29,11 +29,11 @@ void X86Translator::GenMMXSSEHelper(std::string Name, GuestInst *Inst) {
             FlushMMXT0(MemVal);
             Value *DestMMXID = ConstInt(Int64Ty, DestOpnd.GetMMXID());
             Value *SrcMMXID = ConstInt(Int64Ty, SrcOpnd.GetMMXID());
-            CallFunc(FuncTy, Name + "mmx", {CPUEnv, DestMMXID, SrcMMXID});
+            CallFunc(FuncTy, Name + "_mmx", {CPUEnv, DestMMXID, SrcMMXID});
         } else {
             Value *DestMMXID = ConstInt(Int64Ty, DestOpnd.GetMMXID());
             Value *SrcMMXID = ConstInt(Int64Ty, -1);
-            CallFunc(FuncTy, Name + "mmx", {CPUEnv, DestMMXID, SrcMMXID});
+            CallFunc(FuncTy, Name + "_mmx", {CPUEnv, DestMMXID, SrcMMXID});
         }
     }
 }
