@@ -142,7 +142,7 @@ void X86Translator::translate_movsb(GuestInst *Inst) {
     RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
     RSI = Builder.CreateSub(RSI, Step);
     RDI = Builder.CreateSub(RDI, Step);
-    StoreGMRValue(RSI, X86Config::RDI);
+    StoreGMRValue(RSI, X86Config::RSI);
     StoreGMRValue(RDI, X86Config::RDI);
 
     if (InstHdl.hasRep()) {
@@ -193,7 +193,7 @@ void X86Translator::translate_movsw(GuestInst *Inst) {
     RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
     RSI = Builder.CreateSub(RSI, Step);
     RDI = Builder.CreateSub(RDI, Step);
-    StoreGMRValue(RSI, X86Config::RDI);
+    StoreGMRValue(RSI, X86Config::RSI);
     StoreGMRValue(RDI, X86Config::RDI);
 
     if (InstHdl.hasRep()) {
@@ -244,7 +244,7 @@ void X86Translator::translate_movsd(GuestInst *Inst) {
     RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
     RSI = Builder.CreateSub(RSI, Step);
     RDI = Builder.CreateSub(RDI, Step);
-    StoreGMRValue(RSI, X86Config::RDI);
+    StoreGMRValue(RSI, X86Config::RSI);
     StoreGMRValue(RDI, X86Config::RDI);
 
     if (InstHdl.hasRep()) {
@@ -295,7 +295,7 @@ void X86Translator::translate_movsq(GuestInst *Inst) {
     RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
     RSI = Builder.CreateSub(RSI, Step);
     RDI = Builder.CreateSub(RDI, Step);
-    StoreGMRValue(RSI, X86Config::RDI);
+    StoreGMRValue(RSI, X86Config::RSI);
     StoreGMRValue(RDI, X86Config::RDI);
 
     if (InstHdl.hasRep()) {
