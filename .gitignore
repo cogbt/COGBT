@@ -19,3 +19,6 @@ GTAGS
 compile_commands.json
 .*
 capstone
+meson.build
+accel/cogbt/meson.build
+buildqemu

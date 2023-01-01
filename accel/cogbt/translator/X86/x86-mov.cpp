@@ -610,7 +610,7 @@ void X86Translator::translate_stosb(GuestInst *Inst) {
         Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 9));
         Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 1));
         RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
-        RDI = Builder.CreateAdd(RDI, Step);
+        RDI = Builder.CreateSub(RDI, Step);
         StoreGMRValue(RDI, X86Config::RDI);
         // 3. Update RCX
         RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
@@ -632,7 +632,7 @@ void X86Translator::translate_stosb(GuestInst *Inst) {
         Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 9));
         Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 1));
         RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
-        RDI = Builder.CreateAdd(RDI, Step);
+        RDI = Builder.CreateSub(RDI, Step);
         StoreGMRValue(RDI, X86Config::RDI);
         // 3. Update RCX
         Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
@@ -671,7 +671,7 @@ void X86Translator::translate_stosw(GuestInst *Inst) {
         Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 8));
         Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 2));
         RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
-        RDI = Builder.CreateAdd(RDI, Step);
+        RDI = Builder.CreateSub(RDI, Step);
         StoreGMRValue(RDI, X86Config::RDI);
         // 3. Update RCX
         RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
@@ -693,7 +693,7 @@ void X86Translator::translate_stosw(GuestInst *Inst) {
         Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 8));
         Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 1));
         RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
-        RDI = Builder.CreateAdd(RDI, Step);
+        RDI = Builder.CreateSub(RDI, Step);
         StoreGMRValue(RDI, X86Config::RDI);
         // 3. Update RCX
         Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
@@ -732,7 +732,7 @@ void X86Translator::translate_stosd(GuestInst *Inst) {
         Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 7));
         Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 4));
         RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
-        RDI = Builder.CreateAdd(RDI, Step);
+        RDI = Builder.CreateSub(RDI, Step);
         StoreGMRValue(RDI, X86Config::RDI);
         // 3. Update RCX
         RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
@@ -754,7 +754,7 @@ void X86Translator::translate_stosd(GuestInst *Inst) {
         Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 7));
         Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 4));
         RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
-        RDI = Builder.CreateAdd(RDI, Step);
+        RDI = Builder.CreateSub(RDI, Step);
         StoreGMRValue(RDI, X86Config::RDI);
         // 3. Update RCX
         Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
@@ -793,7 +793,7 @@ void X86Translator::translate_stosq(GuestInst *Inst) {
         Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 6));
         Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 8));
         RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
-        RDI = Builder.CreateAdd(RDI, Step);
+        RDI = Builder.CreateSub(RDI, Step);
         StoreGMRValue(RDI, X86Config::RDI);
         // 3. Update RCX
         RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
@@ -815,7 +815,7 @@ void X86Translator::translate_stosq(GuestInst *Inst) {
         Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 6));
         Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 8));
         RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
-        RDI = Builder.CreateAdd(RDI, Step);
+        RDI = Builder.CreateSub(RDI, Step);
         StoreGMRValue(RDI, X86Config::RDI);
         // 3. Update RCX
         Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
