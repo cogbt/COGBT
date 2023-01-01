@@ -106,6 +106,210 @@ void X86Translator::translate_movbe(GuestInst *Inst) {
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 
+void X86Translator::translate_movsb(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    BasicBlock *CheckBB = nullptr, *EndBB = nullptr, *LoopBodyBB = nullptr;
+    if (InstHdl.hasRep()) {
+        CheckBB = BasicBlock::Create(Context, "CheckBB", TransFunc, ExitBB);
+        LoopBodyBB = BasicBlock::Create(Context, "LoopBody", TransFunc, ExitBB);
+        EndBB = BasicBlock::Create(Context, "EndBB", TransFunc, ExitBB);
+        SyncAllGMRValue();
+        Builder.CreateBr(CheckBB);
+
+        Builder.SetInsertPoint(CheckBB);
+        // Check ecx to see if it equals zero.
+        Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
+        Value *isZero = Builder.CreateICmpEQ(RCX, ConstInt(Int64Ty, 0));
+        SyncAllGMRValue();
+        Builder.CreateCondBr(isZero, EndBB, LoopBodyBB);
+
+        Builder.SetInsertPoint(LoopBodyBB);
+    }
+
+    // 1. Store DS:RSI to ES:RDI
+    Value *RSI = LoadGMRValue(Int64Ty, X86Config::RSI);
+    Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
+    RSI = Builder.CreateIntToPtr(RDI, Int8PtrTy);
+    RDI = Builder.CreateIntToPtr(RDI, Int8PtrTy);
+    Value *V = Builder.CreateLoad(RSI);
+    Builder.CreateStore(V, RDI);
+    // 2. Update RSI, RDI
+    Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
+    Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 9));
+    Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 1));
+    RSI = LoadGMRValue(Int64Ty, X86Config::RSI);
+    RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
+    RSI = Builder.CreateSub(RSI, Step);
+    RDI = Builder.CreateSub(RDI, Step);
+    StoreGMRValue(RSI, X86Config::RDI);
+    StoreGMRValue(RDI, X86Config::RDI);
+
+    if (InstHdl.hasRep()) {
+        // 3. Update RCX
+        Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
+        RCX = Builder.CreateSub(RCX, ConstInt(Int64Ty, 1));
+        StoreGMRValue(RCX, X86Config::RCX);
+        SyncAllGMRValue();
+        Builder.CreateBr(CheckBB);
+
+        Builder.SetInsertPoint(EndBB);
+    }
+}
+
+void X86Translator::translate_movsw(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    BasicBlock *CheckBB = nullptr, *EndBB = nullptr, *LoopBodyBB = nullptr;
+    if (InstHdl.hasRep()) {
+        CheckBB = BasicBlock::Create(Context, "CheckBB", TransFunc, ExitBB);
+        LoopBodyBB = BasicBlock::Create(Context, "LoopBody", TransFunc, ExitBB);
+        EndBB = BasicBlock::Create(Context, "EndBB", TransFunc, ExitBB);
+        SyncAllGMRValue();
+        Builder.CreateBr(CheckBB);
+
+        Builder.SetInsertPoint(CheckBB);
+        // Check ecx to see if it equals zero.
+        Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
+        Value *isZero = Builder.CreateICmpEQ(RCX, ConstInt(Int64Ty, 0));
+        SyncAllGMRValue();
+        Builder.CreateCondBr(isZero, EndBB, LoopBodyBB);
+
+        Builder.SetInsertPoint(LoopBodyBB);
+    }
+
+    // 1. Store DS:RSI to ES:RDI
+    Value *RSI = LoadGMRValue(Int64Ty, X86Config::RSI);
+    Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
+    RSI = Builder.CreateIntToPtr(RDI, Int16PtrTy);
+    RDI = Builder.CreateIntToPtr(RDI, Int16PtrTy);
+    Value *V = Builder.CreateLoad(RSI);
+    Builder.CreateStore(V, RDI);
+    // 2. Update RSI, RDI
+    Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
+    Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 8));
+    Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 2));
+    RSI = LoadGMRValue(Int64Ty, X86Config::RSI);
+    RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
+    RSI = Builder.CreateSub(RSI, Step);
+    RDI = Builder.CreateSub(RDI, Step);
+    StoreGMRValue(RSI, X86Config::RDI);
+    StoreGMRValue(RDI, X86Config::RDI);
+
+    if (InstHdl.hasRep()) {
+        // 3. Update RCX
+        Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
+        RCX = Builder.CreateSub(RCX, ConstInt(Int64Ty, 1));
+        StoreGMRValue(RCX, X86Config::RCX);
+        SyncAllGMRValue();
+        Builder.CreateBr(CheckBB);
+
+        Builder.SetInsertPoint(EndBB);
+    }
+}
+
+void X86Translator::translate_movsd(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    BasicBlock *CheckBB = nullptr, *EndBB = nullptr, *LoopBodyBB = nullptr;
+    if (InstHdl.hasRep()) {
+        CheckBB = BasicBlock::Create(Context, "CheckBB", TransFunc, ExitBB);
+        LoopBodyBB = BasicBlock::Create(Context, "LoopBody", TransFunc, ExitBB);
+        EndBB = BasicBlock::Create(Context, "EndBB", TransFunc, ExitBB);
+        SyncAllGMRValue();
+        Builder.CreateBr(CheckBB);
+
+        Builder.SetInsertPoint(CheckBB);
+        // Check ecx to see if it equals zero.
+        Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
+        Value *isZero = Builder.CreateICmpEQ(RCX, ConstInt(Int64Ty, 0));
+        SyncAllGMRValue();
+        Builder.CreateCondBr(isZero, EndBB, LoopBodyBB);
+
+        Builder.SetInsertPoint(LoopBodyBB);
+    }
+
+    // 1. Store DS:RSI to ES:RDI
+    Value *RSI = LoadGMRValue(Int64Ty, X86Config::RSI);
+    Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
+    RSI = Builder.CreateIntToPtr(RDI, Int32PtrTy);
+    RDI = Builder.CreateIntToPtr(RDI, Int32PtrTy);
+    Value *V = Builder.CreateLoad(RSI);
+    Builder.CreateStore(V, RDI);
+    // 2. Update RSI, RDI
+    Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
+    Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 7));
+    Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 4));
+    RSI = LoadGMRValue(Int64Ty, X86Config::RSI);
+    RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
+    RSI = Builder.CreateSub(RSI, Step);
+    RDI = Builder.CreateSub(RDI, Step);
+    StoreGMRValue(RSI, X86Config::RDI);
+    StoreGMRValue(RDI, X86Config::RDI);
+
+    if (InstHdl.hasRep()) {
+        // 3. Update RCX
+        Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
+        RCX = Builder.CreateSub(RCX, ConstInt(Int64Ty, 1));
+        StoreGMRValue(RCX, X86Config::RCX);
+        SyncAllGMRValue();
+        Builder.CreateBr(CheckBB);
+
+        Builder.SetInsertPoint(EndBB);
+    }
+}
+
+void X86Translator::translate_movsq(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    BasicBlock *CheckBB = nullptr, *EndBB = nullptr, *LoopBodyBB = nullptr;
+    if (InstHdl.hasRep()) {
+        CheckBB = BasicBlock::Create(Context, "CheckBB", TransFunc, ExitBB);
+        LoopBodyBB = BasicBlock::Create(Context, "LoopBody", TransFunc, ExitBB);
+        EndBB = BasicBlock::Create(Context, "EndBB", TransFunc, ExitBB);
+        SyncAllGMRValue();
+        Builder.CreateBr(CheckBB);
+
+        Builder.SetInsertPoint(CheckBB);
+        // Check ecx to see if it equals zero.
+        Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
+        Value *isZero = Builder.CreateICmpEQ(RCX, ConstInt(Int64Ty, 0));
+        SyncAllGMRValue();
+        Builder.CreateCondBr(isZero, EndBB, LoopBodyBB);
+
+        Builder.SetInsertPoint(LoopBodyBB);
+    }
+
+    // 1. Store DS:RSI to ES:RDI
+    Value *RSI = LoadGMRValue(Int64Ty, X86Config::RSI);
+    Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
+    RSI = Builder.CreateIntToPtr(RDI, Int64PtrTy);
+    RDI = Builder.CreateIntToPtr(RDI, Int64PtrTy);
+    Value *V = Builder.CreateLoad(RSI);
+    Builder.CreateStore(V, RDI);
+    // 2. Update RSI, RDI
+    Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
+    Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 6));
+    Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 8));
+    RSI = LoadGMRValue(Int64Ty, X86Config::RSI);
+    RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
+    RSI = Builder.CreateSub(RSI, Step);
+    RDI = Builder.CreateSub(RDI, Step);
+    StoreGMRValue(RSI, X86Config::RDI);
+    StoreGMRValue(RDI, X86Config::RDI);
+
+    if (InstHdl.hasRep()) {
+        // 3. Update RCX
+        Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
+        RCX = Builder.CreateSub(RCX, ConstInt(Int64Ty, 1));
+        StoreGMRValue(RCX, X86Config::RCX);
+        SyncAllGMRValue();
+        Builder.CreateBr(CheckBB);
+
+        Builder.SetInsertPoint(EndBB);
+    }
+}
+
 void X86Translator::translate_movddup(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movddup\n";
     exit(-1);
@@ -177,14 +381,6 @@ void X86Translator::translate_movntss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movntss\n";
     exit(-1);
 }
-void X86Translator::translate_movsb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movsb\n";
-    exit(-1);
-}
-void X86Translator::translate_movsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movsd\n";
-    exit(-1);
-}
 void X86Translator::translate_movshdup(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movshdup\n";
     exit(-1);
@@ -193,18 +389,12 @@ void X86Translator::translate_movsldup(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movsldup\n";
     exit(-1);
 }
-void X86Translator::translate_movsq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movsq\n";
-    exit(-1);
-}
 void X86Translator::translate_movss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movss\n";
     exit(-1);
 }
-void X86Translator::translate_movsw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movsw\n";
-    exit(-1);
-}
+
+
 void X86Translator::translate_movsx(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
@@ -635,9 +825,9 @@ void X86Translator::translate_stosb(GuestInst *Inst) {
         RDI = Builder.CreateSub(RDI, Step);
         StoreGMRValue(RDI, X86Config::RDI);
         // 3. Update RCX
-        Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
-        RCX = Builder.CreateSub(RCX, ConstInt(Int64Ty, 1));
-        StoreGMRValue(RCX, X86Config::RCX);
+        /* Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX); */
+        /* RCX = Builder.CreateSub(RCX, ConstInt(Int64Ty, 1)); */
+        /* StoreGMRValue(RCX, X86Config::RCX); */
     }
 }
 
@@ -696,9 +886,9 @@ void X86Translator::translate_stosw(GuestInst *Inst) {
         RDI = Builder.CreateSub(RDI, Step);
         StoreGMRValue(RDI, X86Config::RDI);
         // 3. Update RCX
-        Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
-        RCX = Builder.CreateSub(RCX, ConstInt(Int64Ty, 1));
-        StoreGMRValue(RCX, X86Config::RCX);
+        /* Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX); */
+        /* RCX = Builder.CreateSub(RCX, ConstInt(Int64Ty, 1)); */
+        /* StoreGMRValue(RCX, X86Config::RCX); */
     }
 }
 
@@ -757,9 +947,9 @@ void X86Translator::translate_stosd(GuestInst *Inst) {
         RDI = Builder.CreateSub(RDI, Step);
         StoreGMRValue(RDI, X86Config::RDI);
         // 3. Update RCX
-        Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
-        RCX = Builder.CreateSub(RCX, ConstInt(Int64Ty, 1));
-        StoreGMRValue(RCX, X86Config::RCX);
+        /* Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX); */
+        /* RCX = Builder.CreateSub(RCX, ConstInt(Int64Ty, 1)); */
+        /* StoreGMRValue(RCX, X86Config::RCX); */
     }
 }
 
@@ -818,8 +1008,8 @@ void X86Translator::translate_stosq(GuestInst *Inst) {
         RDI = Builder.CreateSub(RDI, Step);
         StoreGMRValue(RDI, X86Config::RDI);
         // 3. Update RCX
-        Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
-        RCX = Builder.CreateSub(RCX, ConstInt(Int64Ty, 1));
-        StoreGMRValue(RCX, X86Config::RCX);
+        /* Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX); */
+        /* RCX = Builder.CreateSub(RCX, ConstInt(Int64Ty, 1)); */
+        /* StoreGMRValue(RCX, X86Config::RCX); */
     }
 }
