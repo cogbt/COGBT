@@ -43,6 +43,10 @@ void helper_punpcklwd_xmm_wrapper(void *p, int dest, int src);
 void helper_punpcklwd_mmx_wrapper(void *p, int dest, int src);
 void helper_pshufd_xmm_wrapper(void *p, int dest, int src, int order);
 void helper_comiss_wrapper(void *p, int dest, int src);
+void helper_paddb_xmm_wrapper(void *p, int dest, int src);
+void helper_paddl_xmm_wrapper(void *p, int dest, int src);
+void helper_paddw_xmm_wrapper(void *p, int dest, int src);
+void helper_paddq_xmm_wrapper(void *p, int dest, int src);
 #ifdef __cplusplus
 }
 #endif

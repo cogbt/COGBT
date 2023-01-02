@@ -175,6 +175,49 @@ void helper_pshufd_xmm_wrapper(void *p, int dest, int src, int order) {
 void helper_comiss_wrapper(void *p, int dest, int src) {
     CPUX86State *env = (CPUX86State *)p;
     ZMMReg *d = &env->xmm_regs[dest];
-    ZMMReg *s = &env->xmm_regs[src];
+    ZMMReg *s = &env->xmm_t0;
+    if (src == -1) {
+        s = &env->xmm_regs[src];
+    }
     helper_comiss(env, d, s);
+}
+
+void helper_paddb_xmm_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_paddb_xmm(env, d, s);
+}
+
+void helper_paddw_xmm_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_paddw_xmm(env, d, s);
+}
+
+void helper_paddl_xmm_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_paddl_xmm(env, d, s);
+}
+
+void helper_paddq_xmm_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_paddq_xmm(env, d, s);
 }

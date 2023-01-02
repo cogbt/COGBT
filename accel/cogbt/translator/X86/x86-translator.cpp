@@ -612,6 +612,10 @@ void X86Translator::AddExternalSyms() {
     EE->addGlobalMapping("helper_punpcklwd_mmx", (uint64_t)helper_punpcklwd_mmx_wrapper);
     EE->addGlobalMapping("helper_pshufd", (uint64_t)helper_pshufd_xmm_wrapper);
     EE->addGlobalMapping("helper_comiss", (uint64_t)helper_comiss_wrapper);
+    EE->addGlobalMapping("helper_paddb_xmm", (uint64_t)helper_paddb_xmm_wrapper);
+    EE->addGlobalMapping("helper_paddl_xmm", (uint64_t)helper_paddl_xmm_wrapper);
+    EE->addGlobalMapping("helper_paddw_xmm", (uint64_t)helper_paddw_xmm_wrapper);
+    EE->addGlobalMapping("helper_paddq_xmm", (uint64_t)helper_paddq_xmm_wrapper);
 }
 
 void X86Translator::GetLBTIntrinsic(StringRef Name, Value *Src0, Value *Src1) {
