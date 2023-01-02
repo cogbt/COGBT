@@ -176,7 +176,7 @@ void helper_comiss_wrapper(void *p, int dest, int src) {
     CPUX86State *env = (CPUX86State *)p;
     ZMMReg *d = &env->xmm_regs[dest];
     ZMMReg *s = &env->xmm_t0;
-    if (src == -1) {
+    if (src != -1) {
         s = &env->xmm_regs[src];
     }
     helper_comiss(env, d, s);
