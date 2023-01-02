@@ -129,7 +129,7 @@ void X86Translator::translate_movsb(GuestInst *Inst) {
     // 1. Store DS:RSI to ES:RDI
     Value *RSI = LoadGMRValue(Int64Ty, X86Config::RSI);
     Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
-    RSI = Builder.CreateIntToPtr(RDI, Int8PtrTy);
+    RSI = Builder.CreateIntToPtr(RSI, Int8PtrTy);
     RDI = Builder.CreateIntToPtr(RDI, Int8PtrTy);
     Value *V = Builder.CreateLoad(RSI);
     Builder.CreateStore(V, RDI);
@@ -180,7 +180,7 @@ void X86Translator::translate_movsw(GuestInst *Inst) {
     // 1. Store DS:RSI to ES:RDI
     Value *RSI = LoadGMRValue(Int64Ty, X86Config::RSI);
     Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
-    RSI = Builder.CreateIntToPtr(RDI, Int16PtrTy);
+    RSI = Builder.CreateIntToPtr(RSI, Int16PtrTy);
     RDI = Builder.CreateIntToPtr(RDI, Int16PtrTy);
     Value *V = Builder.CreateLoad(RSI);
     Builder.CreateStore(V, RDI);
@@ -231,7 +231,7 @@ void X86Translator::translate_movsd(GuestInst *Inst) {
     // 1. Store DS:RSI to ES:RDI
     Value *RSI = LoadGMRValue(Int64Ty, X86Config::RSI);
     Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
-    RSI = Builder.CreateIntToPtr(RDI, Int32PtrTy);
+    RSI = Builder.CreateIntToPtr(RSI, Int32PtrTy);
     RDI = Builder.CreateIntToPtr(RDI, Int32PtrTy);
     Value *V = Builder.CreateLoad(RSI);
     Builder.CreateStore(V, RDI);
@@ -282,7 +282,7 @@ void X86Translator::translate_movsq(GuestInst *Inst) {
     // 1. Store DS:RSI to ES:RDI
     Value *RSI = LoadGMRValue(Int64Ty, X86Config::RSI);
     Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
-    RSI = Builder.CreateIntToPtr(RDI, Int64PtrTy);
+    RSI = Builder.CreateIntToPtr(RSI, Int64PtrTy);
     RDI = Builder.CreateIntToPtr(RDI, Int64PtrTy);
     Value *V = Builder.CreateLoad(RSI);
     Builder.CreateStore(V, RDI);
