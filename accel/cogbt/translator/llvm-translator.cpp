@@ -40,7 +40,7 @@ void LLVMTranslator::InitializeTarget() {
     // Initialize TM.
     TargetOptions opt;
     auto RM = Optional<Reloc::Model>();
-    TM = TheTarget->createTargetMachine(TargetTriple, "generic", "", opt, RM);
+    TM = TheTarget->createTargetMachine(TargetTriple, "", "", opt, RM);
 }
 
 void LLVMTranslator::InitializeTypes() {
@@ -97,7 +97,12 @@ void LLVMTranslator::InitializeBlock(GuestBlock &Block) {
     ss << std::hex << PC;
     std::string Name(ss.str());
     CurrBB = BasicBlock::Create(Context, Name, TransFunc, ExitBB);
-    if (PC == TU->GetTUEntry()) {
+    if (aotmode == 2) {
+        /* if (PC == TU->GetTUEntry()) { */
+        /*     dyn_cast<BranchInst>(EntryBB->getTerminator())->setSuccessor(0,
+         * CurrBB); */
+        /* } */
+    } else {
         dyn_cast<BranchInst>(EntryBB->getTerminator())->setSuccessor(0, CurrBB);
     }
     Builder.SetInsertPoint(CurrBB);

@@ -130,9 +130,12 @@ static const char *interp_prefix = CONFIG_QEMU_INTERP_PREFIX;
 const char *qemu_uname_release;
 
 #ifdef CONFIG_COGBT
-/* Used to record cogbt running mode, jit or aot, default is jit.
- * When running on aot mode, -m option should be set to aot and this
- * flag should be set 1. 
+/* Used to record cogbt running mode, jit or tb_aot or function_aot,
+ * default is jit.
+ * When running on tb_aot mode, -m option should be set to tb_aot and
+ * this flag should be set 1.
+ * When running on function_aot mode, -m option should be set to
+ * function_aot and this flag should be set to 2.
  */
 int aotmode = 0;
 #endif
@@ -433,8 +436,10 @@ static void handle_arg_abi_call0(const char *arg)
 #ifdef CONFIG_COGBT
 static void handle_arg_runmode(const char *arg)
 {
-    if (strcmp(arg, "aot") == 0) {
+    if (strcmp(arg, "tb_aot") == 0) {
         aotmode = 1;
+    } else if (strcmp(arg, "functioin_aot") == 0) {
+        aotmode = 2;
     } else aotmode = 0;
 }
 #endif
@@ -920,7 +925,15 @@ int main(int argc, char **argv, char **envp)
     syscall_init();
     signal_init();
 #ifdef CONFIG_COGBT
-    if (aotmode) {
+    if (aotmode == 1) {
+        cogbt_block_init();
+        char block_path[255];
+        strcpy(block_path, exec_path);
+        strcat(block_path, ".path");
+        block_tu_file_parse(block_path);
+        tb_aot_gen(block_path);
+        return 0;
+    } else if (aotmode == 2) {
         cogbt_function_init();
         char json_path[255];
         strcpy(json_path, exec_path);

@@ -808,9 +808,14 @@ void X86Translator::Translate() {
     ss << std::hex << TU->GetTUEntry();
     std::string Entry(ss.str());
     /* InitializeFunction(std::to_string(TU->GetTUEntry())); */
-    InitializeFunction(Entry);
+    if (aotmode != 1) {
+        InitializeFunction(Entry);
+    }
     for (auto &block : *TU) {
         assert(TU->size() && "TU size is expected to be non-zero!");
+        if (aotmode == 1) {
+            InitializeFunction(Entry);
+        }
         InitializeBlock(block);
         for (auto &inst : block) {
             CurrInst = inst;
@@ -845,6 +850,6 @@ void X86Translator::Translate() {
             }
             Builder.CreateBr(ExitBB);
         }
+        /* TransFunc->dump(); */
     }
-    /* TransFunc->dump(); */
 }

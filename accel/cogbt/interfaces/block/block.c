@@ -2,6 +2,9 @@
 #include "capstone.h"
 #include "translation-unit.h"
 #include <assert.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <fcntl.h>
 
 #define DISASSEMBLE_DEBUG
 
@@ -22,10 +25,51 @@ bool guest_inst_is_terminator(cs_insn *insn) {
            cs_insn_group(handle, insn, CS_GRP_RET) ||
            cs_insn_group(handle, insn, CS_GRP_CALL) ||
            cs_insn_group(handle, insn, CS_GRP_INT);
-#if 0
-           cs_insn_group(handle, insn, CS_GRP_CALL) ||
-           cs_insn_group(handle, insn, CS_GRP_BRANCH_RELATIVE);
-#endif
+}
+
+#define MAX_INSN 200
+void block_tu_file_parse(const char *pf) {
+    FILE *path = fopen(pf, "r");
+    uint64_t pc;
+    while (fscanf(path, "%lx", &pc) != EOF) {
+        cs_insn **insns = calloc(MAX_INSN, sizeof(cs_insn *));
+        int insn_cnt = 0;
+        /* fprintf(stderr, "0x%lx\n", pc); */
+        for (int i = 0; i < MAX_INSN; i++) {
+            int res =
+                cs_disasm(handle, (const uint8_t *)pc, 15, pc, 1, insns + i);
+            if (res == 0) {
+                // TODO
+                printf("Error! Disassemble inst at 0x%lx failed\n", pc);
+                exit(-1);
+            }
+
+            ++insn_cnt;
+
+            // Check wether we have reached the terminator of a basic block
+            if (guest_inst_is_terminator(insns[i]))
+                break;
+
+            // Update pc of next instruction
+            pc = insns[i]->address + insns[i]->size;
+        }
+        insns = realloc(insns, sizeof(cs_insn *) * insn_cnt);
+
+        // Register block in TU
+        TranslationUnit *tu = tu_get();
+        GuestBlock *block = guest_tu_create_block(tu);
+        for (int i = 0; i < insn_cnt; i++) {
+            guest_block_add_inst(block, insns[i]);
+        }
+    }
+}
+
+void tb_aot_gen(const char *pf) {
+    LLVMTranslator *Translator = create_llvm_translator(0, 0);
+    llvm_initialize(Translator);
+    llvm_set_tu(Translator, tu_get());
+    llvm_translate(Translator);
+    llvm_compile(Translator, true);
 }
 
 int block_gen_code(uint64_t pc, int max_insns, LLVMTranslator *translator,

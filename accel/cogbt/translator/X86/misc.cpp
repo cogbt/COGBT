@@ -2084,36 +2084,15 @@ void X86Translator::translate_swapgs(GuestInst *Inst) {
 void X86Translator::translate_syscall(GuestInst *Inst) {
     // Save next pc.
     X86InstHandler InstHdl(Inst);
-    /* Value *EnvEIP = */
-    /*     Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset())); */
-    /* EnvEIP = Builder.CreateBitCast(EnvEIP, Int64PtrTy); */
-    /* Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getNextPC()), EnvEIP); */
-
     // Sync all GMR value into env.
     for (int GMRId = 0; GMRId < GetNumGMRs(); GMRId++) {
-        int Off = 0;
-        if (GMRId < X86Config::EFLAG)
-            Off = GuestStateOffset(GMRId);
-        else
-            Off = GuestEflagOffset();
-        Value *Addr =
-            Builder.CreateGEP(Int8Ty, CPUEnv, ConstantInt::get(Int64Ty, Off));
-        Value *Ptr = Builder.CreateBitCast(Addr, Int64PtrTy);
-        Value *GMRV = LoadGMRValue(Int64Ty, GMRId);
-        Builder.CreateStore(GMRV, Ptr, true);
+        FlushGMRValue(GMRId);
     }
 
     // Call helper_raise_syscall to go back qemu.
-    FunctionType *FuncTy = FunctionType::get(VoidTy, {Int8PtrTy,Int64Ty}, false);
-#if (LLVM_VERSION_MAJOR > 8)
-    FunctionCallee F = Mod->getOrInsertFunction("helper_raise_syscall", FuncTy);
-    if (F)
-        Builder.CreateCall(FuncTy, F.getCallee(),
-                           {CPUEnv, ConstInt(Int64Ty, InstHdl.getNextPC())});
-#else
-    Value *Func = Mod->getOrInsertFunction("helper_raise_syscall", FuncTy);
-    Builder.CreateCall(Func, {CPUEnv, ConstInt(Int64Ty, InstHdl.getNextPC())});
-#endif
+    FunctionType *FTy = FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false);
+    CallFunc(FTy, "helper_raise_syscall",
+             {CPUEnv, ConstInt(Int64Ty, InstHdl.getNextPC())});
 
     Builder.CreateUnreachable();
     ExitBB->eraseFromParent();

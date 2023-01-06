@@ -73,7 +73,7 @@ public:
     }
 
     bool isTerminator() {
-        if (aotmode)
+        if (aotmode == 2)
             return func_tu_inst_is_terminator(Inst);
         else
             return guest_inst_is_terminator(Inst);
