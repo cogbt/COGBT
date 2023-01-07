@@ -1338,14 +1338,14 @@ static void tgen_arithi(TCGContext *s, int c, int r0,
     tcg_abort();
 }
 
-#ifndef CONFIG_COGBT
+/* #ifndef CONFIG_COGBT */
 static void tcg_out_addi(TCGContext *s, int reg, tcg_target_long val)
 {
     if (val != 0) {
         tgen_arithi(s, ARITH_ADD + P_REXW, reg, val, 0);
     }
 }
-#endif
+/* #endif */
 
 /* Use SMALL != 0 to force a short forward branch.  */
 static void tcg_out_jxx(TCGContext *s, int opc, TCGLabel *l, int small)
@@ -4007,7 +4007,7 @@ static const int tcg_target_callee_save_regs[] = {
      & ~(TCG_TARGET_STACK_ALIGN - 1))
 
 /* Generate global QEMU prologue and epilogue code */
-#ifndef CONFIG_COGBT
+/* #ifndef CONFIG_COGBT */
 static void tcg_target_qemu_prologue(TCGContext *s)
 {
     int i, stack_addend;
@@ -4074,7 +4074,7 @@ static void tcg_target_qemu_prologue(TCGContext *s)
     }
     tcg_out_opc(s, OPC_RET, 0, 0, 0);
 }
-#endif
+/* #endif */
 
 static void tcg_out_nop_fill(tcg_insn_unit *p, int count)
 {

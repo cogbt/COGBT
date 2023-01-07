@@ -68,14 +68,15 @@
 
 #ifdef CONFIG_COGBT
 #include "cogbt.h"
+extern const char *aotfile;
 #endif
 
 /* Forward declarations for functions declared in tcg-target.c.inc and
    used here. */
 static void tcg_target_init(TCGContext *s);
-#ifndef CONFIG_COGBT
+/* #ifndef CONFIG_COGBT */
 static void tcg_target_qemu_prologue(TCGContext *s);
-#endif
+/* #endif */
 static bool patch_reloc(tcg_insn_unit *code_ptr, int type,
                         intptr_t value, intptr_t addend);
 
@@ -178,6 +179,11 @@ uintptr_t tcg_splitwx_diff;
 
 #ifndef CONFIG_TCG_INTERPRETER
 tcg_prologue_fn *tcg_qemu_tb_exec;
+#endif
+
+#ifdef CONFIG_COGBT
+const void *cogbt_code_gen_epilogue;
+tcg_prologue_fn *cogbt_tb_exec;
 #endif
 
 static TCGRegSet tcg_target_available_regs[TCG_TYPE_COUNT];
@@ -734,14 +740,7 @@ void tcg_prologue_init(TCGContext *s)
     s->code_buf = s->code_gen_ptr;
     s->data_gen_ptr = NULL;
 
-#ifdef CONFIG_COGBT
-    size_t llvm_cache_size = s->code_gen_buffer_size >> 1;
-    s->translator =
-        create_llvm_translator((uintptr_t)s->code_buf, llvm_cache_size);
-    s->code_ptr += ((llvm_cache_size + 3) & ~3) >> 2;
-#endif
-
-#if (!defined (CONFIG_TCG_INTERPRETER) && !defined (CONFIG_COGBT))
+#ifndef CONFIG_TCG_INTERPRETER
     tcg_qemu_tb_exec = (tcg_prologue_fn *)tcg_splitwx_to_rx(s->code_ptr);
 #endif
 
@@ -751,13 +750,20 @@ void tcg_prologue_init(TCGContext *s)
 
     qemu_thread_jit_write();
     /* Generate the prologue.  */
-#ifndef CONFIG_COGBT
     tcg_target_qemu_prologue(s);
-#else
+
+#ifdef CONFIG_COGBT
+    size_t llvm_cache_size = s->code_gen_buffer_size >> 1;
+    s->translator =
+        create_llvm_translator((uintptr_t)s->code_buf, llvm_cache_size);
+
     gen_prologue(s->translator);
-    tcg_qemu_tb_exec = (tcg_prologue_fn *)llvm_compile(s->translator, true);
+    cogbt_tb_exec = (tcg_prologue_fn *)llvm_compile(s->translator, true);
     gen_epilogue(s->translator);
-    tcg_code_gen_epilogue = llvm_compile(s->translator, true);
+    cogbt_code_gen_epilogue = llvm_compile(s->translator, true);
+
+    size_t llvm_code_size = llvm_get_code_size(s->translator);
+    s->code_ptr += ((llvm_code_size + 3) & ~3) >> 2;
 #endif
 
 #ifdef TCG_TARGET_NEED_POOL_LABELS
@@ -819,6 +825,17 @@ void tcg_prologue_init(TCGContext *s)
 #endif
 
     tcg_region_prologue_set(s);
+
+#ifdef CONFIG_COGBT
+    AOTParser *parser =
+        create_aot_parser((uintptr_t)s->code_ptr, llvm_cache_size, aotfile);
+    fprintf(stderr, "AOT buffer code_ptr: 0x%p\n", s->code_ptr);
+    add_global_mapping(parser, "epilogue", (uint64_t)cogbt_code_gen_epilogue);
+    void *tc = NULL;
+    while ((tc = parse_next_function(parser))) {
+        fprintf(stderr, "first func address 0x%p\n", tc);
+    }
+#endif
 }
 
 void tcg_func_start(TCGContext *s)

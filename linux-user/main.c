@@ -138,6 +138,7 @@ const char *qemu_uname_release;
  * function_aot and this flag should be set to 2.
  */
 int aotmode = 0;
+const char *aotfile = NULL;
 #endif
 
 /* XXX: on x86 MAP_GROWSDOWN only works if ESP <= address + 32, so
@@ -442,6 +443,10 @@ static void handle_arg_runmode(const char *arg)
         aotmode = 2;
     } else aotmode = 0;
 }
+static void handle_arg_aot(const char *arg)
+{
+    aotfile = arg;
+}
 #endif
 static QemuPluginList plugins = QTAILQ_HEAD_INITIALIZER(plugins);
 
@@ -516,6 +521,8 @@ static const struct qemu_argument arg_table[] = {
 #ifdef CONFIG_COGBT
     {"m",          "COGBT_RUNMODE",    true, handle_arg_runmode,
      "",           "set cogbt runmode to jit/aot, default is jit"},
+    {"a",          "COGBT_AOTFILE",    true, handle_arg_aot,
+     "",           "set the aot file path"},
 #endif
     {NULL, NULL, false, NULL, NULL, NULL}
 };

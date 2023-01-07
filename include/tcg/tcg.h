@@ -642,6 +642,9 @@ extern __thread TCGContext *tcg_ctx;
 extern const void *tcg_code_gen_epilogue;
 extern uintptr_t tcg_splitwx_diff;
 extern TCGv_env cpu_env;
+#ifdef CONFIG_COGBT
+extern const void *cogbt_code_gen_epilogue;
+#endif
 
 bool in_code_gen_buffer(const void *p);
 
@@ -1211,6 +1214,10 @@ uintptr_t tcg_qemu_tb_exec(CPUArchState *env, const void *tb_ptr);
 #else
 typedef uintptr_t tcg_prologue_fn(CPUArchState *env, const void *tb_ptr);
 extern tcg_prologue_fn *tcg_qemu_tb_exec;
+#endif
+
+#ifdef CONFIG_COGBT
+extern tcg_prologue_fn *cogbt_tb_exec;
 #endif
 
 void tcg_register_jit(const void *buf, size_t buf_size);

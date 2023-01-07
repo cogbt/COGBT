@@ -47,6 +47,11 @@ void helper_paddb_xmm_wrapper(void *p, int dest, int src);
 void helper_paddl_xmm_wrapper(void *p, int dest, int src);
 void helper_paddw_xmm_wrapper(void *p, int dest, int src);
 void helper_paddq_xmm_wrapper(void *p, int dest, int src);
+
+struct KeyVal {
+    const char *key;
+    void *val;
+};
 #ifdef __cplusplus
 }
 #endif

@@ -8,6 +8,9 @@
 #include "x86.h"
 #include "emulator.h"
 
+struct KeyVal SymTable[] = {
+    {"helper_raise_syscall", helper_raise_syscall},
+};
 /* #include "exec/log.h" */
 
 int GetEAXOffset(void) { return GuestStateOffset(R_EAX); }

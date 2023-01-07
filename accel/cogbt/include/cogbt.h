@@ -12,6 +12,7 @@ extern "C" {
 #include <stddef.h>
 
 typedef struct LLVMTranslator LLVMTranslator;
+typedef struct AOTParser AOTParser;
 
 LLVMTranslator *create_llvm_translator(uintptr_t cache_ptr, size_t cache_size);
 void gen_prologue(LLVMTranslator *translator);
@@ -26,6 +27,14 @@ size_t llvm_get_code_size(LLVMTranslator *translator);
 
 bool debug_guest_inst(LLVMTranslator *translator);
 bool debug_cpu_state(LLVMTranslator *translator);
+
+AOTParser *create_aot_parser(uintptr_t cache_ptr, size_t cache_size,
+                             const char *aot);
+void add_global_mapping(AOTParser *parser, const char *Name, uint64_t address);
+void free_aot_parser(AOTParser *parser);
+void *parse_next_function(AOTParser *parser);
+void *get_current_code_cache_ptr(AOTParser *parser);
+
 #ifdef __cplusplus
 }
 #endif

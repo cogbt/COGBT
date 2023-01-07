@@ -5,7 +5,7 @@
 #include <sstream>
 
 void X86Translator::DeclareExternalSymbols() {
-    Mod->getOrInsertGlobal("PFTable", ArrayType::get(Int8Ty, 256));
+    /* Mod->getOrInsertGlobal("PFTable", ArrayType::get(Int8Ty, 256)); */
 
     // Declare epilogue.
     FunctionType *FuncTy = FunctionType::get(VoidTy, false);

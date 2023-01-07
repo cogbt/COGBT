@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include "cogbt.h"
 #include "x86-translator.h"
+#include "aot-parser.h"
 #include "llvm/Support/TargetSelect.h"
 
 LLVMTranslator *create_llvm_translator(uintptr_t CacheBegin, size_t CacheSize) {
@@ -53,4 +54,25 @@ bool debug_guest_inst(LLVMTranslator *translator) {
 
 bool debug_cpu_state(LLVMTranslator *translator) {
     return translator->DBG.DebugCPUState();
+}
+
+AOTParser *create_aot_parser(uintptr_t cache_ptr, size_t cache_size,
+                             const char *aot) {
+    return new AOTParser(cache_ptr, cache_size, aot);
+}
+
+void add_global_mapping(AOTParser *parser, const char *name, uint64_t address) {
+    parser->AddGlobalMapping(name, address);
+}
+
+void free_aot_parser(AOTParser *parser) {
+    delete parser;
+}
+
+void *parse_next_function(AOTParser *parser) {
+    return parser->ParseNextFunction();
+}
+
+void *get_current_code_cache_ptr(AOTParser *parser) {
+    return parser->GetCurrentCodeCachePtr();
 }

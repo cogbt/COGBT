@@ -1633,7 +1633,7 @@ static const int tcg_target_callee_save_regs[] = {
 QEMU_BUILD_BUG_ON(FRAME_SIZE > 0x7ff);
 
 /* Generate global QEMU prologue and epilogue code */
-#ifndef CONFIG_COGBT
+/* #ifndef CONFIG_COGBT */
 static void tcg_target_qemu_prologue(TCGContext *s)
 {
     int i;
@@ -1672,7 +1672,7 @@ static void tcg_target_qemu_prologue(TCGContext *s)
     tcg_out_opc_addi_d(s, TCG_REG_SP, TCG_REG_SP, FRAME_SIZE);
     tcg_out_opc_jirl(s, TCG_REG_ZERO, TCG_REG_RA, 0);
 }
-#endif
+/* #endif */
 
 static void tcg_target_init(TCGContext *s)
 {
