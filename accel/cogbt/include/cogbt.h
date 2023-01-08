@@ -32,7 +32,7 @@ AOTParser *create_aot_parser(uintptr_t cache_ptr, size_t cache_size,
                              const char *aot);
 void add_global_mapping(AOTParser *parser, const char *Name, uint64_t address);
 void free_aot_parser(AOTParser *parser);
-void *parse_next_function(AOTParser *parser);
+void *parse_next_function(AOTParser *parser, uint64_t *pc);
 void *get_current_code_cache_ptr(AOTParser *parser);
 
 #ifdef __cplusplus

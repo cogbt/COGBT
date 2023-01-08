@@ -69,8 +69,8 @@ void free_aot_parser(AOTParser *parser) {
     delete parser;
 }
 
-void *parse_next_function(AOTParser *parser) {
-    return parser->ParseNextFunction();
+void *parse_next_function(AOTParser *parser, uint64_t *pc) {
+    return parser->ParseNextFunction(pc);
 }
 
 void *get_current_code_cache_ptr(AOTParser *parser) {

@@ -26,7 +26,7 @@ public:
 
     /// ParseNextFunction - Parse all functions of AOT and return their native
     /// code address. If all functions are parsed, return NULL instead.
-    void *ParseNextFunction();
+    void *ParseNextFunction(uint64_t *pc);
 
     /// GetCurrentCodeCachePtr - Get the first free address of memory manager
     /// code cache.

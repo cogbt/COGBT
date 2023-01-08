@@ -62,10 +62,11 @@ void AOTParser::AddGlobalMapping(std::string Name, uint64_t Address) {
     EE->addGlobalMapping(Name, Address);
 }
 
-void *AOTParser::ParseNextFunction() {
+void *AOTParser::ParseNextFunction(uint64_t *pc) {
     static std::vector<std::string>::iterator it = FuncNames.begin();
     if (it == FuncNames.end())
         return NULL;
+    *pc = std::stol(*it, 0, 16);
     void *Addr = (void *)EE->getFunctionAddress(*it++);
     return Addr;
 }

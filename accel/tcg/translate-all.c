@@ -1357,8 +1357,13 @@ tb_link_page(TranslationBlock *tb, tb_page_addr_t phys_pc,
     }
 
     /* add in the hash table */
+    /* fprintf(stderr, */
+    /*         "phys_pc %lx tb->pc %lx tb->flags %x tb->cflags %x " */
+    /*         "tb->trace_vcpu_dstate %x\n", */
+    /*         phys_pc, tb->pc, tb->flags, tb->cflags, tb->trace_vcpu_dstate); */
     h = tb_hash_func(phys_pc, tb->pc, tb->flags, tb->cflags,
                      tb->trace_vcpu_dstate);
+    /* fprintf(stderr, "tb insert hash %x\n", h); //debug */
     qht_insert(&tb_ctx.htable, tb, h, &existing_tb);
 
     /* remove TB from the page(s) if we couldn't insert it */
@@ -1688,6 +1693,37 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
     }
     return tb;
 }
+
+#ifdef CONFIG_COGBT
+void aot_tb_register(TranslationBlock *tb);
+void aot_tb_register(TranslationBlock *tb)
+{
+    TranslationBlock *existing_tb;
+    tb_page_addr_t phys_pc, phys_page2;
+    target_ulong virt_page2;
+
+    target_ulong pc = tb->pc;
+    phys_pc = pc;
+
+    /* check next page if needed */
+    virt_page2 = (pc + tb->size - 1) & TARGET_PAGE_MASK;
+    phys_page2 = -1;
+    if ((pc & TARGET_PAGE_MASK) != virt_page2) {
+        phys_page2 = virt_page2;
+    }
+    /*
+     * No explicit memory barrier is required -- tb_link_page() makes the
+     * TB visible in a consistent state.
+     */
+    existing_tb = tb_link_page(tb, phys_pc, phys_page2);
+    /* if the TB already exists, discard what we just translated */
+    if (existing_tb != tb) {
+        fprintf(stderr, "aot_register_tb failed due to tb_link page\n");
+        exit(-1);
+    }
+    tcg_tb_insert(tb);
+}
+#endif
 
 /*
  * @p must be non-NULL.
