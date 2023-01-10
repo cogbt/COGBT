@@ -65,12 +65,16 @@ void add_global_mapping(AOTParser *parser, const char *name, uint64_t address) {
     parser->AddGlobalMapping(name, address);
 }
 
+void resolve_all_symbols(AOTParser *parser) {
+    parser->ResolveSymbols();
+}
+
 void free_aot_parser(AOTParser *parser) {
     delete parser;
 }
 
-void *parse_next_function(AOTParser *parser, uint64_t *pc) {
-    return parser->ParseNextFunction(pc);
+void *parse_next_function(AOTParser *parser, uint64_t *pc, size_t *tu_size) {
+    return parser->ParseNextFunction(pc, tu_size);
 }
 
 void *get_current_code_cache_ptr(AOTParser *parser) {

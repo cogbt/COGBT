@@ -37,6 +37,13 @@ public:
         return GuestInsts[0]->address;
     }
 
+    /// GetBlockPCSize - Get guest block pc size(last pc - first pc).
+    size_t GetBlockPCSize() {
+        assert(!GuestInsts.empty() && "Block shouldn't be empty!");
+        return GuestInsts.back()->address + GuestInsts.back()->size -
+               GetBlockEntry();
+    }
+
     /// @name All APIs about iterators.
     using iteraotr = vector<GuestInst *>::iterator;
     using reverse_iterator = vector<GuestInst *>::reverse_iterator;

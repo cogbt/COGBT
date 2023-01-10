@@ -24,9 +24,12 @@ public:
     /// AddGlobalMapping - Adding an external symbol address to ExecutionEngine
     void AddGlobalMapping(std::string Name, uint64_t Address);
 
+    /// ResolveSymbols - Resolve all external symbols of AOT file.
+    void ResolveSymbols();
+
     /// ParseNextFunction - Parse all functions of AOT and return their native
     /// code address. If all functions are parsed, return NULL instead.
-    void *ParseNextFunction(uint64_t *pc);
+    void *ParseNextFunction(uint64_t *pc, size_t *tu_size);
 
     /// GetCurrentCodeCachePtr - Get the first free address of memory manager
     /// code cache.

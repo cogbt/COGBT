@@ -44,9 +44,9 @@ public:
     uint64_t getOFMask() { return ~OF_BIT; }
     uint64_t getDFMask() { return ~DF_BIT; }
 
-    static uint64_t getPFTable() {
-        return (uint64_t)PFTable;
-    }
+    /* static uint64_t getPFTable() { */
+    /*     return (uint64_t)PFTable; */
+    /* } */
 
     X86Operand *getOpnd(int idx) {
         assert(idx < (int)Inst->detail->x86.op_count);

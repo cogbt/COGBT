@@ -9,8 +9,38 @@
 #include "emulator.h"
 
 struct KeyVal SymTable[] = {
+    {"helper_divb_AL", helper_divb_AL_wrapper},
+    {"helper_divw_AX", helper_divw_AX_wrapper},
+    {"helper_divl_EAX", helper_divl_EAX_wrapper},
+    {"helper_divq_EAX", helper_divq_EAX_wrapper},
+    {"helper_idivb_AL", helper_idivb_AL_wrapper},
+    {"helper_idivw_AX", helper_idivw_AX_wrapper},
+    {"helper_idivl_EAX", helper_idivl_EAX_wrapper},
+    {"helper_idivq_EAX", helper_idivq_EAX_wrapper},
+
+    {"helper_rdtsc", helper_rdtsc_wrapper},
+    {"helper_pxor_xmm", helper_pxor_xmm_wrapper},
+    {"helper_pxor_mmx", helper_pxor_mmx_wrapper},
+    {"helper_pcmpeqb_xmm", helper_pcmpeqb_xmm_wrapper},
+    {"helper_pcmpeqb_mmx", helper_pcmpeqb_mmx_wrapper},
+    {"helper_pmovmskb_xmm", helper_pmovmskb_xmm_wrapper},
+    {"helper_pmovmskb_mmx", helper_pmovmskb_mmx_wrapper},
+    {"helper_punpcklbw_xmm", helper_punpcklbw_xmm_wrapper},
+    {"helper_punpcklbw_mmx", helper_punpcklbw_mmx_wrapper},
+    {"helper_punpcklwd_xmm", helper_punpcklwd_xmm_wrapper},
+    {"helper_punpcklwd_mmx", helper_punpcklwd_mmx_wrapper},
+    {"helper_pshufd", helper_pshufd_xmm_wrapper},
+    {"helper_comiss", helper_comiss_wrapper},
+    {"helper_paddb_xmm", helper_paddb_xmm_wrapper},
+    {"helper_paddl_xmm", helper_paddl_xmm_wrapper},
+    {"helper_paddw_xmm", helper_paddw_xmm_wrapper},
+    {"helper_paddq_xmm", helper_paddq_xmm_wrapper},
+
     {"helper_raise_syscall", helper_raise_syscall},
 };
+
+int SymTableSize = sizeof(SymTable) / sizeof(SymTable[0]);
+
 /* #include "exec/log.h" */
 
 int GetEAXOffset(void) { return GuestStateOffset(R_EAX); }

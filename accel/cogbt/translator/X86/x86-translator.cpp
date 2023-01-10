@@ -588,7 +588,7 @@ Value *X86Translator::CallFunc(FunctionType *FuncTy, std::string Name,
 }
 
 void X86Translator::AddExternalSyms() {
-    EE->addGlobalMapping("PFTable", X86InstHandler::getPFTable());
+    /* EE->addGlobalMapping("PFTable", X86InstHandler::getPFTable()); */
     EE->addGlobalMapping("helper_raise_syscall", (uint64_t)helper_raise_syscall);
     EE->addGlobalMapping("helper_divb_AL", (uint64_t)helper_divb_AL_wrapper);
     EE->addGlobalMapping("helper_divw_AX", (uint64_t)helper_divw_AX_wrapper);
@@ -808,13 +808,17 @@ void X86Translator::Translate() {
     ss << std::hex << TU->GetTUEntry();
     std::string Entry(ss.str());
     /* InitializeFunction(std::to_string(TU->GetTUEntry())); */
-    if (aotmode != 1) {
+    if (aotmode != 1) { // JIT or Function AOT mode
         InitializeFunction(Entry);
     }
     for (auto &block : *TU) {
         assert(TU->size() && "TU size is expected to be non-zero!");
         if (aotmode == 1) {
-            InitializeFunction(Entry);
+            std::stringstream ss;
+            ss << std::hex << block.GetBlockEntry() << "." << std::dec
+               << block.GetBlockPCSize();
+            InitializeFunction(ss.str());
+            dbgs() << ss.str() << "\n";
         }
         InitializeBlock(block);
         for (auto &inst : block) {

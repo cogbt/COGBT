@@ -1,4 +1,5 @@
 #include "aot-parser.h"
+#include "emulator.h"
 #include "memory-manager.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Support/TargetSelect.h"
@@ -64,11 +65,18 @@ void AOTParser::AddGlobalMapping(std::string Name, uint64_t Address) {
     EE->addGlobalMapping(Name, Address);
 }
 
-void *AOTParser::ParseNextFunction(uint64_t *pc) {
+void AOTParser::ResolveSymbols() {
+    for (int i = 0; i < SymTableSize; i++)
+        EE->addGlobalMapping(SymTable[i].key, (uint64_t)SymTable[i].val);
+}
+
+void *AOTParser::ParseNextFunction(uint64_t *pc, size_t *tu_size) {
     static std::vector<std::string>::iterator it = FuncNames.begin();
     if (it == FuncNames.end())
         return NULL;
     *pc = std::stol(*it, 0, 16);
+    size_t idx = it->find('.');
+    *tu_size = std::stol(it->substr(idx + 1));
     void *Addr = (void *)EE->getFunctionAddress(*it++);
     return Addr;
 }

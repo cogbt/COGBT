@@ -977,7 +977,8 @@ int main(int argc, char **argv, char **envp)
         void *tc_ptr = NULL,
              *aot_buffer_ptr = get_current_code_cache_ptr(parser);
         uint64_t pc = 0;
-        while ((tc_ptr = parse_next_function(parser, &pc))) {
+        size_t tb_size;
+        while ((tc_ptr = parse_next_function(parser, &pc, &tb_size))) {
             // calculate translation code pointer and size
             void *aot_ptr = get_current_code_cache_ptr(parser);
             size_t tc_size = aot_ptr - aot_buffer_ptr;
@@ -998,7 +999,7 @@ int main(int argc, char **argv, char **envp)
                         (env->eflags &
                          (IOPL_MASK | TF_MASK | RF_MASK | VM_MASK | AC_MASK));
             tb->cflags = 0;
-            tb->size = 1;
+            tb->size = tb_size;
             tb->jmp_reset_offset[0] = tb->jmp_reset_offset[1] = 0;
             tb->jmp_target_arg[0] = tb->jmp_target_arg[1] = 0;
             tb->trace_vcpu_dstate = 0;

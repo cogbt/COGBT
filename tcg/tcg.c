@@ -789,6 +789,7 @@ void tcg_prologue_init(TCGContext *s)
     if (aotfile) {
         add_global_mapping(parser, "epilogue",
                            (uint64_t)cogbt_code_gen_epilogue);
+        resolve_all_symbols(parser);
     }
 #endif
 

@@ -52,6 +52,10 @@ struct KeyVal {
     const char *key;
     void *val;
 };
+
+extern struct KeyVal SymTable[];
+extern int SymTableSize;
+
 #ifdef __cplusplus
 }
 #endif
