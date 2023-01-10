@@ -104,6 +104,8 @@
 #ifdef CONFIG_COGBT
 #include "cogbt.h"
 #include "block.h"
+extern int aotmode;
+extern const char *aotfile;
 #endif
 
 #define SMC_BITMAP_USE_THRESHOLD 10
@@ -247,7 +249,6 @@ static void page_table_config_init(void)
 
 /* Encode VAL as a signed leb128 sequence at P.
    Return P incremented past the encoded value.  */
-#ifndef CONFIG_COGBT
 static uint8_t *encode_sleb128(uint8_t *p, target_long val)
 {
     int more, byte;
@@ -265,7 +266,6 @@ static uint8_t *encode_sleb128(uint8_t *p, target_long val)
 
     return p;
 }
-#endif
 
 /* Decode a signed leb128 sequence at *PP; increment *PP past the
    decoded value.  Return the decoded value.  */
@@ -299,7 +299,6 @@ static target_long decode_sleb128(const uint8_t **pp)
    line.  The seed for the first line is { tb->pc, 0..., tb->tc.ptr }.
    That is, the first column is seeded with the guest pc, the last column
    with the host pc, and the middle columns with zeros.  */
-#ifndef CONFIG_COGBT
 static int encode_search(TranslationBlock *tb, uint8_t *block)
 {
     uint8_t *highwater = tcg_ctx->code_gen_highwater;
@@ -331,7 +330,6 @@ static int encode_search(TranslationBlock *tb, uint8_t *block)
 
     return p - block;
 }
-#endif
 
 /* The cpu state corresponding to 'searched_pc' is restored.
  * When reset_icount is true, current TB will be interrupted and
@@ -1400,7 +1398,7 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
     tb_page_addr_t phys_pc, phys_page2;
     target_ulong virt_page2;
     tcg_insn_unit *gen_code_buf;
-    int gen_code_size, search_size, max_insns;
+    int gen_code_size = 0, search_size, max_insns;
 #ifdef CONFIG_PROFILER
     TCGProfile *prof = &tcg_ctx->prof;
     int64_t ti;
@@ -1422,9 +1420,7 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
     }
     QEMU_BUILD_BUG_ON(CF_COUNT_MASK + 1 != TCG_MAX_INSNS);
 
-#ifndef CONFIG_COGBT
  buffer_overflow:
-#endif
     tb = tcg_tb_alloc(tcg_ctx);
     if (unlikely(!tb)) {
         /* flush must be done */
@@ -1435,9 +1431,13 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
         cpu_loop_exit(cpu);
     }
 
-#ifndef COGBT
     gen_code_buf = tcg_ctx->code_gen_ptr;
+#ifdef CONFIG_COGBT
+    if (!aotmode && aotfile) {
+#endif
     tb->tc.ptr = tcg_splitwx_to_rx(gen_code_buf);
+#ifdef CONFIG_COGBT
+    }
 #endif
     tb->pc = pc;
     tb->cs_base = cs_base;
@@ -1445,11 +1445,11 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
     tb->cflags = cflags;
     tb->trace_vcpu_dstate = *cpu->trace_dstate;
     tcg_ctx->tb_cflags = cflags;
-#ifndef CONFIG_COGBT
  tb_overflow:
-#endif
 
-#ifndef CONFIG_COGBT
+#ifdef CONFIG_COGBT
+    if (!aotmode && aotfile) {
+#endif
 #ifdef CONFIG_PROFILER
     /* includes aborted translations because of exceptions */
     qatomic_set(&prof->tb_count1, prof->tb_count1 + 1);
@@ -1470,6 +1470,8 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
     max_insns = tb->icount;
 
     trace_translate_block(tb, tb->pc, tb->tc.ptr);
+#ifdef CONFIG_COGBT
+    }
 #endif
 
     /* generate machine code */
@@ -1484,7 +1486,9 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
         tcg_ctx->tb_jmp_target_addr = tb->jmp_target_arg;
     }
 
-#ifndef CONFIG_COGBT
+#ifdef CONFIG_COGBT
+    if (!aotmode && aotfile) {
+#endif
 #ifdef CONFIG_PROFILER
     qatomic_set(&prof->tb_count, prof->tb_count + 1);
     qatomic_set(&prof->interm_time,
@@ -1620,17 +1624,22 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
         }
     }
 #endif
+#ifdef CONFIG_COGBT
+    }
+#endif
 
-#else /* CONFIG_COGBT */
-    /* gen_code_size =  cogbt_gen_code(tb, max_insns); */
-    search_size = 0;
-    int guest_inst_cnt = 0;
-    void *host_code_ptr = NULL;
-    gen_code_size = block_gen_code(tb->pc, max_insns, tcg_ctx->translator,
-                                   &host_code_ptr, &guest_inst_cnt);
-    tb->tc.ptr = tcg_splitwx_to_rx(host_code_ptr);
-    tb->tc.size = gen_code_size;
-    tb->icount = guest_inst_cnt;
+#ifdef CONFIG_COGBT
+    if (!aotmode && !aotfile) {
+        /* gen_code_size =  cogbt_gen_code(tb, max_insns); */
+        search_size = 0;
+        int guest_inst_cnt = 0;
+        void *host_code_ptr = NULL;
+        gen_code_size = block_gen_code(tb->pc, max_insns, tcg_ctx->translator,
+                &host_code_ptr, &guest_inst_cnt);
+        tb->tc.ptr = tcg_splitwx_to_rx(host_code_ptr);
+        tb->tc.size = gen_code_size;
+        tb->icount = guest_inst_cnt;
+    }
 #endif
 
     qatomic_set(&tcg_ctx->code_gen_ptr, (void *)

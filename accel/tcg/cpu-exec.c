@@ -355,6 +355,12 @@ cpu_tb_exec(CPUState *cpu, TranslationBlock *itb, int *tb_exit)
     log_cpu_exec(itb->pc, cpu, itb);
 
     qemu_thread_jit_execute();
+#ifdef CONFIG_COGBT
+    if (tb_ptr < tb_cache_begin) {
+        ret = cogbt_tb_exec(env, tb_ptr);
+    }
+    else
+#endif
     ret = tcg_qemu_tb_exec(env, tb_ptr);
     cpu->can_do_io = 1;
     /*

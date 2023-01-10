@@ -2194,6 +2194,9 @@ uint32_t cpu_cc_compute_all(CPUX86State *env1, int op);
 static inline uint32_t cpu_compute_eflags(CPUX86State *env)
 {
     uint32_t eflags = env->eflags;
+    // TODO!!! llvm translation code doesn't need to compute delayed
+    // cc but qemu needs. So if we use mixed qemu and llvm mode, below
+    // code should be rewrote.
 #ifndef  CONFIG_COGBT
     if (tcg_enabled()) {
         eflags |= cpu_cc_compute_all(env, CC_OP) | (env->df & DF_MASK);

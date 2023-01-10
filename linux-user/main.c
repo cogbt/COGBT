@@ -141,8 +141,9 @@ const char *qemu_uname_release;
  * function_aot and this flag should be set to 2.
  */
 int aotmode = 0;
-const char *aotfile = NULL;
 #endif
+const char *aotfile = NULL;
+uint64_t debug_pc = 0;
 
 /* XXX: on x86 MAP_GROWSDOWN only works if ESP <= address + 32, so
    we allocate a bigger stack. Need a better solution, for example
@@ -446,11 +447,17 @@ static void handle_arg_runmode(const char *arg)
         aotmode = 2;
     } else aotmode = 0;
 }
+#endif
 static void handle_arg_aot(const char *arg)
 {
     aotfile = arg;
 }
-#endif
+static void handle_arg_debug(const char *arg)
+{
+    char *endptr;
+    debug_pc = strtol(arg, &endptr, 16);
+}
+
 static QemuPluginList plugins = QTAILQ_HEAD_INITIALIZER(plugins);
 
 #ifdef CONFIG_PLUGIN
@@ -524,9 +531,11 @@ static const struct qemu_argument arg_table[] = {
 #ifdef CONFIG_COGBT
     {"m",          "COGBT_RUNMODE",    true, handle_arg_runmode,
      "",           "set cogbt runmode to jit/aot, default is jit"},
+#endif
     {"a",          "COGBT_AOTFILE",    true, handle_arg_aot,
      "",           "set the aot file path"},
-#endif
+    {"debug",      "COGBT_DEBUGPC",    true, handle_arg_debug,
+     "",           "set cogbt debug pc"},
     {NULL, NULL, false, NULL, NULL, NULL}
 };
 
@@ -963,44 +972,41 @@ int main(int argc, char **argv, char **envp)
     target_cpu_copy_regs(env, regs);
 
 #ifdef CONFIG_COGBT
-    void *tc_ptr = NULL, *aot_buffer_ptr = get_current_code_cache_ptr(parser);
-    uint64_t pc = 0;
-    while ((tc_ptr = parse_next_function(parser, &pc))) {
-        // calculate translation code pointer and size
-        void *aot_ptr = get_current_code_cache_ptr(parser);
-        size_t tc_size = aot_ptr - aot_buffer_ptr;
-        aot_buffer_ptr = aot_ptr;
+    if (aotfile) {
+        mmap_lock();
+        void *tc_ptr = NULL,
+             *aot_buffer_ptr = get_current_code_cache_ptr(parser);
+        uint64_t pc = 0;
+        while ((tc_ptr = parse_next_function(parser, &pc))) {
+            // calculate translation code pointer and size
+            void *aot_ptr = get_current_code_cache_ptr(parser);
+            size_t tc_size = aot_ptr - aot_buffer_ptr;
+            aot_buffer_ptr = aot_ptr;
 
-        /* Initialize Tb */
-        TranslationBlock *tb = tcg_tb_alloc(tcg_ctx);
-        qemu_spin_init(&tb->jmp_lock);
-        tb->jmp_dest[0] = tb->jmp_dest[1] = 0;
-        tb->jmp_list_next[0] = tb->jmp_list_next[1] = 0;
-        tb->jmp_list_head = 0;
-        tb->tc.size = tc_size;
-        tb->tc.ptr = tc_ptr;
+            /* Initialize Tb */
+            TranslationBlock *tb = tcg_tb_alloc(tcg_ctx);
+            qemu_spin_init(&tb->jmp_lock);
+            tb->jmp_dest[0] = tb->jmp_dest[1] = 0;
+            tb->jmp_list_next[0] = tb->jmp_list_next[1] = 0;
+            tb->jmp_list_head = 0;
+            tb->tc.size = tc_size;
+            tb->tc.ptr = tc_ptr;
 
-        tb->pc = pc;
-        tb->cs_base = 0;
-        tb->flags =
-            env->hflags |
-            (env->eflags & (IOPL_MASK | TF_MASK | RF_MASK | VM_MASK | AC_MASK));
-        tb->cflags = 0;
-        tb->size = 1;
-        tb->jmp_reset_offset[0] = tb->jmp_reset_offset[1] = 0;
-        tb->jmp_target_arg[0] = tb->jmp_target_arg[1] = 0;
-        tb->trace_vcpu_dstate = 0;
+            tb->pc = pc;
+            tb->cs_base = 0;
+            tb->flags = env->hflags |
+                        (env->eflags &
+                         (IOPL_MASK | TF_MASK | RF_MASK | VM_MASK | AC_MASK));
+            tb->cflags = 0;
+            tb->size = 1;
+            tb->jmp_reset_offset[0] = tb->jmp_reset_offset[1] = 0;
+            tb->jmp_target_arg[0] = tb->jmp_target_arg[1] = 0;
+            tb->trace_vcpu_dstate = 0;
 
-        /* Registe this BasicBlock into lookup hash table. */
-        aot_tb_register(tb);
-        /* fprintf(stderr, */
-        /*         "register after tb->pc %lx tb->flags %x tb->cflags %x " */
-        /*         "tb->trace_vcpu_dstate %x\n", */
-        /*         tb->pc, tb->flags, tb->cflags, tb->trace_vcpu_dstate); */
-        /* if (!tb_htable_lookup(cpu, tb->pc, 0, tb->flags, 0)) { */
-        /*     fprintf(stderr, "aot: tb_htable_lookup error!\n"); */
-        /*     exit(-1); */
-        /* } */
+            /* Registe this BasicBlock into lookup hash table. */
+            aot_tb_register(tb);
+        }
+        mmap_unlock();
     }
 #endif
 

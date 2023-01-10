@@ -757,7 +757,7 @@ void tcg_prologue_init(TCGContext *s)
 #ifdef CONFIG_COGBT
     size_t llvm_cache_size = s->code_gen_buffer_size >> 1;
     s->translator =
-        create_llvm_translator((uintptr_t)s->code_buf, llvm_cache_size);
+        create_llvm_translator((uintptr_t)s->code_ptr, llvm_cache_size);
 
     gen_prologue(s->translator);
     cogbt_tb_exec = (tcg_prologue_fn *)llvm_compile(s->translator, true);
@@ -766,12 +766,6 @@ void tcg_prologue_init(TCGContext *s)
 
     size_t llvm_code_size = llvm_get_code_size(s->translator);
     s->code_ptr += ((llvm_code_size + 3) & ~3) >> 2;
-
-    parser = create_aot_parser((uintptr_t)s->code_ptr, llvm_cache_size, aotfile);
-    fprintf(stderr, "AOT buffer code_ptr: 0x%p\n", s->code_ptr);
-    s->code_ptr += ((llvm_cache_size + 3) & ~3) >> 2;
-    tb_cache_begin = s->code_ptr;
-    add_global_mapping(parser, "epilogue", (uint64_t)cogbt_code_gen_epilogue);
 #endif
 
 #ifdef TCG_TARGET_NEED_POOL_LABELS
@@ -783,6 +777,20 @@ void tcg_prologue_init(TCGContext *s)
 #endif
 
     prologue_size = tcg_current_code_size(s);
+
+#ifdef CONFIG_COGBT
+    // Only when we have aotfile should we create aot parser.
+    if (aotfile) {
+        parser =
+            create_aot_parser((uintptr_t)s->code_ptr, llvm_cache_size, aotfile);
+    }
+    s->code_ptr += ((llvm_cache_size + 3) & ~3) >> 2;
+    tb_cache_begin = s->code_ptr;
+    if (aotfile) {
+        add_global_mapping(parser, "epilogue",
+                           (uint64_t)cogbt_code_gen_epilogue);
+    }
+#endif
 
 #ifndef CONFIG_TCG_INTERPRETER
     flush_idcache_range((uintptr_t)tcg_splitwx_to_rx(s->code_buf),

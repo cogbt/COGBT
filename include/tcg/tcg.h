@@ -1218,6 +1218,7 @@ extern tcg_prologue_fn *tcg_qemu_tb_exec;
 
 #ifdef CONFIG_COGBT
 extern tcg_prologue_fn *cogbt_tb_exec;
+extern const void *tb_cache_begin;
 #endif
 
 void tcg_register_jit(const void *buf, size_t buf_size);

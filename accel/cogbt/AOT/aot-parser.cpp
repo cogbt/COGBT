@@ -8,6 +8,8 @@ using namespace llvm;
 
 AOTParser::AOTParser(uintptr_t CacheBegin, size_t CacheSize, const char *AOT)
     : CodeCache(CacheBegin, CacheSize) {
+    if (!AOT) return;
+
     InitializeAllTargets();
     InitializeAllTargetInfos();
     InitializeAllAsmParsers();
