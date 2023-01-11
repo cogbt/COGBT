@@ -2200,6 +2200,9 @@ static abi_ulong create_elf_tables(abi_ulong p, int argc, int envc,
      * Generate 16 random bytes for userspace PRNG seeding.
      */
     qemu_guest_getrandom_nofail(k_rand_bytes, sizeof(k_rand_bytes));
+#ifdef CONFIG_COGBT_DEBUG
+    memset(k_rand_bytes, 0, sizeof(k_rand_bytes));
+#endif
     if (STACK_GROWS_DOWN) {
         sp -= 16;
         u_rand_bytes = sp;

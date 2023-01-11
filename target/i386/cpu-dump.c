@@ -27,6 +27,7 @@
 /***********************************************************/
 /* x86 debug */
 
+#ifndef CONFIG_COGBT_DEBUG
 static const char *cc_op_str[CC_OP_NB] = {
     "DYNAMIC",
     "EFLAGS",
@@ -151,6 +152,7 @@ cpu_x86_dump_seg_cache(CPUX86State *env, FILE *f,
 done:
     qemu_fprintf(f, "\n");
 }
+#endif
 
 #ifndef CONFIG_USER_ONLY
 
@@ -349,8 +351,10 @@ void x86_cpu_dump_state(CPUState *cs, FILE *f, int flags)
     X86CPU *cpu = X86_CPU(cs);
     CPUX86State *env = &cpu->env;
     int eflags, i, nb;
+#ifndef CONFIG_COGBT_DEBUG
     char cc_op_name[32];
     static const char *seg_name[6] = { "ES", "CS", "SS", "DS", "FS", "GS" };
+#endif
 
     eflags = cpu_compute_eflags(env);
 #ifdef TARGET_X86_64
@@ -418,6 +422,7 @@ void x86_cpu_dump_state(CPUState *cs, FILE *f, int flags)
                      cs->halted);
     }
 
+#ifndef CONFIG_COGBT_DEBUG
     for(i = 0; i < 6; i++) {
         cpu_x86_dump_seg_cache(env, f, seg_name[i], &env->segs[i]);
     }
@@ -476,6 +481,7 @@ void x86_cpu_dump_state(CPUState *cs, FILE *f, int flags)
         }
     }
     qemu_fprintf(f, "EFER=%016" PRIx64 "\n", env->efer);
+#endif
     if (flags & CPU_DUMP_FPU) {
         int fptag;
         const uint64_t avx512_mask = XSTATE_OPMASK_MASK | \

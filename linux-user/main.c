@@ -998,7 +998,7 @@ int main(int argc, char **argv, char **envp)
             tb->flags = env->hflags |
                         (env->eflags &
                          (IOPL_MASK | TF_MASK | RF_MASK | VM_MASK | AC_MASK));
-            tb->cflags = 0;
+            tb->cflags = curr_cflags(cpu);
             tb->size = tb_size;
             tb->jmp_reset_offset[0] = tb->jmp_reset_offset[1] = 0;
             tb->jmp_target_arg[0] = tb->jmp_target_arg[1] = 0;
@@ -1006,6 +1006,11 @@ int main(int argc, char **argv, char **envp)
 
             /* Registe this BasicBlock into lookup hash table. */
             aot_tb_register(tb);
+            if (!tb_htable_lookup(cpu, tb->pc, 0, tb->flags, tb->cflags)) {
+                fprintf(stderr, "aot: tb_htable_lookup error!\n");
+                exit(-1);
+            }
+
         }
         mmap_unlock();
     }
