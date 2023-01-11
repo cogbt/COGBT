@@ -51,6 +51,9 @@ static inline void translator_page_protect(DisasContextBase *dcbase,
 #endif
 }
 
+#ifdef CONFIG_COGBT_DEBUG
+extern bool insn_has_rep;
+#endif
 void translator_loop(const TranslatorOps *ops, DisasContextBase *db,
                      CPUState *cpu, TranslationBlock *tb, int max_insns)
 {
@@ -124,6 +127,9 @@ void translator_loop(const TranslatorOps *ops, DisasContextBase *db,
         }
     }
 
+#ifdef CONFIG_COGBT_DEBUG
+    tb->is_rep = db->is_jmp == DISAS_NORETURN && insn_has_rep;
+#endif
     /* Emit code to exit the TB, as indicated by db->is_jmp.  */
     ops->tb_stop(db, cpu);
     gen_tb_end(db->tb, db->num_insns);

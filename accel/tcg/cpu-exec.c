@@ -344,6 +344,9 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
  * TCG is not considered a security-sensitive part of QEMU so this does not
  * affect the impact of CFI in environment with high security requirements
  */
+#ifdef CONFIG_COGBT_DEBUG
+bool last_is_rep = false;
+#endif
 static inline TranslationBlock * QEMU_DISABLE_CFI
 cpu_tb_exec(CPUState *cpu, TranslationBlock *itb, int *tb_exit)
 {
@@ -352,6 +355,9 @@ cpu_tb_exec(CPUState *cpu, TranslationBlock *itb, int *tb_exit)
     TranslationBlock *last_tb;
     const void *tb_ptr = itb->tc.ptr;
 
+#ifdef CONFIG_COGBT_DEBUG
+    if (!last_is_rep)
+#endif
     log_cpu_exec(itb->pc, cpu, itb);
 
     qemu_thread_jit_execute();
@@ -1011,6 +1017,9 @@ int cpu_exec(CPUState *cpu)
             }
 
             cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit);
+#ifdef CONFIG_COGBT_DEBUG
+            last_is_rep = tb->is_rep;
+#endif
 
             /* Try to align the host and virtual clocks
                if the guest is in advance */

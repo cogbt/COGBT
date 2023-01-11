@@ -4547,6 +4547,9 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
 
 /* convert one instruction. s->base.is_jmp is set if the translation must
    be stopped. Return the next pc value */
+#ifdef CONFIG_COGBT_DEBUG
+bool insn_has_rep;
+#endif
 static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
 {
     CPUX86State *env = cpu->env_ptr;
@@ -4556,6 +4559,9 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
     int modrm, reg, rm, mod, op, opreg, val;
     target_ulong next_eip, tval;
     target_ulong pc_start = s->base.pc_next;
+#ifdef CONFIG_COGBT_DEBUG
+    insn_has_rep = false;
+#endif
 
     s->pc_start = s->pc = pc_start;
     s->override = -1;
@@ -4581,9 +4587,15 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
     switch (b) {
     case 0xf3:
         prefixes |= PREFIX_REPZ;
+#ifdef CONFIG_COGBT_DEBUG
+        insn_has_rep = true;
+#endif
         goto next_byte;
     case 0xf2:
         prefixes |= PREFIX_REPNZ;
+#ifdef CONFIG_COGBT_DEBUG
+        insn_has_rep = true;
+#endif
         goto next_byte;
     case 0xf0:
         prefixes |= PREFIX_LOCK;
@@ -6649,6 +6661,9 @@ static target_ulong disas_insn(DisasContext *s, CPUState *cpu)
         gen_op_jmp_v(s->T0);
         gen_bnd_jmp(s);
         gen_jr(s, s->T0);
+#ifdef CONFIG_COGBT_DEBUG
+        insn_has_rep = false;
+#endif
         break;
     case 0xca: /* lret im */
         val = x86_ldsw_code(env, s);
