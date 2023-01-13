@@ -997,7 +997,7 @@ int main(int argc, char **argv, char **envp)
             aot_buffer_ptr = aot_ptr;
 
             /* fileter tbs not in range [aot_begin_pc, aot_end_pc] */
-            if (pc < aot_begin_pc && pc > aot_end_pc)
+            if (pc < aot_begin_pc || pc > aot_end_pc)
                 continue;
 
             /* Initialize Tb */

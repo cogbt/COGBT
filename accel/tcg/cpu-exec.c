@@ -332,7 +332,7 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
 #ifdef CONFIG_COGBT
     /* If tb is llvm tb, we need return qemu to do delated eflag
      * calculation */
-    if ((void *)tb < tb_cache_begin)
+    if ((void *)tb->tc.ptr < tb_cache_begin)
         return tcg_code_gen_epilogue;
 #endif
 
