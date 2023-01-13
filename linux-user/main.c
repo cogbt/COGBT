@@ -142,7 +142,13 @@ const char *qemu_uname_release;
  */
 int aotmode = 0;
 #endif
+/* To help debug cogbt, we allow cogbt to parse and register part of aot tbs
+ * at range [aot_begin_pc, aot_end_pc]
+ */
+uint64_t aot_begin_pc, aot_end_pc;
+/* Which aot file should we parse. */
 const char *aotfile = NULL;
+/* Set the a breakpoint before executing tb at debug_pc. */
 uint64_t debug_pc = 0;
 
 /* XXX: on x86 MAP_GROWSDOWN only works if ESP <= address + 32, so
@@ -457,6 +463,10 @@ static void handle_arg_debug(const char *arg)
     char *endptr;
     debug_pc = strtol(arg, &endptr, 16);
 }
+static void handle_arg_aot_range(const char *arg)
+{
+    sscanf(arg, "%lx,%lx", &aot_begin_pc, &aot_end_pc);
+}
 
 static QemuPluginList plugins = QTAILQ_HEAD_INITIALIZER(plugins);
 
@@ -536,6 +546,8 @@ static const struct qemu_argument arg_table[] = {
      "",           "set the aot file path"},
     {"debug",      "COGBT_DEBUGPC",    true, handle_arg_debug,
      "",           "set cogbt debug pc"},
+    {"aotrange",   "COGBT_AOTRANGE",   true, handle_arg_aot_range,
+     "",           "set cogbt aot register tb range"},
     {NULL, NULL, false, NULL, NULL, NULL}
 };
 
@@ -979,10 +991,14 @@ int main(int argc, char **argv, char **envp)
         uint64_t pc = 0;
         size_t tb_size;
         while ((tc_ptr = parse_next_function(parser, &pc, &tb_size))) {
-            // calculate translation code pointer and size
+            /* calculate translation code pointer and size */
             void *aot_ptr = get_current_code_cache_ptr(parser);
             size_t tc_size = aot_ptr - aot_buffer_ptr;
             aot_buffer_ptr = aot_ptr;
+
+            /* fileter tbs not in range [aot_begin_pc, aot_end_pc] */
+            if (pc < aot_begin_pc && pc > aot_end_pc)
+                continue;
 
             /* Initialize Tb */
             TranslationBlock *tb = tcg_tb_alloc(tcg_ctx);
