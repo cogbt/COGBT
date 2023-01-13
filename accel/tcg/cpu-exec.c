@@ -194,6 +194,7 @@ static inline TranslationBlock *tb_lookup(CPUState *cpu, target_ulong pc,
     }
     tb = tb_htable_lookup(cpu, pc, cs_base, flags, cflags);
     if (tb == NULL) {
+        /* fprintf(stderr, "Lookup TB Error pc 0x%lx cs_base 0x%lx flags 0x%x cflags 0x%x\n", pc, cs_base, flags, cflags); //debug */
         return NULL;
     }
     qatomic_set(&cpu->tb_jmp_cache[hash], tb);
@@ -371,12 +372,19 @@ cpu_tb_exec(CPUState *cpu, TranslationBlock *itb, int *tb_exit)
     if (tb_ptr < tb_cache_begin) {
         ret = cogbt_tb_exec(env, tb_ptr);
     }
-    else
+    else {
+#endif
+#ifdef CONFIG_COGBT
+        /* fprintf(stderr, "COGBT PANIC\n"); */
+        /* exit(-1); */
 #endif
     ret = tcg_qemu_tb_exec(env, tb_ptr);
+#ifdef CONFIG_COGBT
+    }
+#endif
     cpu->can_do_io = 1;
 
-#ifdef CCONFIG_COGBT
+#ifdef CONFIG_COGBT
     /* We need to distinguish last_executed_tb is qemu tb or llvm tb.
      * A simple idea is to let llvm tb return a special value -1. */
     if (ret == -1) {
@@ -918,6 +926,13 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 
 /* main execution loop */
 
+#ifdef CONFIG_COGBT_DEBUG
+extern uint64_t debug_pc;
+void debug_breakpoint(uint64_t pc);
+void debug_breakpoint(uint64_t pc) {
+    fprintf(stderr, "Debug Breakpoint At 0x%lx\n", pc);
+}
+#endif
 int cpu_exec(CPUState *cpu)
 {
     int ret;
@@ -1005,6 +1020,11 @@ int cpu_exec(CPUState *cpu)
                 break;
             }
 
+#ifdef CONFIG_COGBT_DEBUG
+            if (pc == debug_pc) {
+                debug_breakpoint(pc);
+            }
+#endif
             tb = tb_lookup(cpu, pc, cs_base, flags, cflags);
             if (tb == NULL) {
                 mmap_lock();
@@ -1041,8 +1061,7 @@ int cpu_exec(CPUState *cpu)
 #ifdef CONFIG_COGBT
             /* llvm -> qemu, set CC_OP and CC_SRC */
             if (last_exit_is_llvm && tb->tc.ptr > tb_cache_begin) {
-                X86CPU *cpu = X86_CPU(cpu);
-                CPUX86State *env = &cpu->env;
+                CPUX86State *env = cpu->env_ptr;
                 CC_SRC =
                     env->eflags & (CC_O | CC_S | CC_Z | CC_A | CC_P | CC_C);
                 env->df = 1 - (2 * ((env->eflags >> 10) & 1));
@@ -1052,8 +1071,7 @@ int cpu_exec(CPUState *cpu)
             }
             /* qemu -> llvm, calculate all delayed eflags. */
             if (!last_exit_is_llvm && tb->tc.ptr < tb_cache_begin) {
-                X86CPU *cpu = X86_CPU(cpu);
-                CPUX86State *env = &cpu->env;
+                CPUX86State *env = cpu->env_ptr;
 
                 env->eflags = cpu_compute_eflags(env);
             }
