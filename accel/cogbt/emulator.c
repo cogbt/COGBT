@@ -99,6 +99,7 @@ void helper_raise_syscall(void *p, uint64_t next_eip) {
     cpu->can_do_io = 1;
     env->exception_is_int = 0;
     env->exception_next_eip = next_eip;
+    last_exit_is_llvm = true;
     siglongjmp(cpu->jmp_env, 1);
 }
 

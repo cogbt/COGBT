@@ -246,7 +246,7 @@ void X86Translator::GenEpilogue() {
                             HostRegValues[HostCSRs[i]]);
     }
     SetPhysicalRegValue(HostRegNames[HostSP], NewSP);
-    SetPhysicalRegValue(HostRegNames[HostA0], ConstInt(Int64Ty, 0));
+    SetPhysicalRegValue(HostRegNames[HostA0], ConstInt(Int64Ty, -1));
 
     // Return dbt.
     Builder.CreateRetVoid();

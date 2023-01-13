@@ -328,6 +328,12 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
     if (tb == NULL) {
         return tcg_code_gen_epilogue;
     }
+#ifdef CONFIG_COGBT
+    /* If tb is llvm tb, we need return qemu to do delated eflag
+     * calculation */
+    if ((void *)tb < tb_cache_begin)
+        return tcg_code_gen_epilogue;
+#endif
 
     log_cpu_exec(pc, cpu, tb);
 
@@ -369,6 +375,17 @@ cpu_tb_exec(CPUState *cpu, TranslationBlock *itb, int *tb_exit)
 #endif
     ret = tcg_qemu_tb_exec(env, tb_ptr);
     cpu->can_do_io = 1;
+
+#ifdef CCONFIG_COGBT
+    /* We need to distinguish last_executed_tb is qemu tb or llvm tb.
+     * A simple idea is to let llvm tb return a special value -1. */
+    if (ret == -1) {
+        last_exit_is_llvm = true;
+        ret = 0;
+    } else
+        last_exit_is_llvm = false;
+#endif
+
     /*
      * TODO: Delay swapping back to the read-write region of the TB
      * until we actually need to modify the TB.  The read-only copy,
@@ -1012,10 +1029,35 @@ int cpu_exec(CPUState *cpu)
             }
 #endif
             /* See if we can patch the calling TB. */
+#ifdef CONFIG_COGBT
+            /* Only qemu -> qemu tb can be linked */
+            if (last_tb && tb->tc.ptr > tb_cache_begin) {
+#else
             if (last_tb) {
+#endif
                 tb_add_jump(last_tb, tb_exit, tb);
             }
 
+#ifdef CONFIG_COGBT
+            /* llvm -> qemu, set CC_OP and CC_SRC */
+            if (last_exit_is_llvm && tb->tc.ptr > tb_cache_begin) {
+                X86CPU *cpu = X86_CPU(cpu);
+                CPUX86State *env = &cpu->env;
+                CC_SRC =
+                    env->eflags & (CC_O | CC_S | CC_Z | CC_A | CC_P | CC_C);
+                env->df = 1 - (2 * ((env->eflags >> 10) & 1));
+                CC_OP = CC_OP_EFLAGS;
+                env->eflags &=
+                    ~(DF_MASK | CC_O | CC_S | CC_Z | CC_A | CC_P | CC_C);
+            }
+            /* qemu -> llvm, calculate all delayed eflags. */
+            if (!last_exit_is_llvm && tb->tc.ptr < tb_cache_begin) {
+                X86CPU *cpu = X86_CPU(cpu);
+                CPUX86State *env = &cpu->env;
+
+                env->eflags = cpu_compute_eflags(env);
+            }
+#endif
             cpu_loop_exec_tb(cpu, tb, &last_tb, &tb_exit);
 #ifdef CONFIG_COGBT_DEBUG
             last_is_rep = tb->is_rep;

@@ -2191,17 +2191,25 @@ void cpu_x86_inject_mce(Monitor *mon, X86CPU *cpu, int bank,
 
 uint32_t cpu_cc_compute_all(CPUX86State *env1, int op);
 
+#ifdef  CONFIG_COGBT
+extern bool last_exit_is_llvm;
+#endif
+
 static inline uint32_t cpu_compute_eflags(CPUX86State *env)
 {
     uint32_t eflags = env->eflags;
-    // TODO!!! llvm translation code doesn't need to compute delayed
-    // cc but qemu needs. So if we use mixed qemu and llvm mode, below
-    // code should be rewrote.
-#ifndef  CONFIG_COGBT
+    /* In user mode, only x86_cpu_exec_exit(AKA cpu_exec_exit)
+     * will call this function. If last exit is llvm, eflags don't
+     * need to be recalculated, otherwise we should calculate this.
+     */
+#ifdef  CONFIG_COGBT
+    if (tcg_enabled() && !last_exit_is_llvm) {
+        eflags &= ~(DF_MASK | CC_O | CC_S | CC_Z | CC_A | CC_P | CC_C);
+#else
     if (tcg_enabled()) {
+#endif
         eflags |= cpu_cc_compute_all(env, CC_OP) | (env->df & DF_MASK);
     }
-#endif
     return eflags;
 }
 

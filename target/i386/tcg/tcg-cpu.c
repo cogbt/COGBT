@@ -29,15 +29,22 @@
 
 static void x86_cpu_exec_enter(CPUState *cs)
 {
-/* #ifndef CONFIG_COGBT */
     X86CPU *cpu = X86_CPU(cs);
     CPUX86State *env = &cpu->env;
 
     CC_SRC = env->eflags & (CC_O | CC_S | CC_Z | CC_A | CC_P | CC_C);
     env->df = 1 - (2 * ((env->eflags >> 10) & 1));
     CC_OP = CC_OP_EFLAGS;
+#ifdef CONFIG_COGBT
+    /* qemu needs to clear all flags and reset it in x86_cpu_exec_exit, but
+     * llvm needn't clear them. Everytime a syscall has been emulated and we
+     * are ready to execute next tb, qemu will do following clear. We can't
+     * known whether cogbt should do this as we don't knonw next tb right now,
+     * so we delay it to x86_cpu_exec_exit.
+     */
+#else
     env->eflags &= ~(DF_MASK | CC_O | CC_S | CC_Z | CC_A | CC_P | CC_C);
-/* #endif */
+#endif
 }
 
 static void x86_cpu_exec_exit(CPUState *cs)

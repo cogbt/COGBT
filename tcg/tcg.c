@@ -186,6 +186,7 @@ const void *cogbt_code_gen_epilogue;
 tcg_prologue_fn *cogbt_tb_exec;
 AOTParser *parser;
 const void *tb_cache_begin;
+bool last_exit_is_llvm;
 #endif
 
 static TCGRegSet tcg_target_available_regs[TCG_TYPE_COUNT];

@@ -25,6 +25,9 @@
 #include "exec/cpu_ldst.h"
 #include "tcg/helper-tcg.h"
 #include "tcg/seg_helper.h"
+#ifdef CONFIG_COGBT
+#include "tcg/tcg.h"
+#endif
 
 #ifdef TARGET_X86_64
 void helper_syscall(CPUX86State *env, int next_eip_addend)
@@ -34,6 +37,9 @@ void helper_syscall(CPUX86State *env, int next_eip_addend)
     cs->exception_index = EXCP_SYSCALL;
     env->exception_is_int = 0;
     env->exception_next_eip = env->eip + next_eip_addend;
+#ifdef CONFIG_COGBT
+    last_exit_is_llvm = false;
+#endif
     cpu_loop_exit(cs);
 }
 #endif /* TARGET_X86_64 */
