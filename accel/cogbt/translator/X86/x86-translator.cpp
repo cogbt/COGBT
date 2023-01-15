@@ -403,7 +403,7 @@ void X86Translator::StoreGMRValue(Value *V, int GMRId, bool isHSubReg) {
                                                 V->getType()->getPointerTo());
             if (isHSubReg) {
                 assert(V->getType()->getIntegerBitWidth() == 8);
-                Addr = Builder.CreateGEP(Int8PtrTy, Addr, ConstInt(Int64Ty, 1));
+                Addr = Builder.CreateGEP(Int8Ty, Addr, ConstInt(Int64Ty, 1));
             }
             Builder.CreateStore(V, Addr);
         }
