@@ -488,6 +488,21 @@ void helper_fcomi_ST0_FT0(CPUX86State *env)
     merge_exception_flags(env, old_flags);
 }
 
+#ifdef CONFIG_COGBT
+void helper_fcomi_ST0_FT0_cogbt(CPUX86State *env)
+{
+    uint8_t old_flags = save_exception_flags(env);
+    int eflags;
+    FloatRelation ret;
+
+    ret = floatx80_compare(ST0, FT0, &env->fp_status);
+    eflags = env->eflags;
+    eflags = (eflags & ~(CC_Z | CC_P | CC_C)) | fcomi_ccval[ret + 1];
+    env->eflags = eflags;
+    merge_exception_flags(env, old_flags);
+}
+#endif
+
 void helper_fucomi_ST0_FT0(CPUX86State *env)
 {
     uint8_t old_flags = save_exception_flags(env);
@@ -500,6 +515,21 @@ void helper_fucomi_ST0_FT0(CPUX86State *env)
     CC_SRC = eflags;
     merge_exception_flags(env, old_flags);
 }
+
+#ifdef CONFIG_COGBT
+void helper_fucomi_ST0_FT0_cogbt(CPUX86State *env)
+{
+    uint8_t old_flags = save_exception_flags(env);
+    int eflags;
+    FloatRelation ret;
+
+    ret = floatx80_compare_quiet(ST0, FT0, &env->fp_status);
+    eflags = env->eflags;
+    eflags = (eflags & ~(CC_Z | CC_P | CC_C)) | fcomi_ccval[ret + 1];
+    env->eflags = eflags;
+    merge_exception_flags(env, old_flags);
+}
+#endif
 
 void helper_fadd_ST0_FT0(CPUX86State *env)
 {

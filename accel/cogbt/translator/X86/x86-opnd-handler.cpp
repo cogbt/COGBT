@@ -117,6 +117,23 @@ int X86OperandHandler::GetMMXID() {
     }
 }
 
+int X86OperandHandler::GetFPRID() {
+    if (Opnd->type != X86_OP_REG)
+        return -1;
+    switch (Opnd->reg) {
+        case X86_REG_ST0: return 0;
+        case X86_REG_ST1: return 1;
+        case X86_REG_ST2: return 2;
+        case X86_REG_ST3: return 3;
+        case X86_REG_ST4: return 4;
+        case X86_REG_ST5: return 5;
+        case X86_REG_ST6: return 6;
+        case X86_REG_ST7: return 7;
+        default:
+            return -1;
+    }
+}
+
 bool X86OperandHandler::isGPR() {
     if (Opnd->type != X86_OP_REG)
         return false;

@@ -101,6 +101,15 @@ private: /// Currently translated instruction.
     void FlushXMMT0(Value *XMMV, Type *FlushTy = nullptr);
     void FlushMMXT0(Value *MMXV, Type *FlushTy = nullptr);
 
+    /// FlushFPRValue - Flush FPR(ST0 or FT0) value into CPUX86State.
+    /// \p FPR is the name of the floating-point register, \p FV is the
+    /// floating-point value to be saved, \p isInt indicates whether FV is
+    /// regarded as an integer or a floating-point value
+    void FlushFPRValue(std::string FPR, Value *FV, bool isInt);
+    /// ReloadFPRValue - Reload FPR(FT0 or ST0) value from CPUX86State with \p
+    /// LoadSize bytes.
+    Value *ReloadFPRValue(std::string FPR, int LoadSize, bool isInt);
+
     /// CallFunc - Generate llvm IRs to call a llvm function, maybe a helper.
     Value *CallFunc(FunctionType *FuncTy, std::string Name,
                     ArrayRef<Value *> Args);
@@ -121,6 +130,15 @@ private: /// Currently translated instruction.
     /// GenJCCExit - Generate llvm IRs to do jcc exit.
     /// \p Inst is the x86 jcc instruction and \p Cond is the jump condition.
     void GenJCCExit(GuestInst *Inst, Value *Cond);
+
+    /// FIXME: should be replace with firend class(Only to make the coding
+    /// style more canonical)
+    /// GenFPUHelper - Gen a call to tcg helper.
+    void GenFPUHelper(GuestInst *Inst, std::string Name, int Flags);
+
+    /// GenFCMOVHelper - Gen llvm irs to do fcmovcc by using lbt intrinsic \p
+    /// LBTIntrinic.
+    void GenFCMOVHelper(GuestInst *Inst, std::string LBTIntrinic);
 };
 
 #endif

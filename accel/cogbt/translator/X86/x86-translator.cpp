@@ -316,9 +316,8 @@ void X86Translator::ReloadGMRValue(int GMRId) {
     Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, Off));
     Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
     Value *V = Builder.CreateLoad(Int64Ty, Addr);
-    if (GMRId != X86Config::EFLAG)
-        StoreGMRValue(V, GMRId);
-    else {
+    StoreGMRValue(V, GMRId); // EFLAG DF also should be reload
+    if (GMRId == X86Config::EFLAG) {
         // sync to inner lbt flag register
         SetLBTFlag(V);
     }
@@ -334,6 +333,8 @@ Type *X86Translator::GetOpndLLVMType(X86Operand *Opnd) {
         return Int32Ty;
     case 8:
         return Int64Ty;
+    case 10:
+        return Int80Ty;
     case 16:
         return Int128Ty;
     case 32:

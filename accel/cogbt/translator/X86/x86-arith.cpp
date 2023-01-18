@@ -283,18 +283,6 @@ void X86Translator::translate_mulps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction mulps\n";
     exit(-1);
 }
-void X86Translator::translate_fmul(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fmul\n";
-    exit(-1);
-}
-void X86Translator::translate_fimul(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fimul\n";
-    exit(-1);
-}
-void X86Translator::translate_fmulp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fmulp\n";
-    exit(-1);
-}
 
 void X86Translator::translate_div(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
@@ -398,18 +386,6 @@ void X86Translator::translate_divpd(GuestInst *Inst) {
 }
 void X86Translator::translate_divps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction divps\n";
-    exit(-1);
-}
-void X86Translator::translate_fdivr(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fdivr\n";
-    exit(-1);
-}
-void X86Translator::translate_fidivr(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fidivr\n";
-    exit(-1);
-}
-void X86Translator::translate_fdivrp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fdivrp\n";
     exit(-1);
 }
 

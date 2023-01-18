@@ -516,15 +516,6 @@ void X86Translator::translate_cmovbe(GuestInst *Inst) {
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 
-void X86Translator::translate_fcmovbe(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcmovbe\n";
-    exit(-1);
-}
-void X86Translator::translate_fcmovb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcmovb\n";
-    exit(-1);
-}
-
 void X86Translator::translate_cmove(GuestInst *Inst) {
     // ZF == 1
     X86InstHandler InstHdl(Inst);
@@ -539,11 +530,6 @@ void X86Translator::translate_cmove(GuestInst *Inst) {
 
     Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
-}
-
-void X86Translator::translate_fcmove(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcmove\n";
-    exit(-1);
 }
 
 void X86Translator::translate_cmovg(GuestInst *Inst) {
@@ -610,15 +596,6 @@ void X86Translator::translate_cmovle(GuestInst *Inst) {
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 
-void X86Translator::translate_fcmovnbe(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcmovnbe\n";
-    exit(-1);
-}
-void X86Translator::translate_fcmovnb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcmovnb\n";
-    exit(-1);
-}
-
 void X86Translator::translate_cmovne(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     // ZF == 0
@@ -633,11 +610,6 @@ void X86Translator::translate_cmovne(GuestInst *Inst) {
 
     Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
-}
-
-void X86Translator::translate_fcmovne(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcmovne\n";
-    exit(-1);
 }
 
 void X86Translator::translate_cmovno(GuestInst *Inst) {
@@ -670,11 +642,6 @@ void X86Translator::translate_cmovnp(GuestInst *Inst) {
 
     Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
-}
-
-void X86Translator::translate_fcmovnu(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcmovnu\n";
-    exit(-1);
 }
 
 void X86Translator::translate_cmovns(GuestInst *Inst) {
@@ -723,11 +690,6 @@ void X86Translator::translate_cmovp(GuestInst *Inst) {
 
     Value *Dest = Builder.CreateSelect(Cond, Src0, OldV);
     StoreOperand(Dest, InstHdl.getOpnd(1));
-}
-
-void X86Translator::translate_fcmovu(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcmovu\n";
-    exit(-1);
 }
 
 void X86Translator::translate_cmovs(GuestInst *Inst) {

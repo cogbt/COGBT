@@ -1,10 +1,6 @@
 #include "emulator.h"
 #include "x86-translator.h"
 
-void X86Translator::translate_fabs(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fabs\n";
-    exit(-1);
-}
 void X86Translator::translate_addpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction addpd\n";
     exit(-1);
@@ -25,18 +21,7 @@ void X86Translator::translate_addsubps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction addsubps\n";
     exit(-1);
 }
-void X86Translator::translate_fadd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fadd\n";
-    exit(-1);
-}
-void X86Translator::translate_fiadd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fiadd\n";
-    exit(-1);
-}
-void X86Translator::translate_faddp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction faddp\n";
-    exit(-1);
-}
+
 void X86Translator::translate_adox(GuestInst *Inst) {
     dbgs() << "Untranslated instruction adox\n";
     exit(-1);
@@ -179,10 +164,6 @@ void X86Translator::translate_cdqe(GuestInst *Inst) {
     Value *V = Builder.CreateSExt(EAX, Int64Ty);
     StoreGMRValue(V, X86Config::RAX);
 }
-void X86Translator::translate_fchs(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fchs\n";
-    exit(-1);
-}
 void X86Translator::translate_clac(GuestInst *Inst) {
     dbgs() << "Untranslated instruction clac\n";
     exit(-1);
@@ -228,26 +209,6 @@ void X86Translator::translate_cmc(GuestInst *Inst) {
 /* } */
 void X86Translator::translate_comisd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction comisd\n";
-    exit(-1);
-}
-void X86Translator::translate_fcomp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcomp\n";
-    exit(-1);
-}
-void X86Translator::translate_fcomip(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcomip\n";
-    exit(-1);
-}
-void X86Translator::translate_fcomi(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcomi\n";
-    exit(-1);
-}
-void X86Translator::translate_fcom(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcom\n";
-    exit(-1);
-}
-void X86Translator::translate_fcos(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcos\n";
     exit(-1);
 }
 void X86Translator::translate_cpuid(GuestInst *Inst) {
@@ -353,152 +314,12 @@ void X86Translator::translate_extrq(GuestInst *Inst) {
     dbgs() << "Untranslated instruction extrq\n";
     exit(-1);
 }
-void X86Translator::translate_f2xm1(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction f2xm1\n";
-    exit(-1);
-}
 void X86Translator::translate_lcall(GuestInst *Inst) {
     dbgs() << "Untranslated instruction lcall\n";
     exit(-1);
 }
 void X86Translator::translate_ljmp(GuestInst *Inst) {
     dbgs() << "Untranslated instruction ljmp\n";
-    exit(-1);
-}
-void X86Translator::translate_fbld(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fbld\n";
-    exit(-1);
-}
-void X86Translator::translate_fbstp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fbstp\n";
-    exit(-1);
-}
-void X86Translator::translate_fcompp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcompp\n";
-    exit(-1);
-}
-void X86Translator::translate_fdecstp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fdecstp\n";
-    exit(-1);
-}
-void X86Translator::translate_femms(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction femms\n";
-    exit(-1);
-}
-void X86Translator::translate_ffree(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction ffree\n";
-    exit(-1);
-}
-void X86Translator::translate_ficom(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction ficom\n";
-    exit(-1);
-}
-void X86Translator::translate_ficomp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction ficomp\n";
-    exit(-1);
-}
-void X86Translator::translate_fincstp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fincstp\n";
-    exit(-1);
-}
-void X86Translator::translate_fldcw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fldcw\n";
-    exit(-1);
-}
-void X86Translator::translate_fldenv(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fldenv\n";
-    exit(-1);
-}
-void X86Translator::translate_fldl2e(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fldl2e\n";
-    exit(-1);
-}
-void X86Translator::translate_fldl2t(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fldl2t\n";
-    exit(-1);
-}
-void X86Translator::translate_fldlg2(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fldlg2\n";
-    exit(-1);
-}
-void X86Translator::translate_fldln2(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fldln2\n";
-    exit(-1);
-}
-void X86Translator::translate_fldpi(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fldpi\n";
-    exit(-1);
-}
-void X86Translator::translate_fnclex(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fnclex\n";
-    exit(-1);
-}
-void X86Translator::translate_fninit(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fninit\n";
-    exit(-1);
-}
-void X86Translator::translate_fnop(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fnop\n";
-    exit(-1);
-}
-void X86Translator::translate_fnstcw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fnstcw\n";
-    exit(-1);
-}
-void X86Translator::translate_fnstsw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fnstsw\n";
-    exit(-1);
-}
-void X86Translator::translate_fpatan(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fpatan\n";
-    exit(-1);
-}
-void X86Translator::translate_fprem(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fprem\n";
-    exit(-1);
-}
-void X86Translator::translate_fprem1(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fprem1\n";
-    exit(-1);
-}
-void X86Translator::translate_fptan(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fptan\n";
-    exit(-1);
-}
-void X86Translator::translate_ffreep(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction ffreep\n";
-    exit(-1);
-}
-void X86Translator::translate_frndint(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction frndint\n";
-    exit(-1);
-}
-void X86Translator::translate_frstor(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction frstor\n";
-    exit(-1);
-}
-void X86Translator::translate_fnsave(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fnsave\n";
-    exit(-1);
-}
-void X86Translator::translate_fscale(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fscale\n";
-    exit(-1);
-}
-void X86Translator::translate_fsetpm(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fsetpm\n";
-    exit(-1);
-}
-void X86Translator::translate_fsincos(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fsincos\n";
-    exit(-1);
-}
-void X86Translator::translate_fnstenv(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fnstenv\n";
-    exit(-1);
-}
-void X86Translator::translate_fxam(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fxam\n";
     exit(-1);
 }
 void X86Translator::translate_fxrstor(GuestInst *Inst) {
@@ -515,18 +336,6 @@ void X86Translator::translate_fxsave(GuestInst *Inst) {
 }
 void X86Translator::translate_fxsave64(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fxsave64\n";
-    exit(-1);
-}
-void X86Translator::translate_fxtract(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fxtract\n";
-    exit(-1);
-}
-void X86Translator::translate_fyl2x(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fyl2x\n";
-    exit(-1);
-}
-void X86Translator::translate_fyl2xp1(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fyl2xp1\n";
     exit(-1);
 }
 void X86Translator::translate_orpd(GuestInst *Inst) {
@@ -575,10 +384,6 @@ void X86Translator::translate_hsubpd(GuestInst *Inst) {
 }
 void X86Translator::translate_hsubps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction hsubps\n";
-    exit(-1);
-}
-void X86Translator::translate_fild(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fild\n";
     exit(-1);
 }
 void X86Translator::translate_in(GuestInst *Inst) {
@@ -655,18 +460,6 @@ void X86Translator::translate_iretd(GuestInst *Inst) {
 }
 void X86Translator::translate_iretq(GuestInst *Inst) {
     dbgs() << "Untranslated instruction iretq\n";
-    exit(-1);
-}
-void X86Translator::translate_fisttp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fisttp\n";
-    exit(-1);
-}
-void X86Translator::translate_fist(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fist\n";
-    exit(-1);
-}
-void X86Translator::translate_fistp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fistp\n";
     exit(-1);
 }
 void X86Translator::translate_ucomisd(GuestInst *Inst) {
@@ -917,25 +710,20 @@ void X86Translator::translate_lds(GuestInst *Inst) {
     dbgs() << "Untranslated instruction lds\n";
     exit(-1);
 }
-void X86Translator::translate_fldz(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fldz\n";
-    exit(-1);
-}
-void X86Translator::translate_fld1(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fld1\n";
-    exit(-1);
-}
-void X86Translator::translate_fld(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fld\n";
-    exit(-1);
-}
 /* void X86Translator::translate_lea(GuestInst *Inst) { */
 /*     dbgs() << "Untranslated instruction lea\n"; */
 /*     exit(-1); */
 /* } */
 void X86Translator::translate_leave(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction leave\n";
-    exit(-1);
+    // Restore rbp to last frame.
+    Value *RBP = LoadGMRValue(Int64Ty, X86Config::RBP);
+    Value *LastRBP =
+        Builder.CreateLoad(Int64Ty, Builder.CreateIntToPtr(RBP, Int64PtrTy));
+    StoreGMRValue(LastRBP, X86Config::RBP);
+
+    // Restore rsp
+    Value *NewRSP = Builder.CreateAdd(RBP, ConstInt(Int64Ty, 8));
+    StoreGMRValue(NewRSP, X86Config::RSP);
 }
 void X86Translator::translate_les(GuestInst *Inst) {
     dbgs() << "Untranslated instruction les\n";
@@ -1559,8 +1347,18 @@ void X86Translator::translate_popfd(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_popfq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction popfq\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *OldESP = LoadGMRValue(Int64Ty, X86Config::RSP);
+    Value *OldESPPtr = Builder.CreateIntToPtr(OldESP, Int64PtrTy);
+
+    // Load stack value.
+    Value *Src = Builder.CreateLoad(Int64Ty, OldESPPtr);
+    SetLBTFlag(Src);
+    StoreGMRValue(Src, X86Config::EFLAG);
+
+    // Adjust ESP value.
+    Value *NewESP = Builder.CreateAdd(OldESP, ConstInt(Int64Ty, 8));
+    StoreGMRValue(NewESP, X86Config::RSP);
 }
 void X86Translator::translate_prefetch(GuestInst *Inst) {
     dbgs() << "Untranslated instruction prefetch\n";
@@ -1645,8 +1443,21 @@ void X86Translator::translate_pushfd(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_pushfq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pushfq\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    // Calculate new esp.
+    Value *OldESP = LoadGMRValue(Int64Ty, X86Config::RSP);
+    Value *NewESP = Builder.CreateSub(OldESP, ConstInt(Int64Ty, 8));
+
+    // Store src value into stack.
+    Value *Eflag = GetLBTFlag();
+    Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+    DF = Builder.CreateAnd(Eflag, ConstInt(Int64Ty, DF_BIT));
+    Eflag = Builder.CreateOr(Eflag, DF);
+    Value *NewESPPtr = Builder.CreateIntToPtr(NewESP, Int64PtrTy);
+    Builder.CreateStore(Eflag, NewESPPtr);
+
+    StoreGMRValue(NewESP, X86Config::RSP);
 }
 void X86Translator::translate_rcl(GuestInst *Inst) {
     dbgs() << "Untranslated instruction rcl\n";
@@ -1691,13 +1502,7 @@ void X86Translator::translate_rdseed(GuestInst *Inst) {
 
 void X86Translator::translate_rdtsc(GuestInst *Inst) {
     FunctionType *FuncTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-#if (LLVM_VERSION_MAJOR > 8)
-    FunctionCallee F = Mod->getOrInsertFunction("helper_rdtsc", FuncTy);
-    Builder.CreateCall(FuncTy, F.getCallee(), CPUEnv);
-#else
-    Value *Func = Mod->getOrInsertFunction("helper_rdtsc", FuncTy);
-    Builder.CreateCall(Func, CPUEnv);
-#endif
+    CallFunc(FuncTy, "helper_rdtsc", CPUEnv);
     ReloadGMRValue(X86Config::RAX);
     ReloadGMRValue(X86Config::RDX);
 }
@@ -1814,10 +1619,6 @@ void X86Translator::translate_sidt(GuestInst *Inst) {
     dbgs() << "Untranslated instruction sidt\n";
     exit(-1);
 }
-void X86Translator::translate_fsin(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fsin\n";
-    exit(-1);
-}
 void X86Translator::translate_skinit(GuestInst *Inst) {
     dbgs() << "Untranslated instruction skinit\n";
     exit(-1);
@@ -1844,10 +1645,6 @@ void X86Translator::translate_sqrtsd(GuestInst *Inst) {
 }
 void X86Translator::translate_sqrtss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction sqrtss\n";
-    exit(-1);
-}
-void X86Translator::translate_fsqrt(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fsqrt\n";
     exit(-1);
 }
 void X86Translator::translate_stac(GuestInst *Inst) {
@@ -1877,22 +1674,6 @@ void X86Translator::translate_str(GuestInst *Inst) {
     dbgs() << "Untranslated instruction str\n";
     exit(-1);
 }
-void X86Translator::translate_fst(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fst\n";
-    exit(-1);
-}
-void X86Translator::translate_fstp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fstp\n";
-    exit(-1);
-}
-void X86Translator::translate_fstpnce(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fstpnce\n";
-    exit(-1);
-}
-void X86Translator::translate_fxch(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fxch\n";
-    exit(-1);
-}
 void X86Translator::translate_subpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction subpd\n";
     exit(-1);
@@ -1901,36 +1682,12 @@ void X86Translator::translate_subps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction subps\n";
     exit(-1);
 }
-void X86Translator::translate_fsubr(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fsubr\n";
-    exit(-1);
-}
-void X86Translator::translate_fisubr(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fisubr\n";
-    exit(-1);
-}
-void X86Translator::translate_fsubrp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fsubrp\n";
-    exit(-1);
-}
 void X86Translator::translate_subsd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction subsd\n";
     exit(-1);
 }
 void X86Translator::translate_subss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction subss\n";
-    exit(-1);
-}
-void X86Translator::translate_fsub(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fsub\n";
-    exit(-1);
-}
-void X86Translator::translate_fisub(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fisub\n";
-    exit(-1);
-}
-void X86Translator::translate_fsubp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fsubp\n";
     exit(-1);
 }
 void X86Translator::translate_swapgs(GuestInst *Inst) {
@@ -1972,36 +1729,12 @@ void X86Translator::translate_t1mskc(GuestInst *Inst) {
 
 void X86Translator::translate_ud2(GuestInst *Inst) {}
 
-void X86Translator::translate_ftst(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction ftst\n";
-    exit(-1);
-}
 void X86Translator::translate_tzcnt(GuestInst *Inst) {
     dbgs() << "Untranslated instruction tzcnt\n";
     exit(-1);
 }
 void X86Translator::translate_tzmsk(GuestInst *Inst) {
     dbgs() << "Untranslated instruction tzmsk\n";
-    exit(-1);
-}
-void X86Translator::translate_fucomip(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fucomip\n";
-    exit(-1);
-}
-void X86Translator::translate_fucomi(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fucomi\n";
-    exit(-1);
-}
-void X86Translator::translate_fucompp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fucompp\n";
-    exit(-1);
-}
-void X86Translator::translate_fucomp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fucomp\n";
-    exit(-1);
-}
-void X86Translator::translate_fucom(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fucom\n";
     exit(-1);
 }
 void X86Translator::translate_ud2b(GuestInst *Inst) {
@@ -4334,10 +4067,6 @@ void X86Translator::translate_vzeroall(GuestInst *Inst) {
 }
 void X86Translator::translate_vzeroupper(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vzeroupper\n";
-    exit(-1);
-}
-void X86Translator::translate_wait(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction wait\n";
     exit(-1);
 }
 void X86Translator::translate_wbinvd(GuestInst *Inst) {

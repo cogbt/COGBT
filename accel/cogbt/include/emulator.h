@@ -21,6 +21,9 @@ int GuestXMMT0Offset(void);
 int GuestMMXT0Offset(void);
 int GuestXMMOffset(int idx);
 
+int GuestFPUOffset(int idx);
+int GuestST0Offset(void *p);
+
 void helper_raise_syscall(void *p, uint64_t next_eip);
 void helper_divb_AL_wrapper(void *p, uint64_t divisor);
 void helper_divw_AX_wrapper(void *p, uint64_t divisor);
@@ -51,6 +54,8 @@ void helper_cvtsi2sd_wrapper(void *p, int dest, int32_t val);
 void helper_cvtsq2sd_wrapper(void *p, int dest, int64_t val);
 void helper_mulsd_wrapper(void *p, int dest, int src);
 void helper_addsd_wrapper(void *p, int dest, int src);
+/* void helper_fucomi_ST0_FT0_wrapper(void *p); */
+/* void helper_fcomi_ST0_FT0_wrapper(void *p); */
 
 struct KeyVal {
     const char *key;

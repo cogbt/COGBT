@@ -73,6 +73,15 @@ int GuestXMMOffset(int idx) {
     return offsetof(CPUX86State, xmm_regs[idx]);
 }
 
+int GuestFPUOffset(int idx) {
+    return offsetof(CPUX86State, fpregs[idx].d);
+}
+
+int GuestST0Offset(void *p) {
+    CPUX86State *env = (CPUX86State *) p;
+    return GuestFPUOffset(env->fpstt);
+}
+
 int GuestSegOffset(int seg_idx) {
     switch (seg_idx) {
     case X86_REG_ES:
@@ -292,3 +301,11 @@ void helper_addsd_wrapper(void *p, int dest, int src) {
     }
     helper_addsd(env, d, s);
 }
+
+/* void helper_fucomi_ST0_FT0_wrapper(void *p) { */
+/*     helper_fucomi_ST0_FT0((CPUX86State *)p); */
+/* } */
+
+/* void helper_fcomi_ST0_FT0_wrapper(void *p) { */
+/*     helper_fcomi_ST0_FT0_cogbt((CPUX86State *)p); */
+/* } */

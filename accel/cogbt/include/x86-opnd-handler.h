@@ -29,6 +29,10 @@ public:
     /// otherwise.
     int GetMMXID();
 
+    /// GetFPRID - If operand is a x87 fpu register, return its index(0-7), -1
+    /// otherwise.
+    int GetFPRID();
+
     /// GetBaseReg - If opnd is a memory operand, return the base reg id. -1
     /// otherwise.
     int GetBaseReg();
@@ -67,6 +71,11 @@ public:
     /// getOpndSize - Get the size(in bytes) of Opnd.
     int getOpndSize() {
         return Opnd->size;
+    }
+
+    /// setOpndSize - Use only in instrucion fnstsw
+    void setOpndSize(int size) {
+        Opnd->size = size;
     }
 
     /// getIMM - Get imm operand value.
