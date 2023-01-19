@@ -33,6 +33,11 @@ void X86Translator::InitializeFunction(StringRef Name) {
     TransFunc->addFnAttr(Attribute::NoUnwind);
     /* TransFunc->addFnAttr(Attribute::Naked); */
     TransFunc->addFnAttr("cogbt");
+    // Set TransFunc debug info metadata.
+    DISubprogram *SP =
+        DIB->createFunction(DIF, Name, "", DIF, 0, STy, 0, DINode::FlagZero,
+                            DISubprogram::SPFlagDefinition);
+    TransFunc->setSubprogram(SP);
 
     // Create entry block. This block allocates stack objects to cache host
     // mapped physical registers, binds physical registers to llvm values and
@@ -803,7 +808,18 @@ void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src0,
     /* StoreGMRValue(V, X86Config::EFLAG); */
 }
 
+void X86Translator::TranslateInitialize() {
+
+}
+
+void X86Translator::TranslateFinalize() {
+    LLVMTranslator::TranslateFinalize();
+}
+
 void X86Translator::Translate() {
+    // Do translate initialization.
+    TranslateInitialize();
+
     std::stringstream ss;
     ss << std::hex << TU->GetTUEntry();
     std::string Entry(ss.str());
@@ -856,4 +872,7 @@ void X86Translator::Translate() {
         }
         /* TransFunc->dump(); */
     }
+
+    // Do translate finalization.
+    TranslateFinalize();
 }

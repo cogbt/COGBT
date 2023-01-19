@@ -61,6 +61,13 @@ void LLVMTranslator::InitializeTypes() {
     CPUX86StatePtrTy = StructType::create(Context)->getPointerTo();
 };
 
+void LLVMTranslator::AttachLinkInfoToIR(Instruction *I, LIType Type,
+        unsigned int Val) {
+    DISubprogram *DISP = I->getParent()->getParent()->getSubprogram();
+    DILocation *DILoc = DILocation::get(Context, Val, Type, DISP);
+    I->setDebugLoc(DILoc);
+}
+
 void LLVMTranslator::InitializeModule() {
     Mod.reset(new Module("cogbt", Context));
     RawMod = Mod.get();
@@ -87,6 +94,15 @@ void LLVMTranslator::InitializeModule() {
     for (auto &V : GMRVals)
         V.clear();
     ExitBB = EntryBB = CurrBB = nullptr;
+
+    // Initialize DWARF debug info(DICompileUnit). Other info will be set at
+    // InitializeFuncion.
+    DIB.reset(new DIBuilder(*Mod));
+    DIF = DIB->createFile("cogbt", "cogbt");
+    DIB->createCompileUnit(dwarf::DW_LANG_C99, DIF, "cogbt", false, "", 0);
+    STy = DIB->createSubroutineType(DIB->getOrCreateTypeArray(nullptr));
+    Mod->addModuleFlag(Module::ModFlagBehavior::Max, "Dwarf Version", 5);
+    Mod->addModuleFlag(Module::ModFlagBehavior::Max, "Debug Info Version", 3);
 }
 
 void LLVMTranslator::InitializeBlock(GuestBlock &Block) {
@@ -103,6 +119,7 @@ void LLVMTranslator::InitializeBlock(GuestBlock &Block) {
          * CurrBB); */
         /* } */
     } else {
+        // Translation unit of jit mde or tb aot mode is block.
         dyn_cast<BranchInst>(EntryBB->getTerminator())->setSuccessor(0, CurrBB);
     }
     Builder.SetInsertPoint(CurrBB);
@@ -125,6 +142,11 @@ void LLVMTranslator::SetPhysicalRegValue(const char *RegName, Value *RegValue) {
     std::string Constraints = std::string("{") + RegName + "}";
     InlineAsm *IA = InlineAsm::get(InlineAsmTy, "", Constraints, true);
     Builder.CreateCall(InlineAsmTy, IA, {RegValue});
+}
+
+void LLVMTranslator::TranslateFinalize() {
+    // Finalize DIBuilder to make debug info correct.
+    DIB->finalize();
 }
 
 void LLVMTranslator::Optimize() {

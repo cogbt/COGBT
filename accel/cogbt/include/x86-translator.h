@@ -35,7 +35,9 @@ private: /// Currently translated instruction.
 
     virtual void AddExternalSyms() override;
 
+    virtual void TranslateInitialize() override;
     virtual void Translate() override;
+    virtual void TranslateFinalize() override;
 
     /// @name X86 translate functions.
 #define HANDLE_X86_INST(opcode, name) void translate_##name(GuestInst *);

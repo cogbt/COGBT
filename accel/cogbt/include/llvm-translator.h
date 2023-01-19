@@ -8,6 +8,7 @@
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 
@@ -43,6 +44,15 @@ public:
         V = nullptr;
         Dirty = false;
     }
+};
+
+//===----------------------------------------------------------------------===//
+// IR attached link information type definition.
+//===----------------------------------------------------------------------===//
+enum LIType : unsigned {
+    /// Zero is the default value of most dwarf information. So we choose a
+    /// special value to begin.
+    LI_TBLINK = 100,
 };
 
 //===----------------------------------------------------------------------===//
@@ -100,8 +110,14 @@ public:
     /// translation code to translator.
     virtual void GenEpilogue() = 0;
 
+    /// TranslateInitialize - Hook will be executed before translation.
+    virtual void TranslateInitialize() {}
+
     /// Translate - Translate guest TU into IRs and append them to Mod.
     virtual void Translate() = 0;
+
+    /// TranslateFinalize - Hook will be executed after translation.
+    virtual void TranslateFinalize();
 
     /// Compile - Compile LLVM IR instructions into host machine code. If \p
     /// UseOptimizer is true, optimizations will be performed first.
@@ -136,6 +152,18 @@ protected:
     BasicBlock *ExitBB;             ///< Exit block of Translation Function.
     BasicBlock *CurrBB;             ///< Current handled block.
     Value *CPUEnv;                  ///< Pointer to CPUX86State.
+
+    /// Utility for creating dwarf debug info.
+    std::unique_ptr<DIBuilder> DIB; ///< LLVM debug info builder.
+    DIFile *DIF;                    ///< Debug info file.
+    DISubroutineType *STy;          ///< Debug info subroutine type of function.
+
+    /// AttachLinkInfoToIR - Attach some tb link information to the IR. These
+    /// information will be retained in the ELF dwarf and we can parse them to
+    /// obtain the machine instruction address and link information.
+    /// \p I is the instruction will be attached, \p Type is the kind of this
+    /// link information and \p Val is the real value.
+    void AttachLinkInfoToIR(Instruction *I, LIType Type, unsigned int Val);
 
     /// Basic types that are frequently used.
     Type *Int1Ty, *Int8Ty, *Int16Ty, *Int32Ty, *Int64Ty, *Int128Ty, *Int256Ty,
