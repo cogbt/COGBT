@@ -14,7 +14,6 @@ public:
               "loongarch64-pc-linux-gnu",
               "loongarch64-pc-linux-gnu"), CurrInst(nullptr) {
         }
-              //"x86_64-pc-linux-gnu") {}
 
 private: /// Currently translated instruction.
     GuestInst *CurrInst;
@@ -112,6 +111,12 @@ private: /// Currently translated instruction.
     /// operands, the first operand may be mmx/xmm/mm64/mm128, the second
     /// operand should be mmx or xmm.
     void GenMMXSSEHelper(std::string Name, GuestInst *Inst);
+
+    ///@name X86Translator Helper functioins.
+
+    /// GenJCCExit - Generate llvm IRs to do jcc exit.
+    /// \p Inst is the x86 jcc instruction and \p Cond is the jump condition.
+    void GenJCCExit(GuestInst *Inst, Value *Cond);
 };
 
 #endif

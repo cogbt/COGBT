@@ -11,6 +11,9 @@
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/FileSystem.h"
+#include "llvm/Transforms/Utils.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
 #include <memory>
 #include <string>
 #include <sstream>
@@ -150,20 +153,27 @@ void LLVMTranslator::TranslateFinalize() {
 }
 
 void LLVMTranslator::Optimize() {
-    legacy::FunctionPassManager FPM(Mod.get());
-    legacy::PassManager MPM;
+    /* legacy::FunctionPassManager FPM(Mod.get()); */
+    /* legacy::PassManager MPM; */
 
-    PassManagerBuilder Builder;
-    Builder.OptLevel = 2;
-    Builder.LoopVectorize = true;
-    Builder.SLPVectorize = true;
-    Builder.populateFunctionPassManager(FPM);
-    Builder.populateModulePassManager(MPM);
+    /* PassManagerBuilder Builder; */
+    /* Builder.OptLevel = 2; */
+    /* Builder.LoopVectorize = true; */
+    /* Builder.SLPVectorize = true; */
+    /* Builder.populateFunctionPassManager(FPM); */
+    /* Builder.populateModulePassManager(MPM); */
+    /* FPM.doInitialization(); */
+    /* FPM.run(*TransFunc); */
+    /* FPM.doFinalization(); */
+
+    /* MPM.run(*Mod.get()); */
+    legacy::FunctionPassManager FPM(Mod.get());
+    FPM.add(createPromoteMemoryToRegisterPass());
+    FPM.add(createAggressiveDCEPass());
+    FPM.add(createInstructionCombiningPass());
     FPM.doInitialization();
     FPM.run(*TransFunc);
     FPM.doFinalization();
-
-    MPM.run(*Mod.get());
 }
 
 void LLVMTranslator::CreateJIT(JITEventListener *Listener) {
