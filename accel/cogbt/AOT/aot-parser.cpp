@@ -34,6 +34,7 @@ AOTParser::AOTParser(uintptr_t CacheBegin, size_t CacheSize, const char *AOT)
         dbgs() << ErrorMessage << "\n";
         llvm_unreachable("Create ExecutionEngine failed");
     }
+    EE->setProcessAllSections(true);
 
     // Create AOT object file
     auto ObjOrErr = object::ObjectFile::createObjectFile(AOT);

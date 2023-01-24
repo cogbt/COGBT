@@ -158,7 +158,7 @@ void LLVMTranslator::TranslateFinalize() {
 }
 
 void LLVMTranslator::Optimize() {
-#if 0
+#if 1
     legacy::FunctionPassManager FPM(Mod.get());
     legacy::PassManager MPM;
 
