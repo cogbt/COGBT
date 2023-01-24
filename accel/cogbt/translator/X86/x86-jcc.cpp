@@ -9,28 +9,30 @@ void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
         BasicBlock::Create(Context, "fallthrough", TransFunc, TargetBB);
     Builder.CreateCondBr(Cond, TargetBB, FallThroughBB);
 
-    Builder.SetInsertPoint(FallThroughBB);
-    // Create fallthrough link slot.
-    FunctionType *FTy = FunctionType::get(VoidTy, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtlink", FTy);
-    Instruction *LinkSlot = Builder.CreateCall(FTy, Func);
-    AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 0);
-
-    // Jump back qemu.
+    FunctionType *FTy = FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
+    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
     Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
-    Value *EnvEIP = Builder.CreateGEP(Int8Ty, CPUEnv, Off);
-    Value *EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
-    Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getNextPC()), EIPAddr);
+
+    // Create fallthrough link slot.
+    Builder.SetInsertPoint(FallThroughBB);
+    Value *NextPC = ConstInt(Int64Ty, InstHdl.getNextPC());
+    Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {NextPC, Off});
+    AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 0);
+    // Jump back qemu.
+    /* Value *EnvEIP = Builder.CreateGEP(Int8Ty, CPUEnv, Off); */
+    /* Value *EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy); */
+    /* Builder.CreateStore(), EIPAddr); */
     Builder.CreateBr(ExitBB);
 
     Builder.SetInsertPoint(TargetBB);
+    Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
     // Create target link slot
-    LinkSlot = Builder.CreateCall(FTy, Func);
-    AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 0);
+    LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
+    AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1);
     // Jump back qemu.
-    EnvEIP = Builder.CreateGEP(Int8Ty, CPUEnv, Off);
-    EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
-    Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getTargetPC()), EIPAddr);
+    /* EnvEIP = Builder.CreateGEP(Int8Ty, CPUEnv, Off); */
+    /* EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy); */
+    /* Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getTargetPC()), EIPAddr); */
     Builder.CreateBr(ExitBB);
 
 }

@@ -11,6 +11,7 @@
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/FileSystem.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
@@ -102,7 +103,11 @@ void LLVMTranslator::InitializeModule() {
     // InitializeFuncion.
     DIB.reset(new DIBuilder(*Mod));
     DIF = DIB->createFile("cogbt", "cogbt");
-    DIB->createCompileUnit(dwarf::DW_LANG_C99, DIF, "cogbt", false, "", 0);
+    /* DIB->createCompileUnit(dwarf::DW_LANG_C99, DIF, "cogbt", false, "", 0); */
+    DIB->createCompileUnit(dwarf::DW_LANG_C99, DIF, "cogbt", false, "", 0,
+                           StringRef(),
+                           DICompileUnit::DebugEmissionKind::LineTablesOnly);
+
     STy = DIB->createSubroutineType(DIB->getOrCreateTypeArray(nullptr));
     Mod->addModuleFlag(Module::ModFlagBehavior::Max, "Dwarf Version", 5);
     Mod->addModuleFlag(Module::ModFlagBehavior::Max, "Debug Info Version", 3);
@@ -153,20 +158,22 @@ void LLVMTranslator::TranslateFinalize() {
 }
 
 void LLVMTranslator::Optimize() {
-    /* legacy::FunctionPassManager FPM(Mod.get()); */
-    /* legacy::PassManager MPM; */
+#if 0
+    legacy::FunctionPassManager FPM(Mod.get());
+    legacy::PassManager MPM;
 
-    /* PassManagerBuilder Builder; */
-    /* Builder.OptLevel = 2; */
-    /* Builder.LoopVectorize = true; */
-    /* Builder.SLPVectorize = true; */
-    /* Builder.populateFunctionPassManager(FPM); */
-    /* Builder.populateModulePassManager(MPM); */
-    /* FPM.doInitialization(); */
-    /* FPM.run(*TransFunc); */
-    /* FPM.doFinalization(); */
+    PassManagerBuilder Builder;
+    Builder.OptLevel = 2;
+    Builder.LoopVectorize = true;
+    Builder.SLPVectorize = true;
+    Builder.populateFunctionPassManager(FPM);
+    Builder.populateModulePassManager(MPM);
+    FPM.doInitialization();
+    FPM.run(*TransFunc);
+    FPM.doFinalization();
 
-    /* MPM.run(*Mod.get()); */
+    MPM.run(*Mod.get());
+#else
     legacy::FunctionPassManager FPM(Mod.get());
     FPM.add(createPromoteMemoryToRegisterPass());
     FPM.add(createAggressiveDCEPass());
@@ -174,6 +181,7 @@ void LLVMTranslator::Optimize() {
     FPM.doInitialization();
     FPM.run(*TransFunc);
     FPM.doFinalization();
+#endif
 }
 
 void LLVMTranslator::CreateJIT(JITEventListener *Listener) {
@@ -192,6 +200,7 @@ void LLVMTranslator::CreateJIT(JITEventListener *Listener) {
 
     /// Register JITEventListener to handle some post-JITed events.
     EE->RegisterJITEventListener(Listener);
+    EE->setProcessAllSections(true);
 
     // Bind addresses to external symbols.
     if (Epilogue) {
