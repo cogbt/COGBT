@@ -109,7 +109,9 @@ void LLVMTranslator::InitializeModule() {
                            DICompileUnit::DebugEmissionKind::LineTablesOnly);
 
     STy = DIB->createSubroutineType(DIB->getOrCreateTypeArray(nullptr));
+#if LLVM_VERSION_MAJOR > 8
     Mod->addModuleFlag(Module::ModFlagBehavior::Max, "Dwarf Version", 5);
+#endif
     Mod->addModuleFlag(Module::ModFlagBehavior::Max, "Debug Info Version", 3);
 }
 
