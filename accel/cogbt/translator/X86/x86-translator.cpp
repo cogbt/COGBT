@@ -97,6 +97,18 @@ void X86Translator::InitializeFunction(StringRef Name) {
     /* Mod->print(outs(), nullptr); */
 }
 
+void X86Translator::BindPhysicalReg() {
+    for (int i = 0; i < GetNumGMRs(); i++) {
+        // Load latest guest state values.
+        Value *GMRVal = Builder.CreateLoad(Int64Ty, GMRStates[i]);
+
+        // Sync these values into mapped host physical registers.
+        SetPhysicalRegValue(HostRegNames[GMRToHMR(i)], GMRVal);
+    }
+    Value *IntEnv = Builder.CreatePtrToInt(CPUEnv, Int64Ty);
+    SetPhysicalRegValue(HostRegNames[HostS2], IntEnv);
+}
+
 void X86Translator::SetLBTFlag(Value *FV, int mask) {
     FunctionType *FuncTy = FunctionType::get(VoidTy, {Int64Ty, Int32Ty}, false);
     Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86mtflag", FuncTy);

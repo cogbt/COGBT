@@ -91,6 +91,10 @@ private: /// Currently translated instruction.
     void SyncGMRValue(int GMRId);
     void SyncAllGMRValue();
 
+    /// BindPhysicalReg - Bind latest guest register values to mapped host
+    /// physical registers
+    void BindPhysicalReg();
+
     /// FlushXMMT0 - In qemu, some simd helper use xmm_t0 and mmx_t0 as implicit
     /// source operand, so translator need to flush the source value into them
     /// and then call helpers.

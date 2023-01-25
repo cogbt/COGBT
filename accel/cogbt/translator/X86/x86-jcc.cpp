@@ -7,6 +7,7 @@ void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
         BasicBlock::Create(Context, "target", TransFunc, ExitBB);
     BasicBlock *FallThroughBB =
         BasicBlock::Create(Context, "fallthrough", TransFunc, TargetBB);
+    BindPhysicalReg();
     Builder.CreateCondBr(Cond, TargetBB, FallThroughBB);
 
     FunctionType *FTy = FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
@@ -22,7 +23,9 @@ void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
     /* Value *EnvEIP = Builder.CreateGEP(Int8Ty, CPUEnv, Off); */
     /* Value *EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy); */
     /* Builder.CreateStore(), EIPAddr); */
-    Builder.CreateBr(ExitBB);
+    /* Builder.CreateBr(ExitBB); */
+    Builder.CreateCall(Mod->getFunction("epilogue"));
+    Builder.CreateUnreachable();
 
     Builder.SetInsertPoint(TargetBB);
     Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
@@ -33,8 +36,19 @@ void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
     /* EnvEIP = Builder.CreateGEP(Int8Ty, CPUEnv, Off); */
     /* EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy); */
     /* Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getTargetPC()), EIPAddr); */
-    Builder.CreateBr(ExitBB);
+    /* Builder.CreateBr(ExitBB); */
+    Builder.CreateCall(Mod->getFunction("epilogue"));
+    Builder.CreateUnreachable();
 
+    /* auto LastInstIt = ExitBB->rbegin(); */
+    /* ++LastInstIt; */
+    /* ++LastInstIt; */
+    /* while (LastInstIt != ExitBB->rend()) { */
+    /*     auto NextInstIt = LastInstIt; */
+    /*     ++NextInstIt; */
+    /*     LastInstIt->eraseFromParent(); */
+    /*     LastInstIt = NextInstIt; */
+    /* } */
 }
 
 void X86Translator::translate_jae(GuestInst *Inst) {
