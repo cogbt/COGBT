@@ -47,7 +47,7 @@ AOTParser::AOTParser(uintptr_t CacheBegin, size_t CacheSize, const char *AOT)
     std::unique_ptr<DWARFContext> DCtx =
         DWARFContext::create(*ObjOrErr->getBinary());
     DWARFUnit *Unit = DCtx->getUnitAtIndex(0);
-    LT = DCtx->getLineTableForUnit(Unit);
+    const DWARFDebugLine::LineTable  *LT = DCtx->getLineTableForUnit(Unit);
 
     // Record all function names
     for (ELFSymbolRef Sym : OF->symbols()) {
@@ -72,6 +72,15 @@ AOTParser::AOTParser(uintptr_t CacheBegin, size_t CacheSize, const char *AOT)
 
     std::sort(FuncInfos.begin(), FuncInfos.end());
 
+    // Handle link slots
+    for (const DWARFDebugLine::Row &R : LT->Rows) {
+        if (!R.IsStmt) continue;
+        if (R.Column == LI_TBLINK) {
+            RegisterLinkSlot(R.Address, R.Line, R.Column);
+            /* dbgs() << format("Addr:0x%lx Idx:%d\n", R.Address, R.Line); */
+        }
+    }
+
     // Add this object file to ExecutionEngine and wait for relocation
     EE->addObjectFile(std::move(OF));
 }
@@ -85,14 +94,22 @@ void AOTParser::ResolveSymbols() {
         EE->addGlobalMapping(SymTable[i].key, (uint64_t)SymTable[i].val);
 }
 
-void *AOTParser::ParseNextFunction(uint64_t *pc, size_t *tu_size) {
+void *AOTParser::ParseNextFunction(uint64_t *pc, size_t *tu_size,
+                                   size_t link_slots_offsets[2]) {
     static std::vector<FunctionInfo>::iterator it = FuncInfos.begin();
     if (it == FuncInfos.end())
         return NULL;
+
     const std::string &Name = it->getName();
     *pc = std::stol(Name, 0, 16);
+
     size_t idx = Name.find('.');
     *tu_size = std::stol(Name.substr(idx + 1));
+
+    link_slots_offsets[0] = it->getLinkOffset(0);
+    link_slots_offsets[1] = it->getLinkOffset(1);
+    /* dbgs() << "Add Link " << Name << format(" 0: %d 1: %d\n", link_slots_offsets[0], link_slots_offsets[1]); */
+
     void *Addr = (void *)EE->getFunctionAddress(Name);
     ++it;
     return Addr;
@@ -129,8 +146,8 @@ void AOTParser::RegisterLinkSlot(uint64_t HostAddr, int ExitID, int Type) {
     FI.getLinkOffset(ExitID) = offset;
 }
 
-void AOTParser::HandleAllLinkSlots() {
-    for (const DWARFDebugLine::Row &R : LT->Rows) {
-      R.dump(outs());
-    }
-}
+/* void AOTParser::HandleAllLinkSlots() { */
+/*     for (const DWARFDebugLine::Row &R : LT->Rows) { */
+/*       R.dump(outs()); */
+/*     } */
+/* } */

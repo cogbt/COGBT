@@ -51,7 +51,7 @@ private:
     std::vector<FunctionInfo> FuncInfos; ///< All functions of AOT
     std::vector<std::string> UndefNames; ///< All undefined symbols
 
-    const DWARFDebugLine::LineTable  *LT;
+    /* const DWARFDebugLine::LineTable  *LT; */
 
 public:
     AOTParser(uintptr_t CacheBegin, size_t CacheSize, const char *AOT);
@@ -64,14 +64,15 @@ public:
 
     /// ParseNextFunction - Parse all functions of AOT and return their native
     /// code address. If all functions are parsed, return NULL instead.
-    void *ParseNextFunction(uint64_t *pc, size_t *tu_size);
+    void *ParseNextFunction(uint64_t *pc, size_t *tu_size,
+                            size_t link_slots_offsets[2]);
 
     /// GetCurrentCodeCachePtr - Get the first free address of memory manager
     /// code cache.
     void *GetCurrentCodeCachePtr();
 
     /// HandleAllLinkSlots - Hanle all TranslationUnit link slots
-    void HandleAllLinkSlots();
+    /* void HandleAllLinkSlots(); */
 
 private:
     /// RegisterLinkSlot - Register link slot information into corresbonding

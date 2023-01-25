@@ -989,8 +989,9 @@ int main(int argc, char **argv, char **envp)
         void *tc_ptr = NULL,
              *aot_buffer_ptr = get_current_code_cache_ptr(parser);
         uint64_t pc = 0;
-        size_t tb_size;
-        while ((tc_ptr = parse_next_function(parser, &pc, &tb_size))) {
+        size_t tb_size, link_slots_offsets[2];
+        while ((tc_ptr = parse_next_function(parser, &pc, &tb_size,
+                                             link_slots_offsets))) {
             /* calculate translation code pointer and size */
             void *aot_ptr = get_current_code_cache_ptr(parser);
             size_t tc_size = aot_ptr - aot_buffer_ptr;
@@ -1016,8 +1017,10 @@ int main(int argc, char **argv, char **envp)
                          (IOPL_MASK | TF_MASK | RF_MASK | VM_MASK | AC_MASK));
             tb->cflags = curr_cflags(cpu);
             tb->size = tb_size;
-            tb->jmp_reset_offset[0] = tb->jmp_reset_offset[1] = 0;
-            tb->jmp_target_arg[0] = tb->jmp_target_arg[1] = 0;
+            tb->jmp_reset_offset[0] = link_slots_offsets[0] + 4;
+            tb->jmp_reset_offset[1] = link_slots_offsets[1] + 4;
+            tb->jmp_target_arg[0] = link_slots_offsets[0];
+            tb->jmp_target_arg[1] = link_slots_offsets[1];
             tb->trace_vcpu_dstate = 0;
 
             /* Registe this BasicBlock into lookup hash table. */
@@ -1026,7 +1029,6 @@ int main(int argc, char **argv, char **envp)
                 fprintf(stderr, "aot: tb_htable_lookup error!\n");
                 exit(-1);
             }
-
         }
         mmap_unlock();
     }

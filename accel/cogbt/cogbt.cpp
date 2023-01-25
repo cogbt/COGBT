@@ -73,8 +73,9 @@ void free_aot_parser(AOTParser *parser) {
     delete parser;
 }
 
-void *parse_next_function(AOTParser *parser, uint64_t *pc, size_t *tu_size) {
-    return parser->ParseNextFunction(pc, tu_size);
+void *parse_next_function(AOTParser *parser, uint64_t *pc, size_t *tu_size,
+                          size_t link_slots_offsets[2]) {
+    return parser->ParseNextFunction(pc, tu_size, link_slots_offsets);
 }
 
 void *get_current_code_cache_ptr(AOTParser *parser) {
