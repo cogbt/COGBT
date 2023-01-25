@@ -81,3 +81,7 @@ void *parse_next_function(AOTParser *parser, uint64_t *pc, size_t *tu_size,
 void *get_current_code_cache_ptr(AOTParser *parser) {
     return parser->GetCurrentCodeCachePtr();
 }
+
+void do_link(AOTParser *parser) {
+    parser->DoLink();
+}

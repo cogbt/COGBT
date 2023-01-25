@@ -12,12 +12,15 @@ using CodeCacheInfo = LLVMTranslator::CodeCacheInfo;
 //===----------------------------------------------------------------------===//
 class FunctionInfo {
     std::string Name;            ///< Functin Name
+    uint64_t EntryPC;            ///< TranslationUnit entry pc
     uint64_t BeginAddr, EndAddr; ///< Function address range[BeginAddr, EndAddr)
+    uint64_t LoadAddr;           ///< The address loaded in memory.
     int LinkOffset[2];           ///< Link instruction offset to entry.
 
 public:
     FunctionInfo(std::string Name, uint64_t Address, size_t size)
-        : Name(Name), BeginAddr(Address), EndAddr(Address + size) {
+        : Name(Name), EntryPC(0), BeginAddr(Address), EndAddr(Address + size),
+          LoadAddr(0) {
         LinkOffset[0] = LinkOffset[1] = -1;
     }
 
@@ -29,8 +32,10 @@ public:
 
     /// Member accessor.
     std::string getName() { return Name; }
-    uint64_t getBeginAddr() { return BeginAddr; }
-    uint64_t getEndAddr() { return EndAddr; }
+    uint64_t &getBeginAddr() { return BeginAddr; }
+    uint64_t &getEndAddr() { return EndAddr; }
+    uint64_t &getLoadAddr() { return LoadAddr; }
+    uint64_t &getEntryPC() { return EntryPC; }
     int &getLinkOffset(int idx) {
         assert(idx == 1 || idx == 0);
         return LinkOffset[idx];
@@ -71,8 +76,8 @@ public:
     /// code cache.
     void *GetCurrentCodeCachePtr();
 
-    /// HandleAllLinkSlots - Hanle all TranslationUnit link slots
-    /* void HandleAllLinkSlots(); */
+    /// DoLink - Hanle all TranslationUnit link.
+    void DoLink();
 
 private:
     /// RegisterLinkSlot - Register link slot information into corresbonding
@@ -82,5 +87,8 @@ private:
     /// FindFunctionInfo - Find the function info of the given AOT instruction
     /// address. Return the index of FuncInfos
     int FindFunctionInfo(uint64_t HostAddr);
+
+    /// FindFunctionInfoAtPC - Find function info with EntryPC equals pc.
+    int FindFunctionInfoAtPC(uint64_t pc);
 };
 #endif

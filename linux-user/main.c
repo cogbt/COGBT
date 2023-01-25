@@ -1031,6 +1031,7 @@ int main(int argc, char **argv, char **envp)
             }
         }
         mmap_unlock();
+        do_link(parser);
     }
 #endif
 
