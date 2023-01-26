@@ -174,22 +174,28 @@ void X86Translator::translate_call(GuestInst *Inst) {
     Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getNextPC()), NewESPPtr);
 
     // store call target into env.
-    Value *Target = LoadOperand(InstHdl.getOpnd(0));
-    Value *EnvEIP =
-        Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset()));
-    Value *EIPAddr =
-        Builder.CreateBitCast(EnvEIP, Target->getType()->getPointerTo());
-    Builder.CreateStore(Target, EIPAddr);
+    X86OperandHandler OpndHdl(InstHdl.getOpnd(0));
+    if (OpndHdl.isImm()) { // can do link
+        FunctionType *FTy =
+            FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
+        Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
+        Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
+        Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
+
+        Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
+        AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1);
+    } else {
+        Value *Target = LoadOperand(InstHdl.getOpnd(0));
+        Value *EnvEIP = Builder.CreateGEP(Int8Ty, CPUEnv,
+                                          ConstInt(Int64Ty, GuestEIPOffset()));
+        Value *EIPAddr =
+            Builder.CreateBitCast(EnvEIP, Target->getType()->getPointerTo());
+        Builder.CreateStore(Target, EIPAddr);
+    }
 
     // sync GMRVals into stack.
-    for (int GMRId = 0; GMRId < (int)GMRVals.size(); GMRId++) {
-        if (GMRVals[GMRId].isDirty()) {
-            Builder.CreateStore(GMRVals[GMRId].getValue(), GMRStates[GMRId]);
-        }
-    }
+    SyncAllGMRValue();
     Builder.CreateBr(ExitBB);
-    /* dbgs() << "Untranslated instruction call\n"; */
-    /* exit(-1); */
 }
 void X86Translator::translate_cbw(GuestInst *Inst) {
     // AX = sign-extend of AL

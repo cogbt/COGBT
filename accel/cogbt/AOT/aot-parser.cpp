@@ -199,8 +199,10 @@ int AOTParser::FindFunctionInfoAtPC(uint64_t pc) {
 
 void AOTParser::DoLink() {
     for (FunctionInfo &FI : FuncInfos) {
+#ifdef CONFIG_COGBT_DEBUG
         const std::string &Name = FI.getName();
         uint64_t CurrPC = std::stol(Name, 0, 16);
+#endif
         for (int i = 0; i < 2; i++) {
             if (!FI.getLoadAddr() || (FI.getLinkOffset(i) == -1))
                 continue;

@@ -117,14 +117,26 @@ void X86Translator::translate_jl(GuestInst *Inst) {
 }
 
 void X86Translator::translate_jmp(GuestInst *Inst) {
-    SyncAllGMRValue();
     X86InstHandler InstHdl(Inst);
     // Create link here, NOTE! Distinguish direct jmp or indirect jmp first.
-    Value *Target = LoadOperand(InstHdl.getOpnd(0));
-    Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
-    Value *EnvEIP = Builder.CreateGEP(Int8Ty, CPUEnv, Off);
-    Value *EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
-    Builder.CreateStore(Target, EIPAddr);
+    X86OperandHandler OpndHdl(InstHdl.getOpnd(0));
+    if (OpndHdl.isImm()) { // can be linked
+        FunctionType *FTy =
+            FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
+        Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
+        Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
+        Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
+
+        Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
+        AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1);
+    } else {
+        Value *Target = LoadOperand(InstHdl.getOpnd(0));
+        Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
+        Value *EnvEIP = Builder.CreateGEP(Int8Ty, CPUEnv, Off);
+        Value *EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
+        Builder.CreateStore(Target, EIPAddr);
+    }
+    SyncAllGMRValue();
     Builder.CreateBr(ExitBB);
 }
 
