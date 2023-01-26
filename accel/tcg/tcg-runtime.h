@@ -25,6 +25,9 @@ DEF_HELPER_FLAGS_1(ctpop_i32, TCG_CALL_NO_RWG_SE, i32, i32)
 DEF_HELPER_FLAGS_1(ctpop_i64, TCG_CALL_NO_RWG_SE, i64, i64)
 
 DEF_HELPER_FLAGS_1(lookup_tb_ptr, TCG_CALL_NO_WG_SE, cptr, env)
+#ifdef CONFIG_COGBT
+DEF_HELPER_FLAGS_1(cogbt_lookup_tb_ptr, TCG_CALL_NO_WG_SE, cptr, env)
+#endif
 
 DEF_HELPER_FLAGS_1(exit_atomic, TCG_CALL_NO_WG, noreturn, env)
 

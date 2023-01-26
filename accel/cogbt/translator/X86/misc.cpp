@@ -474,12 +474,20 @@ void X86Translator::translate_ret(GuestInst *Inst) {
     Builder.CreateStore(RA, EIPAddr);
 
     // sync GMRVals into stack.
-    for (int GMRId = 0; GMRId < (int)GMRVals.size(); GMRId++) {
-        if (GMRVals[GMRId].isDirty()) {
-            Builder.CreateStore(GMRVals[GMRId].getValue(), GMRStates[GMRId]);
-        }
-    }
-    Builder.CreateBr(ExitBB);
+    SyncAllGMRValue();
+    // Value *Target = call helper_lookup_tb_ptr
+    FunctionType *FTy =
+        FunctionType::get(Int8PtrTy, Int8PtrTy, false);
+    Value *Target = CallFunc(FTy, "helper_cogbt_lookup_tb_ptr", CPUEnv);
+    FTy = FunctionType::get(VoidTy, false);
+    Target = Builder.CreateBitCast(Target, FTy->getPointerTo());
+    BindPhysicalReg();
+    Builder.CreateCall(FTy, Target);
+    Builder.CreateUnreachable();
+    ExitBB->eraseFromParent();
+
+    /* SyncAllGMRValue(); */
+    /* Builder.CreateBr(ExitBB); */
 
 }
 void X86Translator::translate_encls(GuestInst *Inst) {

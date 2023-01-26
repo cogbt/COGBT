@@ -37,6 +37,7 @@ struct KeyVal SymTable[] = {
     {"helper_paddq_xmm", helper_paddq_xmm_wrapper},
 
     {"helper_raise_syscall", helper_raise_syscall},
+    {"helper_cogbt_lookup_tb_ptr", helper_cogbt_lookup_tb_ptr},
 };
 
 int SymTableSize = sizeof(SymTable) / sizeof(SymTable[0]);

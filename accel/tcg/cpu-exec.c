@@ -340,6 +340,25 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
 
     return tb->tc.ptr;
 }
+#ifdef CONFIG_COGBT
+const void *HELPER(cogbt_lookup_tb_ptr)(CPUArchState *env)
+{
+    CPUState *cpu = env_cpu(env);
+    TranslationBlock *tb;
+    target_ulong cs_base, pc;
+    uint32_t flags, cflags;
+
+    cpu_get_tb_cpu_state(env, &pc, &cs_base, &flags);
+    cflags = curr_cflags(cpu);
+
+    tb = tb_lookup(cpu, pc, cs_base, flags, cflags);
+    if (tb == NULL) {
+        return cogbt_code_gen_epilogue;
+    }
+
+    return tb->tc.ptr;
+}
+#endif
 
 /* Execute a TB, and fix up the CPU state afterwards if necessary */
 /*
