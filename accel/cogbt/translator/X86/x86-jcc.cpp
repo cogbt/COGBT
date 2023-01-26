@@ -20,10 +20,6 @@ void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
     Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {NextPC, Off});
     AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 0);
     // Jump back qemu.
-    /* Value *EnvEIP = Builder.CreateGEP(Int8Ty, CPUEnv, Off); */
-    /* Value *EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy); */
-    /* Builder.CreateStore(), EIPAddr); */
-    /* Builder.CreateBr(ExitBB); */
     Builder.CreateCall(Mod->getFunction("epilogue"));
     Builder.CreateUnreachable();
 
@@ -33,22 +29,10 @@ void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
     LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
     AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1);
     // Jump back qemu.
-    /* EnvEIP = Builder.CreateGEP(Int8Ty, CPUEnv, Off); */
-    /* EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy); */
-    /* Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getTargetPC()), EIPAddr); */
-    /* Builder.CreateBr(ExitBB); */
     Builder.CreateCall(Mod->getFunction("epilogue"));
     Builder.CreateUnreachable();
 
-    /* auto LastInstIt = ExitBB->rbegin(); */
-    /* ++LastInstIt; */
-    /* ++LastInstIt; */
-    /* while (LastInstIt != ExitBB->rend()) { */
-    /*     auto NextInstIt = LastInstIt; */
-    /*     ++NextInstIt; */
-    /*     LastInstIt->eraseFromParent(); */
-    /*     LastInstIt = NextInstIt; */
-    /* } */
+    ExitBB->eraseFromParent();
 }
 
 void X86Translator::translate_jae(GuestInst *Inst) {

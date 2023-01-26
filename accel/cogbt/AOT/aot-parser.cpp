@@ -74,10 +74,9 @@ AOTParser::AOTParser(uintptr_t CacheBegin, size_t CacheSize, const char *AOT)
 
     // Handle link slots
     for (const DWARFDebugLine::Row &R : LT->Rows) {
-        if (!R.IsStmt) continue;
+        if (!R.IsStmt || R.EndSequence) continue;
         if (R.Column == LI_TBLINK) {
             RegisterLinkSlot(R.Address, R.Line, R.Column);
-            /* dbgs() << format("Addr:0x%lx Idx:%d\n", R.Address, R.Line); */
         }
     }
 
@@ -109,7 +108,6 @@ void *AOTParser::ParseNextFunction(uint64_t *pc, size_t *tu_size,
 
     link_slots_offsets[0] = it->getLinkOffset(0);
     link_slots_offsets[1] = it->getLinkOffset(1);
-    dbgs() << "Add Link " << Name << format(" 0: %d 1: %d\n", link_slots_offsets[0], link_slots_offsets[1]);
 
     void *Addr = (void *)EE->getFunctionAddress(Name);
     it->getLoadAddr() = (uint64_t)Addr;
@@ -148,8 +146,7 @@ void AOTParser::RegisterLinkSlot(uint64_t HostAddr, int ExitID, int Type) {
     FI.getLinkOffset(ExitID) = offset;
 }
 
-uint64_t DecodePCFromCogbtExit(uint32_t *Insts);
-uint64_t DecodePCFromCogbtExit(uint32_t *Insts) {
+static uint64_t DecodePCFromCogbtExit(uint32_t *Insts) {
     uint64_t pc = 0;
     while (true) {
         uint64_t CurrInst = *Insts;
@@ -173,9 +170,10 @@ uint64_t DecodePCFromCogbtExit(uint32_t *Insts) {
     return pc;
 }
 
-static void EncodeLinkSlot(uint32_t *Inst, uint64_t FixUpOffset) {
-    uint64_t BInst = *Inst;
+static void EncodeLinkSlot(uint32_t *Inst, int32_t FixUpOffset) {
+    uint32_t BInst = *Inst;
     assert(BInst == 0x50000400 && "BInst should be a B instruction");
+    BInst = 0x50000000;
     BInst |= (FixUpOffset & 0xffff) << 10;
     BInst |= (FixUpOffset >> 16) & 0x3ff;
     *Inst = BInst;
@@ -195,7 +193,6 @@ int AOTParser::FindFunctionInfoAtPC(uint64_t pc) {
             right = mid;
         }
     }
-    dbgs() << format("pc 0x%lx left %d right %d size %d\n", pc, left, right, FuncInfos.size());
     assert(left == right && left < (int)FuncInfos.size());
     return left;
 }
@@ -203,7 +200,6 @@ int AOTParser::FindFunctionInfoAtPC(uint64_t pc) {
 void AOTParser::DoLink() {
     for (FunctionInfo &FI : FuncInfos) {
         const std::string &Name = FI.getName();
-        dbgs() << "DoLink " << Name << "\n";
         uint64_t CurrPC = std::stol(Name, 0, 16);
         for (int i = 0; i < 2; i++) {
             if (!FI.getLoadAddr() || (FI.getLinkOffset(i) == -1))
@@ -213,10 +209,12 @@ void AOTParser::DoLink() {
                 DecodePCFromCogbtExit((uint32_t *)(LinkAddr + 4));
             int idx = FindFunctionInfoAtPC(TargetPC);
             FunctionInfo &TargetFI = FuncInfos[idx];
-            uint64_t FixUpOffset = TargetFI.getLoadAddr() - LinkAddr;
-            EncodeLinkSlot((uint32_t *)LinkAddr, FixUpOffset);
+            int32_t FixUpOffset = (TargetFI.getLoadAddr() - LinkAddr) >> 2;
+#ifdef CONFIG_COGBT_DEBUG
             dbgs() << format("PC 0x%lx TargetPC 0x%lx FixUpOffset 0x%lx\n",
                              CurrPC, TargetPC, FixUpOffset);
+#endif
+            EncodeLinkSlot((uint32_t *)LinkAddr, FixUpOffset);
         }
     }
 }
