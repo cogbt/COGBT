@@ -173,6 +173,9 @@ void X86Translator::translate_call(GuestInst *Inst) {
     Value *NewESPPtr = Builder.CreateIntToPtr(NewESP, Int64PtrTy);
     Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getNextPC()), NewESPPtr);
 
+    // sync GMRVals into stack.
+    SyncAllGMRValue();
+
     // store call target into env.
     X86OperandHandler OpndHdl(InstHdl.getOpnd(0));
     if (OpndHdl.isImm()) { // can do link
@@ -182,8 +185,12 @@ void X86Translator::translate_call(GuestInst *Inst) {
         Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
         Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
 
+        BindPhysicalReg();
         Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
         AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1);
+        Builder.CreateCall(Mod->getFunction("epilogue"));
+        Builder.CreateUnreachable();
+        ExitBB->eraseFromParent();
     } else {
         Value *Target = LoadOperand(InstHdl.getOpnd(0));
         Value *EnvEIP = Builder.CreateGEP(Int8Ty, CPUEnv,
@@ -191,11 +198,8 @@ void X86Translator::translate_call(GuestInst *Inst) {
         Value *EIPAddr =
             Builder.CreateBitCast(EnvEIP, Target->getType()->getPointerTo());
         Builder.CreateStore(Target, EIPAddr);
+        Builder.CreateBr(ExitBB);
     }
-
-    // sync GMRVals into stack.
-    SyncAllGMRValue();
-    Builder.CreateBr(ExitBB);
 }
 void X86Translator::translate_cbw(GuestInst *Inst) {
     // AX = sign-extend of AL
