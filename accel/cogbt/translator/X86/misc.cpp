@@ -161,46 +161,6 @@ void X86Translator::translate_bzhi(GuestInst *Inst) {
     dbgs() << "Untranslated instruction bzhi\n";
     exit(-1);
 }
-void X86Translator::translate_call(GuestInst *Inst) {
-    X86InstHandler InstHdl(Inst);
-
-    // adjust esp
-    Value *OldESP = LoadGMRValue(Int64Ty, X86Config::RSP);
-    Value *NewESP = Builder.CreateSub(OldESP, ConstInt(Int64Ty, 8));
-    StoreGMRValue(NewESP, X86Config::RSP);
-
-    // store return address into stack
-    Value *NewESPPtr = Builder.CreateIntToPtr(NewESP, Int64PtrTy);
-    Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getNextPC()), NewESPPtr);
-
-    // sync GMRVals into stack.
-    SyncAllGMRValue();
-
-    // store call target into env.
-    X86OperandHandler OpndHdl(InstHdl.getOpnd(0));
-    if (OpndHdl.isImm()) { // can do link
-        FunctionType *FTy =
-            FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
-        Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
-        Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
-        Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
-
-        BindPhysicalReg();
-        Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
-        AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1);
-        Builder.CreateCall(Mod->getFunction("epilogue"));
-        Builder.CreateUnreachable();
-        ExitBB->eraseFromParent();
-    } else {
-        Value *Target = LoadOperand(InstHdl.getOpnd(0));
-        Value *EnvEIP = Builder.CreateGEP(Int8Ty, CPUEnv,
-                                          ConstInt(Int64Ty, GuestEIPOffset()));
-        Value *EIPAddr =
-            Builder.CreateBitCast(EnvEIP, Target->getType()->getPointerTo());
-        Builder.CreateStore(Target, EIPAddr);
-        Builder.CreateBr(ExitBB);
-    }
-}
 void X86Translator::translate_cbw(GuestInst *Inst) {
     // AX = sign-extend of AL
     X86InstHandler InstHdl(Inst);
@@ -453,42 +413,6 @@ void X86Translator::translate_dppd(GuestInst *Inst) {
 void X86Translator::translate_dpps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction dpps\n";
     exit(-1);
-}
-void X86Translator::translate_ret(GuestInst *Inst) {
-    X86InstHandler InstHdl(Inst);
-
-    // load return address from stack
-    Value *OldESP = LoadGMRValue(Int64Ty, X86Config::RSP);
-    Value *OldESPPtr = Builder.CreateIntToPtr(OldESP, Int64PtrTy);
-    Value *RA = Builder.CreateLoad(Int64Ty, OldESPPtr);
-
-    // adjust esp
-    Value *NewESP = Builder.CreateAdd(OldESP, ConstInt(Int64Ty, 8));
-    StoreGMRValue(NewESP, X86Config::RSP);
-
-    // store return address into env.
-    Value *EnvEIP =
-        Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset()));
-    Value *EIPAddr =
-        Builder.CreateBitCast(EnvEIP, Int64Ty->getPointerTo());
-    Builder.CreateStore(RA, EIPAddr);
-
-    // sync GMRVals into stack.
-    SyncAllGMRValue();
-    // Value *Target = call helper_lookup_tb_ptr
-    FunctionType *FTy =
-        FunctionType::get(Int8PtrTy, Int8PtrTy, false);
-    Value *Target = CallFunc(FTy, "helper_cogbt_lookup_tb_ptr", CPUEnv);
-    FTy = FunctionType::get(VoidTy, false);
-    Target = Builder.CreateBitCast(Target, FTy->getPointerTo());
-    BindPhysicalReg();
-    Builder.CreateCall(FTy, Target);
-    Builder.CreateUnreachable();
-    ExitBB->eraseFromParent();
-
-    /* SyncAllGMRValue(); */
-    /* Builder.CreateBr(ExitBB); */
-
 }
 void X86Translator::translate_encls(GuestInst *Inst) {
     dbgs() << "Untranslated instruction encls\n";

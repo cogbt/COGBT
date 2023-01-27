@@ -5,7 +5,7 @@ cogbt_ss.add(files(
   'x86-inst-handler.cpp',
   'x86-logic.cpp',
   'x86-arith.cpp',
-  'x86-jcc.cpp',
+  'x86-cti.cpp',
   'x86-mov.cpp',
   'x86-setcc.cpp',
   'x86-simd.cpp',
