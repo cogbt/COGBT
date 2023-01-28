@@ -374,7 +374,7 @@ void X86Translator::translate_idiv(GuestInst *Inst) {
         FlushGMRValue(X86Config::RAX);
         FlushGMRValue(X86Config::RDX);
         FuncTy = FunctionType::get(VoidTy, {Int8PtrTy,Int64Ty}, false);
-        CallFunc(FuncTy, "helper_idivl_AX", {CPUEnv, Divisor});
+        CallFunc(FuncTy, "helper_idivw_AX", {CPUEnv, Divisor});
         ReloadGMRValue(X86Config::RAX);
         ReloadGMRValue(X86Config::RDX);
         break;
@@ -384,7 +384,7 @@ void X86Translator::translate_idiv(GuestInst *Inst) {
         FlushGMRValue(X86Config::RAX);
         FlushGMRValue(X86Config::RDX);
         FuncTy = FunctionType::get(VoidTy, {Int8PtrTy,Int64Ty}, false);
-        CallFunc(FuncTy, "helper_idivd_EAX", {CPUEnv, Divisor});
+        CallFunc(FuncTy, "helper_idivl_EAX", {CPUEnv, Divisor});
         ReloadGMRValue(X86Config::RAX);
         ReloadGMRValue(X86Config::RDX);
         break;
