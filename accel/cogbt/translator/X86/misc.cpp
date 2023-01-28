@@ -196,8 +196,7 @@ void X86Translator::translate_clc(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_cld(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cld\n";
-    exit(-1);
+    StoreGMRValue(ConstInt(Int64Ty, 0), X86Config::EFLAG);
 }
 void X86Translator::translate_clflush(GuestInst *Inst) {
     dbgs() << "Untranslated instruction clflush\n";
@@ -1944,8 +1943,7 @@ void X86Translator::translate_stc(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_std(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction std\n";
-    exit(-1);
+    StoreGMRValue(ConstInt(Int64Ty, DF_BIT), X86Config::EFLAG);
 }
 void X86Translator::translate_stgi(GuestInst *Inst) {
     dbgs() << "Untranslated instruction stgi\n";
