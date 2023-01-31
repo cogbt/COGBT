@@ -83,6 +83,12 @@ public:
     bool hasRep() {
         return Inst->detail->x86.prefix[0] != 0;
     }
+    bool hasRepe() {
+        return Inst->detail->x86.prefix[0] == X86_PREFIX_REPE;
+    }
+    bool hasRepne() {
+        return Inst->detail->x86.prefix[0] == X86_PREFIX_REPNE;
+    }
 private:
     GuestInst *Inst;
     static const char PFTable[256];

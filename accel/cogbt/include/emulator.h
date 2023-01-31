@@ -47,6 +47,10 @@ void helper_paddb_xmm_wrapper(void *p, int dest, int src);
 void helper_paddl_xmm_wrapper(void *p, int dest, int src);
 void helper_paddw_xmm_wrapper(void *p, int dest, int src);
 void helper_paddq_xmm_wrapper(void *p, int dest, int src);
+void helper_cvtsi2sd_wrapper(void *p, int dest, int32_t val);
+void helper_cvtsq2sd_wrapper(void *p, int dest, int64_t val);
+void helper_mulsd_wrapper(void *p, int dest, int src);
+void helper_addsd_wrapper(void *p, int dest, int src);
 
 struct KeyVal {
     const char *key;

@@ -13,10 +13,6 @@ void X86Translator::translate_addps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction addps\n";
     exit(-1);
 }
-void X86Translator::translate_addsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction addsd\n";
-    exit(-1);
-}
 void X86Translator::translate_addss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction addss\n";
     exit(-1);
@@ -230,18 +226,6 @@ void X86Translator::translate_cmc(GuestInst *Inst) {
 /*     dbgs() << "Untranslated instruction cmp\n"; */
 /*     exit(-1); */
 /* } */
-void X86Translator::translate_cmpsb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpsb\n";
-    exit(-1);
-}
-void X86Translator::translate_cmpsq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpsq\n";
-    exit(-1);
-}
-void X86Translator::translate_cmpsw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpsw\n";
-    exit(-1);
-}
 void X86Translator::translate_comisd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction comisd\n";
     exit(-1);
@@ -320,70 +304,6 @@ void X86Translator::translate_cqo(GuestInst *Inst) {
 
 void X86Translator::translate_crc32(GuestInst *Inst) {
     dbgs() << "Untranslated instruction crc32\n";
-    exit(-1);
-}
-void X86Translator::translate_cvtdq2pd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvtdq2pd\n";
-    exit(-1);
-}
-void X86Translator::translate_cvtdq2ps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvtdq2ps\n";
-    exit(-1);
-}
-void X86Translator::translate_cvtpd2dq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvtpd2dq\n";
-    exit(-1);
-}
-void X86Translator::translate_cvtpd2ps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvtpd2ps\n";
-    exit(-1);
-}
-void X86Translator::translate_cvtps2dq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvtps2dq\n";
-    exit(-1);
-}
-void X86Translator::translate_cvtps2pd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvtps2pd\n";
-    exit(-1);
-}
-void X86Translator::translate_cvtsd2si(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvtsd2si\n";
-    exit(-1);
-}
-void X86Translator::translate_cvtsd2ss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvtsd2ss\n";
-    exit(-1);
-}
-void X86Translator::translate_cvtsi2sd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvtsi2sd\n";
-    exit(-1);
-}
-void X86Translator::translate_cvtsi2ss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvtsi2ss\n";
-    exit(-1);
-}
-void X86Translator::translate_cvtss2sd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvtss2sd\n";
-    exit(-1);
-}
-void X86Translator::translate_cvtss2si(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvtss2si\n";
-    exit(-1);
-}
-void X86Translator::translate_cvttpd2dq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvttpd2dq\n";
-    exit(-1);
-}
-void X86Translator::translate_cvttps2dq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvttps2dq\n";
-    exit(-1);
-}
-void X86Translator::translate_cvttsd2si(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvttsd2si\n";
-    exit(-1);
-}
-void X86Translator::translate_cvttss2si(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvttss2si\n";
     exit(-1);
 }
 void X86Translator::translate_cwd(GuestInst *Inst) {
@@ -607,10 +527,6 @@ void X86Translator::translate_fyl2x(GuestInst *Inst) {
 }
 void X86Translator::translate_fyl2xp1(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fyl2xp1\n";
-    exit(-1);
-}
-void X86Translator::translate_movapd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movapd\n";
     exit(-1);
 }
 void X86Translator::translate_orpd(GuestInst *Inst) {
@@ -4602,10 +4518,6 @@ void X86Translator::translate_cmpnless(GuestInst *Inst) {
 }
 void X86Translator::translate_cmpordss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cmpordss\n";
-    exit(-1);
-}
-void X86Translator::translate_cmpsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpsd\n";
     exit(-1);
 }
 void X86Translator::translate_cmpeqsd(GuestInst *Inst) {

@@ -368,3 +368,56 @@ void X86Translator::translate_comiss(GuestInst *Inst) {
     // reload EFLAG
     ReloadGMRValue(X86Config::EFLAG);
 }
+
+void X86Translator::translate_mulsd(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    // helper_mulsd llvm type
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty}, false);
+
+    if (SrcOpnd.isMem()) {
+        Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+        FlushXMMT0(MemVal);
+        Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
+        Value *SrcXMMID = ConstInt(Int64Ty, -1); // -1 means src is xmm_t0
+        CallFunc(FTy, "helper_mulsd", {CPUEnv, DestXMMID, SrcXMMID});
+    } else {
+        Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
+        Value *SrcXMMID = ConstInt(Int64Ty, SrcOpnd.GetXMMID());
+        CallFunc(FTy, "helper_mulsd", {CPUEnv, DestXMMID, SrcXMMID});
+    }
+}
+
+void X86Translator::translate_mulss(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction mulss\n";
+    exit(-1);
+}
+void X86Translator::translate_mulx(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction mulx\n";
+    exit(-1);
+}
+
+void X86Translator::translate_addsd(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    // helper_mulsd llvm type
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty}, false);
+
+    if (SrcOpnd.isMem()) {
+        Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+        FlushXMMT0(MemVal);
+        Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
+        Value *SrcXMMID = ConstInt(Int64Ty, -1); // -1 means src is xmm_t0
+        CallFunc(FTy, "helper_addsd", {CPUEnv, DestXMMID, SrcXMMID});
+    } else {
+        Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
+        Value *SrcXMMID = ConstInt(Int64Ty, SrcOpnd.GetXMMID());
+        CallFunc(FTy, "helper_addsd", {CPUEnv, DestXMMID, SrcXMMID});
+    }
+}

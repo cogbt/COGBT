@@ -35,6 +35,10 @@ struct KeyVal SymTable[] = {
     {"helper_paddl_xmm", helper_paddl_xmm_wrapper},
     {"helper_paddw_xmm", helper_paddw_xmm_wrapper},
     {"helper_paddq_xmm", helper_paddq_xmm_wrapper},
+    {"helper_cvtsi2sd", helper_cvtsi2sd_wrapper},
+    {"helper_cvtsq2sd", helper_cvtsq2sd_wrapper},
+    {"helper_mulsd", helper_mulsd_wrapper},
+    {"helper_addsd", helper_addsd_wrapper},
 
     {"helper_raise_syscall", helper_raise_syscall},
     {"helper_cogbt_lookup_tb_ptr", helper_cogbt_lookup_tb_ptr},
@@ -255,4 +259,36 @@ void helper_paddq_xmm_wrapper(void *p, int dest, int src) {
         s = &env->xmm_regs[src];
     }
     helper_paddq_xmm(env, d, s);
+}
+
+void helper_cvtsi2sd_wrapper(void *p, int dest, int32_t val) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    helper_cvtsi2sd(env, d, val);
+}
+
+void helper_cvtsq2sd_wrapper(void *p, int dest, int64_t val) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    helper_cvtsq2sd(env, d, val);
+}
+
+void helper_mulsd_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_mulsd(env, d, s);
+}
+
+void helper_addsd_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_addsd(env, d, s);
 }

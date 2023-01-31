@@ -390,8 +390,20 @@ void X86Translator::translate_movsldup(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_movss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movss\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler Opnd0Hdl(InstHdl.getOpnd(0));
+    X86OperandHandler Opnd1Hdl(InstHdl.getOpnd(1));
+    // Source operand is xmm register, only move low 32 bit.
+    if (Opnd0Hdl.isXMM()) {
+        Value *Src = LoadOperand(InstHdl.getOpnd(0), Int32Ty);
+        StoreOperand(Src, InstHdl.getOpnd(1));
+    } else {
+        assert(Opnd0Hdl.isMem() && Opnd1Hdl.isXMM());
+        // Source is memory and dest is xmm
+        Value *Src = LoadOperand(InstHdl.getOpnd(0), Int32Ty);
+        Src = Builder.CreateZExt(Src, Int128Ty);
+        StoreOperand(Src, InstHdl.getOpnd(1));
+    }
 }
 
 
@@ -415,6 +427,12 @@ void X86Translator::translate_movupd(GuestInst *Inst) {
 void X86Translator::translate_movaps(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    StoreOperand(Src, InstHdl.getOpnd(1));
+}
+
+void X86Translator::translate_movapd(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
     StoreOperand(Src, InstHdl.getOpnd(1));
 }
 
