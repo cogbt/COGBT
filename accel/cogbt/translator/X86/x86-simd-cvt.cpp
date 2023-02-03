@@ -21,7 +21,7 @@ void X86Translator::translate_cvtsi2sd(GuestInst *Inst) {
         assert(IntOpndSize == 8);
         FunctionType *FTy =
             FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty}, false);
-        Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetMMXID());
+        Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
         Value *IntVal = LoadOperand(InstHdl.getOpnd(0));
         CallFunc(FTy, "helper_cvtsq2sd", {CPUEnv, DestXMMID, IntVal});
     }

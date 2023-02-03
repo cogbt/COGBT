@@ -6,7 +6,7 @@ void X86Translator::FlushFPRValue(std::string FPR, Value *FV, bool isInt) {
     if (FVBitWidth == 16) {
         FV = Builder.CreateSExt(FV, Int32Ty);
         FuncTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
-        assert(!isInt && "Can't treat 16bit value as float\n");
+        assert(isInt && "Can't treat 16bit value as float\n");
         CallFunc(FuncTy, "helper_fildl_" + FPR, {CPUEnv, FV});
     } else if (FVBitWidth == 32) {
         FuncTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
@@ -135,7 +135,14 @@ void X86Translator::translate_fcomp(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fcompp(GuestInst *Inst) {
-    GenFPUHelper(Inst, "fcom", DEST_IS_ST0 | SHOULD_POP_TWICE);
+    FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+    FunctionType *Binary32FunTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
+    Value *SrcFPRID = ConstInt(Int32Ty, 1);
+    CallFunc(Binary32FunTy, "helper_fmov_FT0_STN", {CPUEnv, SrcFPRID});
+    CallFunc(UnaryFunTy, "helper_fcom_ST0_FT0", CPUEnv);
+    CallFunc(UnaryFunTy, "helper_fpop", CPUEnv);
+    CallFunc(UnaryFunTy, "helper_fpop", CPUEnv);
 }
 
 void X86Translator::translate_fcomip(GuestInst *Inst) {
@@ -146,7 +153,7 @@ void X86Translator::translate_fcomip(GuestInst *Inst) {
     assert(SrcOpnd.isReg() && "operand of fcomip must be fpr");
     FunctionType *FMOVTy =
         FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
-    FunctionType *FCOMITy = FunctionType::get(Int32Ty, Int8PtrTy, false);
+    FunctionType *FCOMITy = FunctionType::get(VoidTy, Int8PtrTy, false);
     FunctionType *FPOPTy = FunctionType::get(VoidTy, Int8PtrTy, false);
 
     FlushGMRValue(X86Config::EFLAG);
@@ -165,7 +172,7 @@ void X86Translator::translate_fcomi(GuestInst *Inst) {
     assert(SrcOpnd.isReg() && "operand of fcomi must be fpr");
     FunctionType *FMOVTy =
         FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
-    FunctionType *FCOMITy = FunctionType::get(Int32Ty, Int8PtrTy, false);
+    FunctionType *FCOMITy = FunctionType::get(VoidTy, Int8PtrTy, false);
 
     FlushGMRValue(X86Config::EFLAG);
     Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
@@ -659,7 +666,7 @@ void X86Translator::translate_fucomip(GuestInst *Inst) {
     FunctionType *FMOVTy =
         FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
     FunctionType *FPOPTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    FunctionType *FUCOMITy = FunctionType::get(Int32Ty, Int8PtrTy, false);
+    FunctionType *FUCOMITy = FunctionType::get(VoidTy, Int8PtrTy, false);
 
     FlushGMRValue(X86Config::EFLAG);
     Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
@@ -678,7 +685,7 @@ void X86Translator::translate_fucomi(GuestInst *Inst) {
 
     FunctionType *FMOVTy =
         FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
-    FunctionType *FUCOMITy = FunctionType::get(Int32Ty, Int8PtrTy, false);
+    FunctionType *FUCOMITy = FunctionType::get(VoidTy, Int8PtrTy, false);
 
     FlushGMRValue(X86Config::EFLAG);
     Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());

@@ -350,10 +350,12 @@ void x86_cpu_dump_state(CPUState *cs, FILE *f, int flags)
 {
     X86CPU *cpu = X86_CPU(cs);
     CPUX86State *env = &cpu->env;
-    int eflags, i, nb;
 #ifndef CONFIG_COGBT_DEBUG
+    int eflags, i, nb;
     char cc_op_name[32];
     static const char *seg_name[6] = { "ES", "CS", "SS", "DS", "FS", "GS" };
+#else
+    int eflags, i, nb;
 #endif
 
     eflags = cpu_compute_eflags(env);
@@ -484,11 +486,13 @@ void x86_cpu_dump_state(CPUState *cs, FILE *f, int flags)
 #endif
     if (flags & CPU_DUMP_FPU) {
         int fptag;
+/* #ifndef CONFIG_COGBT_DEBUG */
         const uint64_t avx512_mask = XSTATE_OPMASK_MASK | \
                                      XSTATE_ZMM_Hi256_MASK | \
                                      XSTATE_Hi16_ZMM_MASK | \
                                      XSTATE_YMM_MASK | XSTATE_SSE_MASK,
                        avx_mask = XSTATE_YMM_MASK | XSTATE_SSE_MASK;
+/* #endif */
         fptag = 0;
         for(i = 0; i < 8; i++) {
             fptag |= ((!env->fptags[i]) << i);
@@ -511,6 +515,7 @@ void x86_cpu_dump_state(CPUState *cs, FILE *f, int flags)
                 qemu_fprintf(f, " ");
         }
 
+/* #ifndef CONFIG_COGBT_DEBUG */
         if ((env->xcr0 & avx512_mask) == avx512_mask) {
             /* XSAVE enabled AVX512 */
             for (i = 0; i < NB_OPMASK_REGS; i++) {
@@ -554,6 +559,7 @@ void x86_cpu_dump_state(CPUState *cs, FILE *f, int flags)
                              (i & 1) ? "\n" : " ");
             }
         }
+/* #endif */
     }
     if (flags & CPU_DUMP_CODE) {
         target_ulong base = env->segs[R_CS].base + env->eip;

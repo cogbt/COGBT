@@ -39,6 +39,8 @@ struct KeyVal SymTable[] = {
     {"helper_cvtsq2sd", helper_cvtsq2sd_wrapper},
     {"helper_mulsd", helper_mulsd_wrapper},
     {"helper_addsd", helper_addsd_wrapper},
+    {"helper_fcomi_ST0_FT0_cogbt", helper_fcomi_ST0_FT0_wrapper},
+    {"helper_fucomi_ST0_FT0_cogbt", helper_fucomi_ST0_FT0_wrapper},
 
     {"helper_raise_syscall", helper_raise_syscall},
     {"helper_cogbt_lookup_tb_ptr", helper_cogbt_lookup_tb_ptr},
@@ -302,10 +304,14 @@ void helper_addsd_wrapper(void *p, int dest, int src) {
     helper_addsd(env, d, s);
 }
 
-/* void helper_fucomi_ST0_FT0_wrapper(void *p) { */
-/*     helper_fucomi_ST0_FT0((CPUX86State *)p); */
-/* } */
+void helper_fucomi_ST0_FT0_wrapper(void *p) {
+    helper_fucomi_ST0_FT0_cogbt((CPUX86State *)p);
+}
 
-/* void helper_fcomi_ST0_FT0_wrapper(void *p) { */
-/*     helper_fcomi_ST0_FT0_cogbt((CPUX86State *)p); */
-/* } */
+void helper_fcomi_ST0_FT0_wrapper(void *p) {
+    helper_fcomi_ST0_FT0_cogbt((CPUX86State *)p);
+}
+
+void helper_cogbt_lookup_tb_ptr_wrapper(void *p) {
+    helper_cogbt_lookup_tb_ptr((CPUX86State *)p);
+}

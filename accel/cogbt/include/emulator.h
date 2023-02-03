@@ -54,8 +54,9 @@ void helper_cvtsi2sd_wrapper(void *p, int dest, int32_t val);
 void helper_cvtsq2sd_wrapper(void *p, int dest, int64_t val);
 void helper_mulsd_wrapper(void *p, int dest, int src);
 void helper_addsd_wrapper(void *p, int dest, int src);
-/* void helper_fucomi_ST0_FT0_wrapper(void *p); */
-/* void helper_fcomi_ST0_FT0_wrapper(void *p); */
+void helper_fucomi_ST0_FT0_wrapper(void *p);
+void helper_fcomi_ST0_FT0_wrapper(void *p);
+void helper_cogbt_lookup_tb_ptr_wrapper(void *p);
 
 struct KeyVal {
     const char *key;

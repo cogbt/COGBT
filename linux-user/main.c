@@ -150,6 +150,10 @@ uint64_t aot_begin_pc, aot_end_pc;
 const char *aotfile = NULL;
 /* Set the a breakpoint before executing tb at debug_pc. */
 uint64_t debug_pc = 0;
+/* In debug mode, all tbs executed will be recorded. This makes the log file so
+ * huge. So we can sample tbs between [debug_start_cnter, debug_end_cnter).
+ */
+uint64_t debug_start_cnter = 0, debug_end_cnter = 0;
 
 /* XXX: on x86 MAP_GROWSDOWN only works if ESP <= address + 32, so
    we allocate a bigger stack. Need a better solution, for example
@@ -467,6 +471,10 @@ static void handle_arg_aot_range(const char *arg)
 {
     sscanf(arg, "%lx,%lx", &aot_begin_pc, &aot_end_pc);
 }
+static void handle_arg_debug_range(const char *arg)
+{
+    sscanf(arg, "%ld,%ld", &debug_start_cnter, &debug_end_cnter);
+}
 
 static QemuPluginList plugins = QTAILQ_HEAD_INITIALIZER(plugins);
 
@@ -548,6 +556,8 @@ static const struct qemu_argument arg_table[] = {
      "",           "set cogbt debug pc"},
     {"aotrange",   "COGBT_AOTRANGE",   true, handle_arg_aot_range,
      "",           "set cogbt aot register tb range"},
+    {"debugrange", "COGBT_DEBUGRANGE",true, handle_arg_debug_range,
+     "",           "set cogbt debug tb counter range"},
     {NULL, NULL, false, NULL, NULL, NULL}
 };
 
@@ -1025,6 +1035,7 @@ int main(int argc, char **argv, char **envp)
 
             /* Registe this BasicBlock into lookup hash table. */
             aot_tb_register(tb);
+            /* fprintf(stderr, "register tb pc 0x%lx cs_base 0x%lx flags 0x%x cflags 0x%x\n", tb->pc,tb->cs_base,tb->flags,tb->cflags); //debug */
             if (!tb_htable_lookup(cpu, tb->pc, 0, tb->flags, tb->cflags)) {
                 fprintf(stderr, "aot: tb_htable_lookup error!\n");
                 exit(-1);

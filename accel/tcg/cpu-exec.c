@@ -313,6 +313,9 @@ static bool check_for_breakpoints(CPUState *cpu, target_ulong pc,
  */
 const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
 {
+#ifdef CONFIG_COGBT_DEBUG
+    return tcg_code_gen_epilogue;
+#else
     CPUState *cpu = env_cpu(env);
     TranslationBlock *tb;
     target_ulong cs_base, pc;
@@ -339,10 +342,14 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
     log_cpu_exec(pc, cpu, tb);
 
     return tb->tc.ptr;
+#endif
 }
 #ifdef CONFIG_COGBT
 const void *HELPER(cogbt_lookup_tb_ptr)(CPUArchState *env)
 {
+#ifdef CONFIG_COGBT_DEBUG
+    return cogbt_code_gen_epilogue;
+#else
     CPUState *cpu = env_cpu(env);
     TranslationBlock *tb;
     target_ulong cs_base, pc;
@@ -357,6 +364,7 @@ const void *HELPER(cogbt_lookup_tb_ptr)(CPUArchState *env)
     }
 
     return tb->tc.ptr;
+#endif
 }
 #endif
 
@@ -372,6 +380,8 @@ const void *HELPER(cogbt_lookup_tb_ptr)(CPUArchState *env)
  */
 #ifdef CONFIG_COGBT_DEBUG
 bool last_is_rep = false;
+uint64_t curr_tb_cnter = -1;
+extern uint64_t debug_start_cnter, debug_end_cnter;
 #endif
 static inline TranslationBlock * QEMU_DISABLE_CFI
 cpu_tb_exec(CPUState *cpu, TranslationBlock *itb, int *tb_exit)
@@ -383,6 +393,9 @@ cpu_tb_exec(CPUState *cpu, TranslationBlock *itb, int *tb_exit)
 
 #ifdef CONFIG_COGBT_DEBUG
     if (!last_is_rep)
+        ++curr_tb_cnter;
+    if (!last_is_rep && curr_tb_cnter >= debug_start_cnter &&
+        curr_tb_cnter < debug_end_cnter)
 #endif
     log_cpu_exec(itb->pc, cpu, itb);
 
@@ -1047,6 +1060,7 @@ int cpu_exec(CPUState *cpu)
             tb = tb_lookup(cpu, pc, cs_base, flags, cflags);
             if (tb == NULL) {
                 mmap_lock();
+                /* fprintf(stderr, "0x%lx\n", pc); */
                 tb = tb_gen_code(cpu, pc, cs_base, flags, cflags);
                 mmap_unlock();
                 /*
@@ -1085,8 +1099,8 @@ int cpu_exec(CPUState *cpu)
                     env->eflags & (CC_O | CC_S | CC_Z | CC_A | CC_P | CC_C);
                 env->df = 1 - (2 * ((env->eflags >> 10) & 1));
                 CC_OP = CC_OP_EFLAGS;
-                env->eflags &=
-                    ~(DF_MASK | CC_O | CC_S | CC_Z | CC_A | CC_P | CC_C);
+                /* env->eflags &= */
+                /*     ~(DF_MASK | CC_O | CC_S | CC_Z | CC_A | CC_P | CC_C); */
             }
             /* qemu -> llvm, calculate all delayed eflags. */
             if (!last_exit_is_llvm && tb->tc.ptr < tb_cache_begin) {

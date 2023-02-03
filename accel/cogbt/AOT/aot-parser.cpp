@@ -4,6 +4,7 @@
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Object/ELFObjectFile.h"
 #include "llvm/Support/TargetSelect.h"
+/* #include "config-host.h" */
 
 using namespace llvm::object;
 using namespace llvm;
@@ -194,7 +195,7 @@ int AOTParser::FindFunctionInfoAtPC(uint64_t pc) {
         }
     }
     assert(left == right && left < (int)FuncInfos.size());
-    return left;
+    return -1;
 }
 
 void AOTParser::DoLink() {
@@ -210,6 +211,9 @@ void AOTParser::DoLink() {
             uint64_t TargetPC =
                 DecodePCFromCogbtExit((uint32_t *)(LinkAddr + 4));
             int idx = FindFunctionInfoAtPC(TargetPC);
+            // If the target TU isn't in aot, Don't link it.
+            if (idx == -1)
+                continue;
             FunctionInfo &TargetFI = FuncInfos[idx];
             int32_t FixUpOffset = (TargetFI.getLoadAddr() - LinkAddr) >> 2;
 #ifdef CONFIG_COGBT_DEBUG
