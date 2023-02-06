@@ -59,10 +59,19 @@ void helper_cvtsq2sd_wrapper(void *p, int dest, int64_t val);
 int32_t helper_cvttsd2si_wrapper(void *p, int src);
 int64_t helper_cvttsd2sq_wrapper(void *p, int src);
 void helper_mulsd_wrapper(void *p, int dest, int src);
+void helper_divsd_wrapper(void *p, int dest, int src);
+void helper_divss_wrapper(void *p, int dest, int src);
+void helper_subsd_wrapper(void *p, int dest, int src);
+void helper_subss_wrapper(void *p, int dest, int src);
+void helper_maxsd_wrapper(void *p, int dest, int src);
+void helper_maxss_wrapper(void *p, int dest, int src);
+void helper_sqrtsd_wrapper(void *p, int dest, int src);
+void helper_sqrtss_wrapper(void *p, int dest, int src);
 void helper_addsd_wrapper(void *p, int dest, int src);
 void helper_fucomi_ST0_FT0_wrapper(void *p);
 void helper_fcomi_ST0_FT0_wrapper(void *p);
 void helper_cogbt_lookup_tb_ptr_wrapper(void *p);
+void helper_xorpd_wrapper(void *p, int dest, int src);
 
 struct KeyVal {
     const char *key;

@@ -350,10 +350,6 @@ void X86Translator::translate_vmovaps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmovaps\n";
     exit(-1);
 }
-void X86Translator::translate_xorpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction xorpd\n";
-    exit(-1);
-}
 void X86Translator::translate_xorps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction xorps\n";
     exit(-1);
@@ -815,22 +811,6 @@ void X86Translator::translate_lzcnt(GuestInst *Inst) {
 }
 void X86Translator::translate_maskmovdqu(GuestInst *Inst) {
     dbgs() << "Untranslated instruction maskmovdqu\n";
-    exit(-1);
-}
-void X86Translator::translate_maxpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction maxpd\n";
-    exit(-1);
-}
-void X86Translator::translate_maxps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction maxps\n";
-    exit(-1);
-}
-void X86Translator::translate_maxsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction maxsd\n";
-    exit(-1);
-}
-void X86Translator::translate_maxss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction maxss\n";
     exit(-1);
 }
 void X86Translator::translate_mfence(GuestInst *Inst) {
@@ -1591,22 +1571,6 @@ void X86Translator::translate_smsw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction smsw\n";
     exit(-1);
 }
-void X86Translator::translate_sqrtpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction sqrtpd\n";
-    exit(-1);
-}
-void X86Translator::translate_sqrtps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction sqrtps\n";
-    exit(-1);
-}
-void X86Translator::translate_sqrtsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction sqrtsd\n";
-    exit(-1);
-}
-void X86Translator::translate_sqrtss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction sqrtss\n";
-    exit(-1);
-}
 void X86Translator::translate_stac(GuestInst *Inst) {
     dbgs() << "Untranslated instruction stac\n";
     exit(-1);
@@ -1632,22 +1596,6 @@ void X86Translator::translate_stmxcsr(GuestInst *Inst) {
 }
 void X86Translator::translate_str(GuestInst *Inst) {
     dbgs() << "Untranslated instruction str\n";
-    exit(-1);
-}
-void X86Translator::translate_subpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction subpd\n";
-    exit(-1);
-}
-void X86Translator::translate_subps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction subps\n";
-    exit(-1);
-}
-void X86Translator::translate_subsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction subsd\n";
-    exit(-1);
-}
-void X86Translator::translate_subss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction subss\n";
     exit(-1);
 }
 void X86Translator::translate_swapgs(GuestInst *Inst) {

@@ -405,12 +405,3 @@ void X86Translator::translate_inc(GuestInst *Inst) {
     CalcEflag(Inst, Dest, Src, nullptr);
 }
 
-void X86Translator::translate_divsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction divsd\n";
-    exit(-1);
-}
-void X86Translator::translate_divss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction divss\n";
-    exit(-1);
-}
-

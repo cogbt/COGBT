@@ -42,7 +42,16 @@ struct KeyVal SymTable[] = {
     {"helper_cvttsd2si", helper_cvttsd2si_wrapper},
     {"helper_cvttsd2sq", helper_cvttsd2sq_wrapper},
     {"helper_mulsd", helper_mulsd_wrapper},
+    {"helper_divsd", helper_divsd_wrapper},
+    {"helper_divss", helper_divss_wrapper},
+    {"helper_subsd", helper_subsd_wrapper},
+    {"helper_subss", helper_subss_wrapper},
+    {"helper_sqrtsd", helper_sqrtsd_wrapper},
+    {"helper_sqrtss", helper_sqrtss_wrapper},
+    {"helper_maxsd", helper_maxsd_wrapper},
+    {"helper_maxss", helper_maxss_wrapper},
     {"helper_addsd", helper_addsd_wrapper},
+    {"helper_xorpd", helper_xorpd_wrapper},
     {"helper_fcomi_ST0_FT0_cogbt", helper_fcomi_ST0_FT0_wrapper},
     {"helper_fucomi_ST0_FT0_cogbt", helper_fucomi_ST0_FT0_wrapper},
 
@@ -334,6 +343,96 @@ void helper_addsd_wrapper(void *p, int dest, int src) {
         s = &env->xmm_regs[src];
     }
     helper_addsd(env, d, s);
+}
+
+void helper_divsd_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_divsd(env, d, s);
+}
+
+void helper_divss_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_divss(env, d, s);
+}
+
+void helper_subsd_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_subsd(env, d, s);
+}
+
+void helper_subss_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_subss(env, d, s);
+}
+
+void helper_sqrtsd_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_sqrtsd(env, d, s);
+}
+
+void helper_sqrtss_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_sqrtss(env, d, s);
+}
+
+void helper_maxsd_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_maxsd(env, d, s);
+}
+
+void helper_maxss_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_maxss(env, d, s);
+}
+
+void helper_xorpd_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_pxor_xmm(env, d, s);
 }
 
 void helper_fucomi_ST0_FT0_wrapper(void *p) {
