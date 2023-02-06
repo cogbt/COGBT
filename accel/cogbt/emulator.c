@@ -31,12 +31,16 @@ struct KeyVal SymTable[] = {
     {"helper_punpcklwd_mmx", helper_punpcklwd_mmx_wrapper},
     {"helper_pshufd", helper_pshufd_xmm_wrapper},
     {"helper_comiss", helper_comiss_wrapper},
+    {"helper_comisd", helper_comisd_wrapper},
+    {"helper_minsd", helper_minsd_wrapper},
     {"helper_paddb_xmm", helper_paddb_xmm_wrapper},
     {"helper_paddl_xmm", helper_paddl_xmm_wrapper},
     {"helper_paddw_xmm", helper_paddw_xmm_wrapper},
     {"helper_paddq_xmm", helper_paddq_xmm_wrapper},
     {"helper_cvtsi2sd", helper_cvtsi2sd_wrapper},
     {"helper_cvtsq2sd", helper_cvtsq2sd_wrapper},
+    {"helper_cvttsd2si", helper_cvttsd2si_wrapper},
+    {"helper_cvttsd2sq", helper_cvttsd2sq_wrapper},
     {"helper_mulsd", helper_mulsd_wrapper},
     {"helper_addsd", helper_addsd_wrapper},
     {"helper_fcomi_ST0_FT0_cogbt", helper_fcomi_ST0_FT0_wrapper},
@@ -232,6 +236,26 @@ void helper_comiss_wrapper(void *p, int dest, int src) {
     helper_comiss(env, d, s);
 }
 
+void helper_comisd_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) {
+        s = &env->xmm_regs[src];
+    }
+    helper_comisd(env, d, s);
+}
+
+void helper_minsd_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) {
+        s = &env->xmm_regs[src];
+    }
+    helper_minsd(env, d, s);
+}
+
 void helper_paddb_xmm_wrapper(void *p, int dest, int src) {
     CPUX86State *env = (CPUX86State *)p;
     ZMMReg *d = &env->xmm_regs[dest];
@@ -272,7 +296,7 @@ void helper_paddq_xmm_wrapper(void *p, int dest, int src) {
     helper_paddq_xmm(env, d, s);
 }
 
-void helper_cvtsi2sd_wrapper(void *p, int dest, int32_t val) {
+void helper_cvtsi2sd_wrapper(void *p, int dest, int64_t val) {
     CPUX86State *env = (CPUX86State *)p;
     ZMMReg *d = &env->xmm_regs[dest];
     helper_cvtsi2sd(env, d, val);
@@ -314,4 +338,22 @@ void helper_fcomi_ST0_FT0_wrapper(void *p) {
 
 void helper_cogbt_lookup_tb_ptr_wrapper(void *p) {
     helper_cogbt_lookup_tb_ptr((CPUX86State *)p);
+}
+
+int32_t helper_cvttsd2si_wrapper(void *p, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    return helper_cvttsd2si(env, s);
+}
+
+int64_t helper_cvttsd2sq_wrapper(void *p, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    return helper_cvttsd2sq(env, s);
 }

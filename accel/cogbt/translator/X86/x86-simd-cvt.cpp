@@ -13,9 +13,9 @@ void X86Translator::translate_cvtsi2sd(GuestInst *Inst) {
     if (IntOpndSize == 4) {
         // Convert 32 bit integer to float point
         FunctionType *FTy =
-            FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int32Ty}, false);
+            FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty}, false);
         Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
-        Value *IntVal = LoadOperand(InstHdl.getOpnd(0));
+        Value *IntVal = LoadOperand(InstHdl.getOpnd(0), Int64Ty);
         CallFunc(FTy, "helper_cvtsi2sd", {CPUEnv, DestXMMID, IntVal});
     } else {
         assert(IntOpndSize == 8);
@@ -79,10 +79,39 @@ void X86Translator::translate_cvttps2dq(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cvttps2dq\n";
     exit(-1);
 }
+
 void X86Translator::translate_cvttsd2si(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvttsd2si\n";
-    exit(-1);
+    // cvttsd2si xmm/m64, r32/r64
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+    // prepare src value
+    int xmmid = -1;
+    if (SrcOpnd.isMem()) {
+        Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+        FlushXMMT0(MemVal, Int64PtrTy);
+    } else { // xmm reg
+        xmmid = SrcOpnd.GetXMMID();
+    }
+    Value *SrcXMMID = ConstInt(Int64Ty, xmmid);
+
+    // select helpers to do this convert and get the dest value.
+    assert(DestOpnd.getOpndSize() == 4 || DestOpnd.getOpndSize() == 8);
+    Value *Dest = nullptr;
+    if (DestOpnd.getOpndSize() == 4) {
+        // trunc float to int32
+        FunctionType *FTy =
+            FunctionType::get(Int32Ty, {Int8PtrTy, Int64Ty}, false);
+        Dest = CallFunc(FTy, "helper_cvttsd2si", {CPUEnv, SrcXMMID});
+    } else {
+        FunctionType *FTy =
+            FunctionType::get(Int64Ty, {Int8PtrTy, Int64Ty}, false);
+        Dest = CallFunc(FTy, "helper_cvttsd2dq", {CPUEnv, SrcXMMID});
+    }
+    StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_cvttss2si(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cvttss2si\n";
     exit(-1);

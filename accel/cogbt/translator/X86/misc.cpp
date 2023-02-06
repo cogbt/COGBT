@@ -207,10 +207,6 @@ void X86Translator::translate_cmc(GuestInst *Inst) {
 /*     dbgs() << "Untranslated instruction cmp\n"; */
 /*     exit(-1); */
 /* } */
-void X86Translator::translate_comisd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction comisd\n";
-    exit(-1);
-}
 void X86Translator::translate_cpuid(GuestInst *Inst) {
     /* for (int GMRId = 0; GMRId < (int)GMRVals.size(); GMRId++) { */
     /*     if (GMRVals[GMRId].isDirty()) { */
@@ -839,22 +835,6 @@ void X86Translator::translate_maxss(GuestInst *Inst) {
 }
 void X86Translator::translate_mfence(GuestInst *Inst) {
     dbgs() << "Untranslated instruction mfence\n";
-    exit(-1);
-}
-void X86Translator::translate_minpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction minpd\n";
-    exit(-1);
-}
-void X86Translator::translate_minps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction minps\n";
-    exit(-1);
-}
-void X86Translator::translate_minsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction minsd\n";
-    exit(-1);
-}
-void X86Translator::translate_minss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction minss\n";
     exit(-1);
 }
 void X86Translator::translate_cvtpd2pi(GuestInst *Inst) {
@@ -1553,22 +1533,6 @@ void X86Translator::translate_salc(GuestInst *Inst) {
 }
 void X86Translator::translate_sarx(GuestInst *Inst) {
     dbgs() << "Untranslated instruction sarx\n";
-    exit(-1);
-}
-void X86Translator::translate_scasb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction scasb\n";
-    exit(-1);
-}
-void X86Translator::translate_scasd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction scasd\n";
-    exit(-1);
-}
-void X86Translator::translate_scasq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction scasq\n";
-    exit(-1);
-}
-void X86Translator::translate_scasw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction scasw\n";
     exit(-1);
 }
 void X86Translator::translate_sfence(GuestInst *Inst) {

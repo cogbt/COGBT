@@ -148,8 +148,10 @@ void X86Translator::translate_bsr(GuestInst *Inst) {
 }
 
 void X86Translator::translate_bswap(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction bswap\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    Value *Dest = Builder.CreateIntrinsic(Intrinsic::bswap, Src->getType(), Src);
+    StoreOperand(Dest, InstHdl.getOpnd(0));
 }
 
 void X86Translator::translate_rol(GuestInst *Inst) {

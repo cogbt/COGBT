@@ -210,6 +210,14 @@ void X86Translator::translate_movsw(GuestInst *Inst) {
 
 void X86Translator::translate_movsd(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
+    X86OperandHandler Opnd0(InstHdl.getOpnd(0));
+    X86OperandHandler Opnd1(InstHdl.getOpnd(1));
+    if (Opnd0.isXMM() || Opnd1.isXMM()) {
+        Value *Src = LoadOperand(InstHdl.getOpnd(0));
+        StoreOperand(Src, InstHdl.getOpnd(1));
+        return;
+    }
+
     BasicBlock *CheckBB = nullptr, *EndBB = nullptr, *LoopBodyBB = nullptr;
     if (InstHdl.hasRep()) {
         CheckBB = BasicBlock::Create(Context, "CheckBB", TransFunc, ExitBB);

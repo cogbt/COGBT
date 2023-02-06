@@ -9,6 +9,7 @@ cogbt_ss.add(files(
   'x86-fpu.cpp',
   'x86-mov.cpp',
   'x86-setcc.cpp',
+  'x86-string.cpp',
   'x86-simd.cpp',
   'x86-simd-cvt.cpp',
   'x86-bt.cpp',

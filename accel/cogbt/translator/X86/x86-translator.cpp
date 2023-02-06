@@ -279,7 +279,7 @@ void X86Translator::SyncAllGMRValue() {
 }
 
 void X86Translator::SyncGMRValue(int GMRId) {
-    if (GMRVals[GMRId].isDirty()) {
+    if (GMRVals[GMRId].hasValue()) {
         Builder.CreateStore(GMRVals[GMRId].getValue(), GMRStates[GMRId]);
         /* GMRVals[GMRId].setDirty(false); */
         // GMRValue should be invalidated once branch.

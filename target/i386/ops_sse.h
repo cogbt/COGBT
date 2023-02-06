@@ -1064,6 +1064,9 @@ void helper_ucomiss(CPUX86State *env, Reg *d, Reg *s)
     s1 = s->ZMM_S(0);
     ret = float32_compare_quiet(s0, s1, &env->sse_status);
     CC_SRC = comis_eflags[ret + 1];
+#ifdef CONFIG_COGBT
+    env->eflags = (env->eflags & ~(CC_Z | CC_P | CC_C)) | comis_eflags[ret +1 ];
+#endif
 }
 
 void helper_comiss(CPUX86State *env, Reg *d, Reg *s)
@@ -1076,7 +1079,7 @@ void helper_comiss(CPUX86State *env, Reg *d, Reg *s)
     ret = float32_compare(s0, s1, &env->sse_status);
     CC_SRC = comis_eflags[ret + 1];
 #ifdef CONFIG_COGBT
-    env->eflags = CC_SRC;
+    env->eflags = (env->eflags & ~(CC_Z | CC_P | CC_C)) | comis_eflags[ret +1 ];
 #endif
 }
 
@@ -1089,6 +1092,9 @@ void helper_ucomisd(CPUX86State *env, Reg *d, Reg *s)
     d1 = s->ZMM_D(0);
     ret = float64_compare_quiet(d0, d1, &env->sse_status);
     CC_SRC = comis_eflags[ret + 1];
+#ifdef CONFIG_COGBT
+    env->eflags = (env->eflags & ~(CC_Z | CC_P | CC_C)) | comis_eflags[ret +1 ];
+#endif
 }
 
 void helper_comisd(CPUX86State *env, Reg *d, Reg *s)
@@ -1100,6 +1106,9 @@ void helper_comisd(CPUX86State *env, Reg *d, Reg *s)
     d1 = s->ZMM_D(0);
     ret = float64_compare(d0, d1, &env->sse_status);
     CC_SRC = comis_eflags[ret + 1];
+#ifdef CONFIG_COGBT
+    env->eflags = (env->eflags & ~(CC_Z | CC_P | CC_C)) | comis_eflags[ret +1 ];
+#endif
 }
 
 uint32_t helper_movmskps(CPUX86State *env, Reg *s)

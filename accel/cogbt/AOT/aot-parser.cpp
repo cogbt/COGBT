@@ -135,7 +135,7 @@ int AOTParser::FindFunctionInfo(uint64_t HostAddr) {
             right = mid;
         }
     }
-    assert(left == right && left < (int)FuncInfos.size());
+    assert(left == right && left <= (int)FuncInfos.size());
     return left;
 }
 
@@ -194,7 +194,7 @@ int AOTParser::FindFunctionInfoAtPC(uint64_t pc) {
             right = mid;
         }
     }
-    assert(left == right && left < (int)FuncInfos.size());
+    assert(left == right && left <= (int)FuncInfos.size());
     return -1;
 }
 
