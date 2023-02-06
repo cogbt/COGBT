@@ -937,10 +937,6 @@ void X86Translator::translate_phsubw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction phsubw\n";
     exit(-1);
 }
-void X86Translator::translate_pinsrw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pinsrw\n";
-    exit(-1);
-}
 void X86Translator::translate_pmaddubsw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pmaddubsw\n";
     exit(-1);

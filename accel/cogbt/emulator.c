@@ -112,6 +112,14 @@ int GuestEIPOffset(void) {
     return offsetof(CPUX86State, eip);
 }
 
+int GuestZMMRegOffset(int reg_idx, int reg_start_byte) {
+    return offsetof(CPUX86State, xmm_regs[reg_idx].ZMM_B(reg_start_byte));
+}
+
+int GuestMMXRegOffset(int reg_idx, int reg_start_byte) {
+    return offsetof(CPUX86State, fpregs[reg_idx].mmx.MMX_B(reg_start_byte));
+}
+
 void helper_raise_syscall(void *p, uint64_t next_eip) {
     CPUX86State *env = (CPUX86State *)p;
     CPUState *cpu = env_cpu(env);

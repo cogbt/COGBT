@@ -1,4 +1,5 @@
 #include "x86-translator.h"
+#include "emulator.h"
 
 void X86Translator::GenMMXSSEHelper(std::string Name, GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
@@ -487,4 +488,35 @@ void X86Translator::translate_minsd(GuestInst *Inst) {
 void X86Translator::translate_minss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction minss\n";
     exit(-1);
+}
+
+void X86Translator::translate_pinsrw(GuestInst *Inst) {
+    // pinsrw mm, r32/m16, imm8 OR pinrw xmm, r32/m16, imm8
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd0(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(2));
+    if (SrcOpnd2.isMMX()) {
+        /* llvm_unreachable("Unsupported pinsrw mmx yet"); */
+        Value *Src = LoadOperand(InstHdl.getOpnd(1), Int16Ty);
+        // Calculate dest addr.
+        int RegStartByte = (SrcOpnd0.getIMM() & 3) << 1;
+        int RegIdx = SrcOpnd2.GetMMXID();
+        Value *Off = ConstInt(Int64Ty, GuestMMXRegOffset(RegIdx, RegStartByte));
+        Value *DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, Off);
+        DestAddr = Builder.CreateBitCast(DestAddr, Int16PtrTy);
+        // Store Src to Dest
+        Builder.CreateStore(Src, DestAddr);
+    } else {
+        assert(SrcOpnd2.isXMM());
+        Value *Src = LoadOperand(InstHdl.getOpnd(1), Int16Ty);
+        // Calculate dest addr.
+        int RegStartByte = (SrcOpnd0.getIMM() & 7) << 1;
+        int RegIdx = SrcOpnd2.GetXMMID();
+        Value *Off = ConstInt(Int64Ty, GuestZMMRegOffset(RegIdx, RegStartByte));
+        Value *DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, Off);
+        DestAddr = Builder.CreateBitCast(DestAddr, Int16PtrTy);
+        // Store Src to Dest
+        Builder.CreateStore(Src, DestAddr);
+    }
 }
