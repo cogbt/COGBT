@@ -1,18 +1,6 @@
 #include "emulator.h"
 #include "x86-translator.h"
 
-void X86Translator::translate_addpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction addpd\n";
-    exit(-1);
-}
-void X86Translator::translate_addps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction addps\n";
-    exit(-1);
-}
-void X86Translator::translate_addss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction addss\n";
-    exit(-1);
-}
 void X86Translator::translate_addsubpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction addsubpd\n";
     exit(-1);
@@ -60,14 +48,6 @@ void X86Translator::translate_andnpd(GuestInst *Inst) {
 }
 void X86Translator::translate_andnps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction andnps\n";
-    exit(-1);
-}
-void X86Translator::translate_andpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction andpd\n";
-    exit(-1);
-}
-void X86Translator::translate_andps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction andps\n";
     exit(-1);
 }
 void X86Translator::translate_arpl(GuestInst *Inst) {
@@ -348,10 +328,6 @@ void X86Translator::translate_vmovapd(GuestInst *Inst) {
 }
 void X86Translator::translate_vmovaps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmovaps\n";
-    exit(-1);
-}
-void X86Translator::translate_xorps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction xorps\n";
     exit(-1);
 }
 void X86Translator::translate_getsec(GuestInst *Inst) {
@@ -4155,38 +4131,6 @@ void X86Translator::translate_cmpnless(GuestInst *Inst) {
 }
 void X86Translator::translate_cmpordss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cmpordss\n";
-    exit(-1);
-}
-void X86Translator::translate_cmpeqsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpeqsd\n";
-    exit(-1);
-}
-void X86Translator::translate_cmpltsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpltsd\n";
-    exit(-1);
-}
-void X86Translator::translate_cmplesd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmplesd\n";
-    exit(-1);
-}
-void X86Translator::translate_cmpunordsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpunordsd\n";
-    exit(-1);
-}
-void X86Translator::translate_cmpneqsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpneqsd\n";
-    exit(-1);
-}
-void X86Translator::translate_cmpnltsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpnltsd\n";
-    exit(-1);
-}
-void X86Translator::translate_cmpnlesd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpnlesd\n";
-    exit(-1);
-}
-void X86Translator::translate_cmpordsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpordsd\n";
     exit(-1);
 }
 void X86Translator::translate_cmpps(GuestInst *Inst) {

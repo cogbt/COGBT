@@ -425,12 +425,64 @@ void X86Translator::translate_mulsd(GuestInst *Inst) {
 }
 
 void X86Translator::translate_mulss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction mulss\n";
-    exit(-1);
+    // mulss xmm1, xmm2/m32
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    // helper_mulss llvm type
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty}, false);
+
+    if (SrcOpnd.isMem()) {
+        Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+        FlushXMMT0(MemVal, Int32PtrTy);
+        Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
+        Value *SrcXMMID = ConstInt(Int64Ty, -1); // -1 means src is xmm_t0
+        CallFunc(FTy, "helper_mulss", {CPUEnv, DestXMMID, SrcXMMID});
+    } else {
+        Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
+        Value *SrcXMMID = ConstInt(Int64Ty, SrcOpnd.GetXMMID());
+        CallFunc(FTy, "helper_mulss", {CPUEnv, DestXMMID, SrcXMMID});
+    }
 }
+
 void X86Translator::translate_mulx(GuestInst *Inst) {
     dbgs() << "Untranslated instruction mulx\n";
     exit(-1);
+}
+
+void X86Translator::translate_addpd(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction addpd\n";
+    exit(-1);
+}
+
+void X86Translator::translate_addps(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction addps\n";
+    exit(-1);
+}
+
+void X86Translator::translate_addss(GuestInst *Inst) {
+    // addss xmm1, xmm2/m32
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    // helper_addss llvm type
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty}, false);
+
+    if (SrcOpnd.isMem()) {
+        Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+        FlushXMMT0(MemVal, Int32PtrTy);
+        Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
+        Value *SrcXMMID = ConstInt(Int64Ty, -1); // -1 means src is xmm_t0
+        CallFunc(FTy, "helper_addss", {CPUEnv, DestXMMID, SrcXMMID});
+    } else {
+        Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
+        Value *SrcXMMID = ConstInt(Int64Ty, SrcOpnd.GetXMMID());
+        CallFunc(FTy, "helper_addss", {CPUEnv, DestXMMID, SrcXMMID});
+    }
 }
 
 void X86Translator::translate_addsd(GuestInst *Inst) {
@@ -487,8 +539,26 @@ void X86Translator::translate_minsd(GuestInst *Inst) {
 }
 
 void X86Translator::translate_minss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction minss\n";
-    exit(-1);
+    // minss xmm1, xmm2/m32
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    // helper_minss llvm type
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty}, false);
+
+    if (SrcOpnd.isMem()) {
+        Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+        FlushXMMT0(MemVal, Int32PtrTy);
+        Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
+        Value *SrcXMMID = ConstInt(Int64Ty, -1); // -1 means src is xmm_t0
+        CallFunc(FTy, "helper_minss", {CPUEnv, DestXMMID, SrcXMMID});
+    } else {
+        Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
+        Value *SrcXMMID = ConstInt(Int64Ty, SrcOpnd.GetXMMID());
+        CallFunc(FTy, "helper_minss", {CPUEnv, DestXMMID, SrcXMMID});
+    }
 }
 
 void X86Translator::translate_pinsrw(GuestInst *Inst) {
@@ -753,4 +823,109 @@ void X86Translator::translate_xorpd(GuestInst *Inst) {
     Value *SrcXMMID = ConstInt(Int64Ty, SrcXMM);
     Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
     CallFunc(FuncTy, "helper_xorpd", {CPUEnv, DestXMMID, SrcXMMID});
+}
+
+void X86Translator::translate_xorps(GuestInst *Inst) {
+    // xorps xmm1, xmm2/m128
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    int SrcXMM = -1;
+    if (SrcOpnd.isMem()) {
+        Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+        FlushXMMT0(MemVal);
+    } else {
+        SrcXMM = SrcOpnd.GetXMMID();
+    }
+
+    FunctionType *FuncTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty}, false);
+    Value *SrcXMMID = ConstInt(Int64Ty, SrcXMM);
+    Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
+    CallFunc(FuncTy, "helper_xorps", {CPUEnv, DestXMMID, SrcXMMID});
+}
+
+void X86Translator::translate_andpd(GuestInst *Inst) {
+    // andpd xmm1, xmm2/m128
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    int SrcXMM = -1;
+    if (SrcOpnd.isMem()) {
+        Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+        FlushXMMT0(MemVal);
+    } else {
+        SrcXMM = SrcOpnd.GetXMMID();
+    }
+
+    FunctionType *FuncTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty}, false);
+    Value *SrcXMMID = ConstInt(Int64Ty, SrcXMM);
+    Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
+    CallFunc(FuncTy, "helper_andpd", {CPUEnv, DestXMMID, SrcXMMID});
+}
+
+void X86Translator::translate_andps(GuestInst *Inst) {
+    // andps xmm1, xmm2/m128
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    int SrcXMM = -1;
+    if (SrcOpnd.isMem()) {
+        Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+        FlushXMMT0(MemVal);
+    } else {
+        SrcXMM = SrcOpnd.GetXMMID();
+    }
+
+    FunctionType *FuncTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty}, false);
+    Value *SrcXMMID = ConstInt(Int64Ty, SrcXMM);
+    Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
+    CallFunc(FuncTy, "helper_andps", {CPUEnv, DestXMMID, SrcXMMID});
+}
+
+#define SSE_HELPER_CMP(name)                                                   \
+X86InstHandler InstHdl(Inst);                                                  \
+X86OperandHandler Opnd0(InstHdl.getOpnd(0));                                   \
+X86OperandHandler Opnd1(InstHdl.getOpnd(1));                                   \
+Value *SrcXMMID = ConstInt(Int64Ty, Opnd0.GetXMMID());                         \
+Value *DestXMMID = ConstInt(Int64Ty, Opnd1.GetXMMID());                        \
+FunctionType *FTy =                                                            \
+    FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty}, false);           \
+CallFunc(FTy, "helper_" #name, {CPUEnv, DestXMMID, SrcXMMID});
+
+void X86Translator::translate_cmpeqsd(GuestInst *Inst) {
+    SSE_HELPER_CMP(cmpeqsd)
+}
+
+void X86Translator::translate_cmpltsd(GuestInst *Inst) {
+    SSE_HELPER_CMP(cmpltsd)
+}
+
+void X86Translator::translate_cmplesd(GuestInst *Inst) {
+    SSE_HELPER_CMP(cmplesd)
+}
+
+void X86Translator::translate_cmpunordsd(GuestInst *Inst) {
+    SSE_HELPER_CMP(cmpunordsd)
+}
+
+void X86Translator::translate_cmpneqsd(GuestInst *Inst) {
+    SSE_HELPER_CMP(cmpneqsd)
+}
+
+void X86Translator::translate_cmpnltsd(GuestInst *Inst) {
+    SSE_HELPER_CMP(cmpnltsd)
+}
+
+void X86Translator::translate_cmpnlesd(GuestInst *Inst) {
+    SSE_HELPER_CMP(cmpnlesd)
+}
+
+void X86Translator::translate_cmpordsd(GuestInst *Inst) {
+    SSE_HELPER_CMP(cmpordsd)
 }

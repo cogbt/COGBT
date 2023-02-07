@@ -33,6 +33,7 @@ struct KeyVal SymTable[] = {
     {"helper_comiss", helper_comiss_wrapper},
     {"helper_comisd", helper_comisd_wrapper},
     {"helper_minsd", helper_minsd_wrapper},
+    {"helper_minss", helper_minss_wrapper},
     {"helper_paddb_xmm", helper_paddb_xmm_wrapper},
     {"helper_paddl_xmm", helper_paddl_xmm_wrapper},
     {"helper_paddw_xmm", helper_paddw_xmm_wrapper},
@@ -41,7 +42,14 @@ struct KeyVal SymTable[] = {
     {"helper_cvtsq2sd", helper_cvtsq2sd_wrapper},
     {"helper_cvttsd2si", helper_cvttsd2si_wrapper},
     {"helper_cvttsd2sq", helper_cvttsd2sq_wrapper},
+    {"helper_cvttss2si", helper_cvttss2si_wrapper},
+    {"helper_cvttss2sq", helper_cvttss2sq_wrapper},
+    {"helper_cvtss2sd", helper_cvtss2sd_wrapper},
+    {"helper_cvtsd2ss", helper_cvtsd2ss_wrapper},
+    {"helper_cvtsi2ss", helper_cvtsi2ss_wrapper},
+    {"helper_cvtsq2ss", helper_cvtsq2ss_wrapper},
     {"helper_mulsd", helper_mulsd_wrapper},
+    {"helper_mulss", helper_mulss_wrapper},
     {"helper_divsd", helper_divsd_wrapper},
     {"helper_divss", helper_divss_wrapper},
     {"helper_subsd", helper_subsd_wrapper},
@@ -51,9 +59,26 @@ struct KeyVal SymTable[] = {
     {"helper_maxsd", helper_maxsd_wrapper},
     {"helper_maxss", helper_maxss_wrapper},
     {"helper_addsd", helper_addsd_wrapper},
+    {"helper_addss", helper_addss_wrapper},
     {"helper_xorpd", helper_xorpd_wrapper},
+    {"helper_xorps", helper_xorps_wrapper},
+    {"helper_andpd", helper_andpd_wrapper},
+    {"helper_andps", helper_andps_wrapper},
     {"helper_fcomi_ST0_FT0_cogbt", helper_fcomi_ST0_FT0_wrapper},
     {"helper_fucomi_ST0_FT0_cogbt", helper_fucomi_ST0_FT0_wrapper},
+#define SSE_HELPER_CMP_BINDING(name) \
+    {"helper_" #name "ps", helper_ ## name ## ps_wrapper}, \
+    {"helper_" #name "ss", helper_ ## name ## ss_wrapper}, \
+    {"helper_" #name "pd", helper_ ## name ## pd_wrapper}, \
+    {"helper_" #name "sd", helper_ ## name ## sd_wrapper},
+    SSE_HELPER_CMP_BINDING(cmpeq)
+    SSE_HELPER_CMP_BINDING(cmplt)
+    SSE_HELPER_CMP_BINDING(cmple)
+    SSE_HELPER_CMP_BINDING(cmpunord)
+    SSE_HELPER_CMP_BINDING(cmpneq)
+    SSE_HELPER_CMP_BINDING(cmpnlt)
+    SSE_HELPER_CMP_BINDING(cmpnle)
+    SSE_HELPER_CMP_BINDING(cmpord)
 
     {"helper_raise_syscall", helper_raise_syscall},
     {"helper_cogbt_lookup_tb_ptr", helper_cogbt_lookup_tb_ptr},
@@ -335,6 +360,16 @@ void helper_mulsd_wrapper(void *p, int dest, int src) {
     helper_mulsd(env, d, s);
 }
 
+void helper_mulss_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_mulss(env, d, s);
+}
+
 void helper_addsd_wrapper(void *p, int dest, int src) {
     CPUX86State *env = (CPUX86State *)p;
     ZMMReg *d = &env->xmm_regs[dest];
@@ -425,6 +460,26 @@ void helper_maxss_wrapper(void *p, int dest, int src) {
     helper_maxss(env, d, s);
 }
 
+void helper_addss_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_addss(env, d, s);
+}
+
+void helper_minss_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_minss(env, d, s);
+}
+
 void helper_xorpd_wrapper(void *p, int dest, int src) {
     CPUX86State *env = (CPUX86State *)p;
     ZMMReg *d = &env->xmm_regs[dest];
@@ -433,6 +488,36 @@ void helper_xorpd_wrapper(void *p, int dest, int src) {
         s = &env->xmm_regs[src];
     }
     helper_pxor_xmm(env, d, s);
+}
+
+void helper_xorps_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_pxor_xmm(env, d, s);
+}
+
+void helper_andpd_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_pand_xmm(env, d, s);
+}
+
+void helper_andps_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_pand_xmm(env, d, s);
 }
 
 void helper_fucomi_ST0_FT0_wrapper(void *p) {
@@ -464,3 +549,88 @@ int64_t helper_cvttsd2sq_wrapper(void *p, int src) {
     }
     return helper_cvttsd2sq(env, s);
 }
+
+int32_t helper_cvttss2si_wrapper(void *p, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    return helper_cvttss2si(env, s);
+}
+
+int64_t helper_cvttss2sq_wrapper(void *p, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    return helper_cvttss2sq(env, s);
+}
+
+void helper_cvtss2sd_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_cvtss2sd(env, d, s);
+}
+
+void helper_cvtsd2ss_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_cvtsd2ss(env, d, s);
+}
+
+void helper_cvtsi2ss_wrapper(void *p, int dest, int64_t src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    helper_cvtsi2ss(env, d, src);
+}
+
+void helper_cvtsq2ss_wrapper(void *p, int dest, int64_t src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    helper_cvtsq2ss(env, d, src);
+}
+
+#define SSE_HELPER_CMP_WRAPPER(name)                                           \
+void helper_ ## name ## ps_wrapper(void *p, int dest, int src) {               \
+    CPUX86State *env = (CPUX86State *)p;                                       \
+    ZMMReg *d = &env->xmm_regs[dest];                                          \
+    ZMMReg *s = &env->xmm_regs[src];                                           \
+    helper_ ## name ## ps(env, d, s);                                        \
+}                                                                              \
+void helper_ ## name ## ss_wrapper(void *p, int dest, int src) {               \
+    CPUX86State *env = (CPUX86State *)p;                                       \
+    ZMMReg *d = &env->xmm_regs[dest];                                          \
+    ZMMReg *s = &env->xmm_regs[src];                                           \
+    helper_ ## name ## ss(env, d, s);                                        \
+}                                                                              \
+void helper_ ## name ## pd_wrapper(void *p, int dest, int src) {               \
+    CPUX86State *env = (CPUX86State *)p;                                       \
+    ZMMReg *d = &env->xmm_regs[dest];                                          \
+    ZMMReg *s = &env->xmm_regs[src];                                           \
+    helper_ ## name ## pd(env, d, s);                                        \
+}                                                                              \
+void helper_ ## name ## sd_wrapper(void *p, int dest, int src) {               \
+    CPUX86State *env = (CPUX86State *)p;                                       \
+    ZMMReg *d = &env->xmm_regs[dest];                                          \
+    ZMMReg *s = &env->xmm_regs[src];                                           \
+    helper_ ## name ## sd(env, d, s);                                        \
+}
+
+SSE_HELPER_CMP_WRAPPER(cmpeq)
+SSE_HELPER_CMP_WRAPPER(cmplt)
+SSE_HELPER_CMP_WRAPPER(cmple)
+SSE_HELPER_CMP_WRAPPER(cmpunord)
+SSE_HELPER_CMP_WRAPPER(cmpneq)
+SSE_HELPER_CMP_WRAPPER(cmpnlt)
+SSE_HELPER_CMP_WRAPPER(cmpnle)
+SSE_HELPER_CMP_WRAPPER(cmpord)
