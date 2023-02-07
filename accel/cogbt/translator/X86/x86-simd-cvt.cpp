@@ -158,7 +158,7 @@ void X86Translator::translate_cvttsd2si(GuestInst *Inst) {
     } else {
         FunctionType *FTy =
             FunctionType::get(Int64Ty, {Int8PtrTy, Int64Ty}, false);
-        Dest = CallFunc(FTy, "helper_cvttsd2dq", {CPUEnv, SrcXMMID});
+        Dest = CallFunc(FTy, "helper_cvttsd2sq", {CPUEnv, SrcXMMID});
     }
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
