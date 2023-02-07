@@ -19,25 +19,25 @@ struct KeyVal SymTable[] = {
     {"helper_idivq_EAX", helper_idivq_EAX_wrapper},
 
     {"helper_rdtsc", helper_rdtsc_wrapper},
-    {"helper_pxor_xmm", helper_pxor_xmm_wrapper},
-    {"helper_pxor_mmx", helper_pxor_mmx_wrapper},
-    {"helper_pcmpeqb_xmm", helper_pcmpeqb_xmm_wrapper},
-    {"helper_pcmpeqb_mmx", helper_pcmpeqb_mmx_wrapper},
+    /* {"helper_pxor_xmm", helper_pxor_xmm_wrapper}, */
+    /* {"helper_pxor_mmx", helper_pxor_mmx_wrapper}, */
+    /* {"helper_pcmpeqb_xmm", helper_pcmpeqb_xmm_wrapper}, */
+    /* {"helper_pcmpeqb_mmx", helper_pcmpeqb_mmx_wrapper}, */
     {"helper_pmovmskb_xmm", helper_pmovmskb_xmm_wrapper},
     {"helper_pmovmskb_mmx", helper_pmovmskb_mmx_wrapper},
-    {"helper_punpcklbw_xmm", helper_punpcklbw_xmm_wrapper},
-    {"helper_punpcklbw_mmx", helper_punpcklbw_mmx_wrapper},
-    {"helper_punpcklwd_xmm", helper_punpcklwd_xmm_wrapper},
-    {"helper_punpcklwd_mmx", helper_punpcklwd_mmx_wrapper},
+    /* {"helper_punpcklbw_xmm", helper_punpcklbw_xmm_wrapper}, */
+    /* {"helper_punpcklbw_mmx", helper_punpcklbw_mmx_wrapper}, */
+    /* {"helper_punpcklwd_xmm", helper_punpcklwd_xmm_wrapper}, */
+    /* {"helper_punpcklwd_mmx", helper_punpcklwd_mmx_wrapper}, */
     {"helper_pshufd", helper_pshufd_xmm_wrapper},
     {"helper_comiss", helper_comiss_wrapper},
     {"helper_comisd", helper_comisd_wrapper},
     {"helper_minsd", helper_minsd_wrapper},
     {"helper_minss", helper_minss_wrapper},
-    {"helper_paddb_xmm", helper_paddb_xmm_wrapper},
-    {"helper_paddl_xmm", helper_paddl_xmm_wrapper},
-    {"helper_paddw_xmm", helper_paddw_xmm_wrapper},
-    {"helper_paddq_xmm", helper_paddq_xmm_wrapper},
+    /* {"helper_paddb_xmm", helper_paddb_xmm_wrapper}, */
+    /* {"helper_paddl_xmm", helper_paddl_xmm_wrapper}, */
+    /* {"helper_paddw_xmm", helper_paddw_xmm_wrapper}, */
+    /* {"helper_paddq_xmm", helper_paddq_xmm_wrapper}, */
     {"helper_cvtsi2sd", helper_cvtsi2sd_wrapper},
     {"helper_cvtsq2sd", helper_cvtsq2sd_wrapper},
     {"helper_cvttsd2si", helper_cvttsd2si_wrapper},
@@ -111,6 +111,10 @@ int GuestMMXT0Offset(void) {
 
 int GuestXMMOffset(int idx) {
     return offsetof(CPUX86State, xmm_regs[idx]);
+}
+
+int GuestMMXOffset(int idx) {
+    return offsetof(CPUX86State, fpregs[idx].mmx);
 }
 
 int GuestFPUOffset(int idx) {

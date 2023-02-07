@@ -1,6 +1,6 @@
 #include "x86-translator.h"
 #include "emulator.h"
-
+#if 0
 void X86Translator::GenMMXSSEHelper(std::string Name, GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
 
@@ -29,16 +29,63 @@ void X86Translator::GenMMXSSEHelper(std::string Name, GuestInst *Inst) {
         if (MemVal) {
             FlushMMXT0(MemVal);
             Value *DestMMXID = ConstInt(Int64Ty, DestOpnd.GetMMXID());
-            Value *SrcMMXID = ConstInt(Int64Ty, SrcOpnd.GetMMXID());
+            Value *SrcMMXID = ConstInt(Int64Ty, -1);
             CallFunc(FuncTy, Name + "_mmx", {CPUEnv, DestMMXID, SrcMMXID});
         } else {
             Value *DestMMXID = ConstInt(Int64Ty, DestOpnd.GetMMXID());
-            Value *SrcMMXID = ConstInt(Int64Ty, -1);
+            Value *SrcMMXID = ConstInt(Int64Ty, SrcOpnd.GetMMXID());
             CallFunc(FuncTy, Name + "_mmx", {CPUEnv, DestMMXID, SrcMMXID});
         }
     }
 }
+#endif
+void X86Translator::GenMMXSSEHelper(std::string Name, GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
 
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *MemVal = nullptr;
+    // helper_Name_xxx function type.
+    FunctionType *FuncTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64PtrTy, Int64PtrTy}, false);
+
+    Value *SrcOff = nullptr, *SrcAddr = nullptr;
+    Value *DestOff = nullptr, *DestAddr = nullptr;
+    if (SrcOpnd.isMem())
+        MemVal = LoadOperand(InstHdl.getOpnd(0));
+    if (DestOpnd.isXMM()) {
+        if (MemVal) {
+            FlushXMMT0(MemVal);
+            SrcOff = ConstInt(Int64Ty, GuestXMMT0Offset());
+        } else {
+            SrcOff = ConstInt(Int64Ty, GuestXMMOffset(SrcOpnd.GetXMMID()));
+        }
+
+        SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcOff);
+        SrcAddr = Builder.CreateBitCast(SrcAddr, Int64PtrTy);
+
+        DestOff = ConstInt(Int64Ty, GuestXMMOffset(DestOpnd.GetXMMID()));
+        DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestOff);
+        DestAddr = Builder.CreateBitCast(DestAddr, Int64PtrTy);
+
+        CallFunc(FuncTy, Name + "_xmm", {CPUEnv, DestAddr, SrcAddr});
+    } else { // MMX
+        if (MemVal) {
+            FlushMMXT0(MemVal);
+            SrcOff = ConstInt(Int64Ty, GuestMMXT0Offset());
+        } else {
+            SrcOff = ConstInt(Int64Ty, GuestMMXOffset(SrcOpnd.GetMMXID()));
+        }
+        SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcOff);
+        SrcAddr = Builder.CreateBitCast(SrcAddr, Int64PtrTy);
+
+        DestOff = ConstInt(Int64Ty, GuestMMXOffset(DestOpnd.GetMMXID()));
+        DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestOff);
+        DestAddr = Builder.CreateBitCast(DestAddr, Int64PtrTy);
+
+        CallFunc(FuncTy, Name + "_mmx", {CPUEnv, DestAddr, SrcAddr});
+    }
+}
 void X86Translator::translate_paddb(GuestInst *Inst) {
     GenMMXSSEHelper("helper_paddb", Inst);
 }
