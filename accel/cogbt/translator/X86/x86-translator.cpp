@@ -618,22 +618,32 @@ void X86Translator::AddExternalSyms() {
     EE->addGlobalMapping("helper_idivq_EAX", (uint64_t)helper_idivq_EAX_wrapper);
 
     EE->addGlobalMapping("helper_rdtsc", (uint64_t)helper_rdtsc_wrapper);
-    EE->addGlobalMapping("helper_pxor_xmm", (uint64_t)helper_pxor_xmm_wrapper);
-    EE->addGlobalMapping("helper_pxor_mmx", (uint64_t)helper_pxor_mmx_wrapper);
-    EE->addGlobalMapping("helper_pcmpeqb_xmm", (uint64_t)helper_pcmpeqb_xmm_wrapper);
-    EE->addGlobalMapping("helper_pcmpeqb_mmx", (uint64_t)helper_pcmpeqb_mmx_wrapper);
+    /* EE->addGlobalMapping("helper_pxor_xmm", (uint64_t)helper_pxor_xmm_wrapper); */
+    /* EE->addGlobalMapping("helper_pxor_mmx", (uint64_t)helper_pxor_mmx_wrapper); */
+    /* EE->addGlobalMapping("helper_pcmpeqb_xmm", (uint64_t)helper_pcmpeqb_xmm_wrapper); */
+    /* EE->addGlobalMapping("helper_pcmpeqb_mmx", (uint64_t)helper_pcmpeqb_mmx_wrapper); */
     EE->addGlobalMapping("helper_pmovmskb_xmm", (uint64_t)helper_pmovmskb_xmm_wrapper);
     EE->addGlobalMapping("helper_pmovmskb_mmx", (uint64_t)helper_pmovmskb_mmx_wrapper);
-    EE->addGlobalMapping("helper_punpcklbw_xmm", (uint64_t)helper_punpcklbw_xmm_wrapper);
-    EE->addGlobalMapping("helper_punpcklbw_mmx", (uint64_t)helper_punpcklbw_mmx_wrapper);
-    EE->addGlobalMapping("helper_punpcklwd_xmm", (uint64_t)helper_punpcklwd_xmm_wrapper);
-    EE->addGlobalMapping("helper_punpcklwd_mmx", (uint64_t)helper_punpcklwd_mmx_wrapper);
+    /* EE->addGlobalMapping("helper_punpcklbw_xmm", (uint64_t)helper_punpcklbw_xmm_wrapper); */
+    /* EE->addGlobalMapping("helper_punpcklbw_mmx", (uint64_t)helper_punpcklbw_mmx_wrapper); */
+    /* EE->addGlobalMapping("helper_punpcklwd_xmm", (uint64_t)helper_punpcklwd_xmm_wrapper); */
+    /* EE->addGlobalMapping("helper_punpcklwd_mmx", (uint64_t)helper_punpcklwd_mmx_wrapper); */
     EE->addGlobalMapping("helper_pshufd", (uint64_t)helper_pshufd_xmm_wrapper);
     EE->addGlobalMapping("helper_comiss", (uint64_t)helper_comiss_wrapper);
-    EE->addGlobalMapping("helper_paddb_xmm", (uint64_t)helper_paddb_xmm_wrapper);
-    EE->addGlobalMapping("helper_paddl_xmm", (uint64_t)helper_paddl_xmm_wrapper);
-    EE->addGlobalMapping("helper_paddw_xmm", (uint64_t)helper_paddw_xmm_wrapper);
-    EE->addGlobalMapping("helper_paddq_xmm", (uint64_t)helper_paddq_xmm_wrapper);
+    /* EE->addGlobalMapping("helper_paddb_xmm", (uint64_t)helper_paddb_xmm_wrapper); */
+    /* EE->addGlobalMapping("helper_paddl_xmm", (uint64_t)helper_paddl_xmm_wrapper); */
+    /* EE->addGlobalMapping("helper_paddw_xmm", (uint64_t)helper_paddw_xmm_wrapper); */
+    /* EE->addGlobalMapping("helper_paddq_xmm", (uint64_t)helper_paddq_xmm_wrapper); */
+    EE->addGlobalMapping("helper_cvtsi2sd" , (uint64_t)helper_cvtsi2sd_wrapper );
+    EE->addGlobalMapping("helper_cvtsq2sd" , (uint64_t)helper_cvtsq2sd_wrapper );
+    EE->addGlobalMapping("helper_cvttsd2si", (uint64_t)helper_cvttsd2si_wrapper);
+    EE->addGlobalMapping("helper_cvttsd2sq", (uint64_t)helper_cvttsd2sq_wrapper);
+    EE->addGlobalMapping("helper_cvttss2si", (uint64_t)helper_cvttss2si_wrapper);
+    EE->addGlobalMapping("helper_cvttss2sq", (uint64_t)helper_cvttss2sq_wrapper);
+    EE->addGlobalMapping("helper_cvtss2sd" , (uint64_t)helper_cvtss2sd_wrapper );
+    EE->addGlobalMapping("helper_cvtsd2ss" , (uint64_t)helper_cvtsd2ss_wrapper );
+    EE->addGlobalMapping("helper_cvtsi2ss" , (uint64_t)helper_cvtsi2ss_wrapper );
+    EE->addGlobalMapping("helper_cvtsq2ss" , (uint64_t)helper_cvtsq2ss_wrapper );
 
     EE->addGlobalMapping("helper_fcomi_ST0_FT0_cogbt", (uint64_t)helper_fcomi_ST0_FT0_wrapper);
     EE->addGlobalMapping("helper_fucomi_ST0_FT0_cogbt", (uint64_t)helper_fucomi_ST0_FT0_wrapper);
