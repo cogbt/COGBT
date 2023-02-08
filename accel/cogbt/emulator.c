@@ -64,6 +64,8 @@ struct KeyVal SymTable[] = {
     {"helper_xorps", helper_xorps_wrapper},
     {"helper_andpd", helper_andpd_wrapper},
     {"helper_andps", helper_andps_wrapper},
+    {"helper_pslldq_xmm", helper_pslldq_xmm_wrapper},
+    {"helper_psrldq_xmm", helper_psrldq_xmm_wrapper},
     {"helper_fcomi_ST0_FT0_cogbt", helper_fcomi_ST0_FT0_wrapper},
     {"helper_fucomi_ST0_FT0_cogbt", helper_fucomi_ST0_FT0_wrapper},
 #define SSE_HELPER_CMP_BINDING(name) \
@@ -156,6 +158,10 @@ int GuestZMMRegOffset(int reg_idx, int reg_start_byte) {
 
 int GuestMMXRegOffset(int reg_idx, int reg_start_byte) {
     return offsetof(CPUX86State, fpregs[reg_idx].mmx.MMX_B(reg_start_byte));
+}
+
+int GuestMXCSROffset(void) {
+    return offsetof(CPUX86State, mxcsr);
 }
 
 void helper_raise_syscall(void *p, uint64_t next_eip) {
@@ -340,6 +346,26 @@ void helper_paddq_xmm_wrapper(void *p, int dest, int src) {
         s = &env->xmm_regs[src];
     }
     helper_paddq_xmm(env, d, s);
+}
+
+void helper_pslldq_xmm_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_pslldq_xmm(env, d, s);
+}
+
+void helper_psrldq_xmm_wrapper(void *p, int dest, int src) {
+    CPUX86State *env = (CPUX86State *)p;
+    ZMMReg *d = &env->xmm_regs[dest];
+    ZMMReg *s = &env->xmm_t0;
+    if (src != -1) { // src is not memory
+        s = &env->xmm_regs[src];
+    }
+    helper_psrldq_xmm(env, d, s);
 }
 
 void helper_cvtsi2sd_wrapper(void *p, int dest, int64_t val) {

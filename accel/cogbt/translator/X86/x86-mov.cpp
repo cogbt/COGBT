@@ -6,6 +6,14 @@ void X86Translator::translate_lea(GuestInst *Inst) {
     StoreOperand(V, InstHdl.getOpnd(1));
 }
 
+void X86Translator::translate_xchg(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    Value *Dest = LoadOperand(InstHdl.getOpnd(1));
+    StoreOperand(Src, InstHdl.getOpnd(1));
+    StoreOperand(Dest, InstHdl.getOpnd(0));
+}
+
 void X86Translator::translate_mov(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     Value *Src = LoadOperand(InstHdl.getOpnd(0));
@@ -333,20 +341,12 @@ void X86Translator::translate_movhlps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movhlps\n";
     exit(-1);
 }
-void X86Translator::translate_movhpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movhpd\n";
-    exit(-1);
-}
 void X86Translator::translate_movhps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movhps\n";
     exit(-1);
 }
 void X86Translator::translate_movlhps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movlhps\n";
-    exit(-1);
-}
-void X86Translator::translate_movlpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movlpd\n";
     exit(-1);
 }
 void X86Translator::translate_movlps(GuestInst *Inst) {

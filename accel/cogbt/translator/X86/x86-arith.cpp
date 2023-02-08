@@ -271,10 +271,19 @@ void X86Translator::translate_das(GuestInst *Inst) {
     dbgs() << "Untranslated instruction das\n";
     exit(-1);
 }
+
 void X86Translator::translate_xadd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction xadd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    Value *Dest = LoadOperand(InstHdl.getOpnd(1));
+    Value *Sum = Builder.CreateAdd(Src, Dest);
+    StoreOperand(Dest, InstHdl.getOpnd(0));
+    StoreOperand(Sum, InstHdl.getOpnd(1));
+    CalcEflag(Inst, Sum, Src, Dest);
 }
+
 void X86Translator::translate_mulpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction mulpd\n";
     exit(-1);

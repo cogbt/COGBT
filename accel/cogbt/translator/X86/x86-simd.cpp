@@ -976,3 +976,67 @@ void X86Translator::translate_cmpnlesd(GuestInst *Inst) {
 void X86Translator::translate_cmpordsd(GuestInst *Inst) {
     SSE_HELPER_CMP(cmpordsd)
 }
+
+void X86Translator::translate_movlpd(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0), Int64Ty);
+    StoreOperand(Src, InstHdl.getOpnd(1));
+}
+
+void X86Translator::translate_movhpd(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    if (SrcOpnd.isXMM()) {
+        assert(DestOpnd.isMem());
+        // load high 64bit of xmm and store it to mem
+        int xmmid = SrcOpnd.GetXMMID();
+        Value *Off = ConstInt(Int64Ty, GuestZMMRegOffset(xmmid, 8));
+        Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, Off);
+        Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
+        Value *Src = Builder.CreateLoad(Int64Ty, Addr);
+        StoreOperand(Src, InstHdl.getOpnd(1));
+    } else {
+        assert(SrcOpnd.isMem() && DestOpnd.isXMM());
+        // load mem
+        Value *Src = LoadOperand(InstHdl.getOpnd(0));
+        // store it to high 64bit of xmm
+        int xmmid = DestOpnd.GetXMMID();
+        Value *Off = ConstInt(Int64Ty, GuestZMMRegOffset(xmmid, 8));
+        Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, Off);
+        Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
+        Builder.CreateStore(Src, Addr);
+    }
+}
+
+void X86Translator::translate_pslldq(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+    Value *Src = ConstInt(Int32Ty, SrcOpnd.getIMM());
+    FlushXMMT0(Src, Int32PtrTy);
+
+    assert(DestOpnd.isXMM() && "pslldq dest must be xmm reg");
+    Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty}, false);
+    CallFunc(FTy, "helper_pslldq_xmm",
+             {CPUEnv, DestXMMID, ConstInt(Int64Ty, -1)});
+}
+
+void X86Translator::translate_psrldq(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+    Value *Src = ConstInt(Int32Ty, SrcOpnd.getIMM());
+    FlushXMMT0(Src, Int32PtrTy);
+
+    assert(DestOpnd.isXMM() && "pslldq dest must be xmm reg");
+    Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty}, false);
+    CallFunc(FTy, "helper_psrldq_xmm",
+             {CPUEnv, DestXMMID, ConstInt(Int64Ty, -1)});
+}

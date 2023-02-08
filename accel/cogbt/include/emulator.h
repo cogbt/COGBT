@@ -27,6 +27,8 @@ int GuestMMXRegOffset(int reg_idx, int reg_start_byte);
 int GuestFPUOffset(int idx);
 int GuestST0Offset(void *p);
 
+int GuestMXCSROffset(void);
+
 void helper_raise_syscall(void *p, uint64_t next_eip);
 void helper_divb_AL_wrapper(void *p, uint64_t divisor);
 void helper_divw_AX_wrapper(void *p, uint64_t divisor);
@@ -85,6 +87,8 @@ void helper_xorpd_wrapper(void *p, int dest, int src);
 void helper_xorps_wrapper(void *p, int dest, int src);
 void helper_andpd_wrapper(void *p, int dest, int src);
 void helper_andps_wrapper(void *p, int dest, int src);
+void helper_pslldq_xmm_wrapper(void *p, int dest, int src);
+void helper_psrldq_xmm_wrapper(void *p, int dest, int src);
 #define SSE_HELPER_CMP_WRAPPER_PROT(name)                       \
 void helper_ ## name ## ps_wrapper(void *p, int dest, int src); \
 void helper_ ## name ## ss_wrapper(void *p, int dest, int src); \

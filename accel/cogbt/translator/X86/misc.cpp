@@ -670,10 +670,14 @@ void X86Translator::translate_lddqu(GuestInst *Inst) {
     dbgs() << "Untranslated instruction lddqu\n";
     exit(-1);
 }
+
 void X86Translator::translate_ldmxcsr(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction ldmxcsr\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    FunctionType *FTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
+    CallFunc(FTy, "helper_ldmxcsr", {CPUEnv, Src});
 }
+
 void X86Translator::translate_lds(GuestInst *Inst) {
     dbgs() << "Untranslated instruction lds\n";
     exit(-1);
@@ -1316,14 +1320,6 @@ void X86Translator::translate_prefetchw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction prefetchw\n";
     exit(-1);
 }
-void X86Translator::translate_pslldq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pslldq\n";
-    exit(-1);
-}
-void X86Translator::translate_psrldq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction psrldq\n";
-    exit(-1);
-}
 void X86Translator::translate_pswapd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pswapd\n";
     exit(-1);
@@ -1566,10 +1562,19 @@ void X86Translator::translate_sti(GuestInst *Inst) {
     dbgs() << "Untranslated instruction sti\n";
     exit(-1);
 }
+
 void X86Translator::translate_stmxcsr(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction stmxcsr\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+    CallFunc(FTy, "helper_update_mxcsr", CPUEnv);
+
+    Value *Off = ConstInt(Int64Ty, GuestMXCSROffset());
+    Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, Off);
+    Value *Src =
+        Builder.CreateLoad(Int32Ty, Builder.CreateBitCast(Addr, Int32PtrTy));
+    StoreOperand(Src, InstHdl.getOpnd(0));
 }
+
 void X86Translator::translate_str(GuestInst *Inst) {
     dbgs() << "Untranslated instruction str\n";
     exit(-1);
@@ -3979,10 +3984,6 @@ void X86Translator::translate_xacquire(GuestInst *Inst) {
 }
 void X86Translator::translate_xbegin(GuestInst *Inst) {
     dbgs() << "Untranslated instruction xbegin\n";
-    exit(-1);
-}
-void X86Translator::translate_xchg(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction xchg\n";
     exit(-1);
 }
 void X86Translator::translate_xcryptcbc(GuestInst *Inst) {
