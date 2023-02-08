@@ -25,10 +25,10 @@ struct KeyVal SymTable[] = {
     /* {"helper_pcmpeqb_mmx", helper_pcmpeqb_mmx_wrapper}, */
     {"helper_pmovmskb_xmm", helper_pmovmskb_xmm_wrapper},
     {"helper_pmovmskb_mmx", helper_pmovmskb_mmx_wrapper},
-    /* {"helper_punpcklbw_xmm", helper_punpcklbw_xmm_wrapper}, */
-    /* {"helper_punpcklbw_mmx", helper_punpcklbw_mmx_wrapper}, */
-    /* {"helper_punpcklwd_xmm", helper_punpcklwd_xmm_wrapper}, */
-    /* {"helper_punpcklwd_mmx", helper_punpcklwd_mmx_wrapper}, */
+    {"helper_punpcklbw_xmm", helper_punpcklbw_xmm_wrapper},
+    {"helper_punpcklbw_mmx", helper_punpcklbw_mmx_wrapper},
+    {"helper_punpcklwd_xmm", helper_punpcklwd_xmm_wrapper},
+    {"helper_punpcklwd_mmx", helper_punpcklwd_mmx_wrapper},
     {"helper_pshufd", helper_pshufd_xmm_wrapper},
     {"helper_comiss", helper_comiss_wrapper},
     {"helper_comisd", helper_comisd_wrapper},
