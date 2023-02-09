@@ -42,10 +42,6 @@ void X86Translator::translate_andn(GuestInst *Inst) {
     dbgs() << "Untranslated instruction andn\n";
     exit(-1);
 }
-void X86Translator::translate_andnpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction andnpd\n";
-    exit(-1);
-}
 void X86Translator::translate_andnps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction andnps\n";
     exit(-1);
@@ -314,14 +310,6 @@ void X86Translator::translate_fxsave64(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fxsave64\n";
     exit(-1);
 }
-void X86Translator::translate_orpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction orpd\n";
-    exit(-1);
-}
-void X86Translator::translate_orps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction orps\n";
-    exit(-1);
-}
 void X86Translator::translate_vmovapd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmovapd\n";
     exit(-1);
@@ -431,13 +419,63 @@ void X86Translator::translate_iretq(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_ucomisd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction ucomisd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler Opnd0(InstHdl.getOpnd(0));
+    X86OperandHandler Opnd1(InstHdl.getOpnd(1));
+
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int8PtrTy, Int8PtrTy}, false);
+
+    // Sync eflags to env
+    FlushGMRValue(X86Config::EFLAG);
+
+    // Get Src operand zmmreg offset in CPUX86State
+    Value *SrcXMMOff = nullptr;
+    if (Opnd0.isMem()) {
+        Value *Src = LoadOperand(InstHdl.getOpnd(0));
+        FlushXMMT0(Src, Int64PtrTy);
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMT0Offset());
+    } else
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd0.GetXMMID()));
+
+    Value *DestXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd1.GetXMMID()));
+    Value *SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcXMMOff);
+    Value *DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestXMMOff);
+    CallFunc(FTy, "helper_ucomisd", {CPUEnv, DestAddr, SrcAddr});
+
+    // Reload eflags from env
+    ReloadGMRValue(X86Config::EFLAG);
 }
+
 void X86Translator::translate_ucomiss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction ucomiss\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler Opnd0(InstHdl.getOpnd(0));
+    X86OperandHandler Opnd1(InstHdl.getOpnd(1));
+
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int8PtrTy, Int8PtrTy}, false);
+
+    // Sync eflags to env
+    FlushGMRValue(X86Config::EFLAG);
+
+    // Get Src operand zmmreg offset in CPUX86State
+    Value *SrcXMMOff = nullptr;
+    if (Opnd0.isMem()) {
+        Value *Src = LoadOperand(InstHdl.getOpnd(0));
+        FlushXMMT0(Src, Int32PtrTy);
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMT0Offset());
+    } else
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd0.GetXMMID()));
+
+    Value *DestXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd1.GetXMMID()));
+    Value *SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcXMMOff);
+    Value *DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestXMMOff);
+    CallFunc(FTy, "helper_ucomiss", {CPUEnv, DestAddr, SrcAddr});
+
+    // Reload eflags from env
+    ReloadGMRValue(X86Config::EFLAG);
 }
+
 void X86Translator::translate_vcomisd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vcomisd\n";
     exit(-1);
@@ -1618,10 +1656,6 @@ void X86Translator::translate_t1mskc(GuestInst *Inst) {
 
 void X86Translator::translate_ud2(GuestInst *Inst) {}
 
-void X86Translator::translate_tzcnt(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction tzcnt\n";
-    exit(-1);
-}
 void X86Translator::translate_tzmsk(GuestInst *Inst) {
     dbgs() << "Untranslated instruction tzmsk\n";
     exit(-1);

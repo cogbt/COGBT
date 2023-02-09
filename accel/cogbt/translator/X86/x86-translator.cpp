@@ -820,13 +820,19 @@ void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src0,
                GetSuffixAccordingType(Src1Ty);
         GetLBTIntrinsic(Name, Src0, Src1);
         break;
+    case X86_INS_SHLD:
+    case X86_INS_SHRD:
+        // Use x86add to calculate SF,ZF,PF and other flags will be calculated
+        // in translation function itself.
+        Name = std::string("llvm.loongarch.x86add") +
+               GetSuffixAccordingType(Dest->getType());
+        GetLBTIntrinsic(Name, Dest, ConstInt(Dest->getType(), 0));
+        break;
     case X86_INS_AAM:
     case X86_INS_AAD:
     case X86_INS_AAA:
     case X86_INS_DAA:
     case X86_INS_DAS:
-    case X86_INS_SHLD:
-    case X86_INS_SHRD:
     default:
         dbgs() << Inst->mnemonic << "\n";
         llvm_unreachable("Unhandled Inst");

@@ -893,6 +893,29 @@ void X86Translator::translate_xorps(GuestInst *Inst) {
     CallFunc(FuncTy, "helper_xorps", {CPUEnv, DestXMMID, SrcXMMID});
 }
 
+void X86Translator::translate_andnpd(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler Opnd0(InstHdl.getOpnd(0));
+    X86OperandHandler Opnd1(InstHdl.getOpnd(1));
+
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int8PtrTy, Int8PtrTy}, false);
+
+    // Get Src operand zmmreg offset in CPUX86State
+    Value *SrcXMMOff = nullptr;
+    if (Opnd0.isMem()) {
+        Value *Src = LoadOperand(InstHdl.getOpnd(0));
+        FlushXMMT0(Src);
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMT0Offset());
+    } else
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd0.GetXMMID()));
+
+    Value *DestXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd1.GetXMMID()));
+    Value *SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcXMMOff);
+    Value *DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestXMMOff);
+    CallFunc(FTy, "helper_pandn_xmm", {CPUEnv, DestAddr, SrcAddr});
+}
+
 void X86Translator::translate_andpd(GuestInst *Inst) {
     // andpd xmm1, xmm2/m128
     X86InstHandler InstHdl(Inst);
@@ -1039,4 +1062,32 @@ void X86Translator::translate_psrldq(GuestInst *Inst) {
         FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty}, false);
     CallFunc(FTy, "helper_psrldq_xmm",
              {CPUEnv, DestXMMID, ConstInt(Int64Ty, -1)});
+}
+
+void X86Translator::translate_orpd(GuestInst *Inst) {
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler Opnd0(InstHdl.getOpnd(0));
+    X86OperandHandler Opnd1(InstHdl.getOpnd(1));
+
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int8PtrTy, Int8PtrTy}, false);
+
+    // Get Src operand zmmreg offset in CPUX86State
+    Value *SrcXMMOff = nullptr;
+    if (Opnd0.isMem()) {
+        Value *Src = LoadOperand(InstHdl.getOpnd(0));
+        FlushXMMT0(Src);
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMT0Offset());
+    } else
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd0.GetXMMID()));
+
+    Value *DestXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd1.GetXMMID()));
+    Value *SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcXMMOff);
+    Value *DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestXMMOff);
+    CallFunc(FTy, "helper_por_xmm", {CPUEnv, DestAddr, SrcAddr});
+}
+
+void X86Translator::translate_orps(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction orps\n";
+    exit(-1);
 }
