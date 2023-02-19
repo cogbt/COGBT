@@ -68,6 +68,13 @@ AOTParser::AOTParser(uintptr_t CacheBegin, size_t CacheSize, const char *AOT)
         if (!AddrOrErr) {
             llvm_unreachable("Error AOT function address");
         }
+
+        // special handle prologue and epilogue, They will be extracted
+        // individually.
+        if (NameOrErr.get() == "AOTPrologue" ||
+            NameOrErr.get() == "AOTEpilogue")
+            continue;
+
         FuncInfos.emplace_back(NameOrErr.get(), AddrOrErr.get(), Sym.getSize());
     }
 
@@ -83,6 +90,14 @@ AOTParser::AOTParser(uintptr_t CacheBegin, size_t CacheSize, const char *AOT)
 
     // Add this object file to ExecutionEngine and wait for relocation
     EE->addObjectFile(std::move(OF));
+}
+
+void *AOTParser::ParsePrologue() {
+    return reinterpret_cast<void *>(EE->getFunctionAddress("AOTPrologue"));
+}
+
+void *AOTParser::ParseEpilogue() {
+    return reinterpret_cast<void *>(EE->getFunctionAddress("AOTEpilogue"));
 }
 
 void AOTParser::AddGlobalMapping(std::string Name, uint64_t Address) {

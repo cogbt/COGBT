@@ -757,16 +757,25 @@ void tcg_prologue_init(TCGContext *s)
 
 #ifdef CONFIG_COGBT
     size_t llvm_cache_size = s->code_gen_buffer_size >> 1;
-    s->translator =
-        create_llvm_translator((uintptr_t)s->code_ptr, llvm_cache_size);
+    if (aotfile) { // with AOT file, parse prologue/epilogue directly
+        parser =
+            create_aot_parser((uintptr_t)s->code_ptr, llvm_cache_size, aotfile);
+        cogbt_tb_exec = (tcg_prologue_fn *)parse_prologue(parser);
+        cogbt_code_gen_epilogue = (tcg_prologue_fn *)parse_epilogue(parser);
+        uint64_t tu_cache_begin = (uint64_t)get_current_code_cache_ptr(parser);
+        s->code_ptr = (void *)((tu_cache_begin + 3) & 3);
+    } else {
+        s->translator =
+            create_llvm_translator((uintptr_t)s->code_ptr, llvm_cache_size);
 
-    gen_prologue(s->translator);
-    cogbt_tb_exec = (tcg_prologue_fn *)llvm_compile(s->translator, true);
-    gen_epilogue(s->translator);
-    cogbt_code_gen_epilogue = llvm_compile(s->translator, true);
+        gen_prologue(s->translator);
+        cogbt_tb_exec = (tcg_prologue_fn *)llvm_compile(s->translator, true);
+        gen_epilogue(s->translator);
+        cogbt_code_gen_epilogue = llvm_compile(s->translator, true);
 
-    size_t llvm_code_size = llvm_get_code_size(s->translator);
-    s->code_ptr += ((llvm_code_size + 3) & ~3) >> 2;
+        size_t llvm_code_size = llvm_get_code_size(s->translator);
+        s->code_ptr += ((llvm_code_size + 3) & ~3) >> 2;
+    }
 #endif
 
 #ifdef TCG_TARGET_NEED_POOL_LABELS
@@ -781,10 +790,10 @@ void tcg_prologue_init(TCGContext *s)
 
 #ifdef CONFIG_COGBT
     // Only when we have aotfile should we create aot parser.
-    if (aotfile) {
-        parser =
-            create_aot_parser((uintptr_t)s->code_ptr, llvm_cache_size, aotfile);
-    }
+    /* if (aotfile) { */
+    /*     parser = */
+    /*         create_aot_parser((uintptr_t)s->code_ptr, llvm_cache_size, aotfile); */
+    /* } */
     s->code_ptr += ((llvm_cache_size + 3) & ~3) >> 2;
     tb_cache_begin = s->code_ptr;
     if (aotfile) {

@@ -72,6 +72,13 @@ public:
     void *ParseNextFunction(uint64_t *pc, size_t *tu_size,
                             size_t link_slots_offsets[2]);
 
+    /// ParsePrologue - Extract prologue native code and return it's address. If
+    /// there isn't a prologue function, return nullptr instead.
+    void *ParsePrologue();
+    /// ParseEpilogue - Extract epilogue native code and return it's address. If
+    /// there isn't a prologue function, return nullptr instead.
+    void *ParseEpilogue();
+
     /// GetCurrentCodeCachePtr - Get the first free address of memory manager
     /// code cache.
     void *GetCurrentCodeCachePtr();
