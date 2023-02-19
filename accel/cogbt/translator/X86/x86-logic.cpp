@@ -103,6 +103,7 @@ void X86Translator::translate_shld(GuestInst *Inst) {
     // Calculate the final dest value.
     Value *Result =
         Builder.CreateIntrinsic(Intrinsic::fshl, OpndTy, {Dest, Src, Shift});
+    StoreOperand(Result, InstHdl.getOpnd(2));
 
     // Calculate eflags.
     CalcEflag(Inst, Result, nullptr, nullptr);
@@ -164,6 +165,7 @@ void X86Translator::translate_shrd(GuestInst *Inst) {
     // Calculate the final dest value.
     Value *Result =
         Builder.CreateIntrinsic(Intrinsic::fshr, OpndTy, {Src, Dest, Shift});
+    StoreOperand(Result, InstHdl.getOpnd(2));
 
     // Calculate eflags.
     int opndbits = OpndTy->getIntegerBitWidth();

@@ -10,6 +10,7 @@ void X86Translator::DeclareExternalSymbols() {
     // Declare epilogue.
     FunctionType *FuncTy = FunctionType::get(VoidTy, false);
     Function::Create(FuncTy, Function::ExternalLinkage, "epilogue", Mod.get());
+    Function::Create(FuncTy, Function::ExternalLinkage, "AOTEpilogue", Mod.get());
     /* Function *EpilogFunc = Function::Create(FuncTy, Function::ExternalLinkage, */
     /*                                       "epilogue", Mod.get()); */
     /* EpilogFunc->addFnAttr(Attribute::NoReturn); */
@@ -123,10 +124,10 @@ Value *X86Translator::GetLBTFlag(int mask) {
 }
 
 void X86Translator::GenPrologue() {
-    InitializeModule();
+    /* InitializeModule(); */
 
     FunctionType *FuncTy = FunctionType::get(VoidTy, false);
-    TransFunc = Function::Create(FuncTy, Function::ExternalLinkage, "prologue",
+    TransFunc = Function::Create(FuncTy, Function::ExternalLinkage, "AOTPrologue",
                                  Mod.get());
     TransFunc->setCallingConv(CallingConv::C);
     TransFunc->addFnAttr(Attribute::NoReturn);
@@ -203,9 +204,9 @@ void X86Translator::GenPrologue() {
 }
 
 void X86Translator::GenEpilogue() {
-    InitializeModule();
+    /* InitializeModule(); */
 
-    TransFunc = Mod->getFunction("epilogue");
+    TransFunc = Mod->getFunction("AOTEpilogue");
     /* FunctionType *FuncTy = FunctionType::get(VoidTy, false); */
     /* TransFunc = Function::Create(FuncTy, Function::ExternalLinkage, "epilogue", */
     /*                              Mod.get()); */
@@ -843,7 +844,9 @@ void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src0,
 }
 
 void X86Translator::TranslateInitialize() {
-
+    // Gen prologue and epilogue IR.
+    GenPrologue();
+    GenEpilogue();
 }
 
 void X86Translator::TranslateFinalize() {
