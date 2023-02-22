@@ -8,6 +8,7 @@ extern "C" {
 #include <stdint.h>
 
 extern int aotmode;
+extern char *exec_path;
 
 int GetEAXOffset(void);
 int GetEBXOffset(void);

@@ -220,9 +220,11 @@ void LLVMTranslator::DeleteJIT(JITEventListener *Listener) {
 }
 
 void LLVMTranslator::EmitObjectCode() {
-    std::stringstream ss;
-    ss << std::hex << TU->GetTUEntry();
-    auto Filename(ss.str() + ".o");//"output.o";
+    /* std::stringstream ss; */
+    /* ss << std::hex << TU->GetTUEntry(); */
+    /* auto Filename(ss.str() + ".o");//"output.o"; */
+    std::string s(exec_path);
+    std::string Filename(s + ".aot");
     std::error_code EC;
     raw_fd_ostream dest(Filename, EC, sys::fs::OF_None);
 

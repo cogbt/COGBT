@@ -762,8 +762,8 @@ void tcg_prologue_init(TCGContext *s)
             create_aot_parser((uintptr_t)s->code_ptr, llvm_cache_size, aotfile);
         cogbt_tb_exec = (tcg_prologue_fn *)parse_prologue(parser);
         cogbt_code_gen_epilogue = (tcg_prologue_fn *)parse_epilogue(parser);
-        uint64_t tu_cache_begin = (uint64_t)get_current_code_cache_ptr(parser);
-        s->code_ptr = (void *)((tu_cache_begin + 3) & 3);
+        /* uint64_t tu_cache_begin = (uint64_t)get_current_code_cache_ptr(parser); */
+        /* s->code_ptr = (void *)((tu_cache_begin + 3) & 3); */
     } else {
         s->translator =
             create_llvm_translator((uintptr_t)s->code_ptr, llvm_cache_size);

@@ -347,6 +347,7 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
 #ifdef CONFIG_COGBT
 const void *HELPER(cogbt_lookup_tb_ptr)(CPUArchState *env)
 {
+    /* return cogbt_code_gen_epilogue; */
 #ifdef CONFIG_COGBT_DEBUG
     return cogbt_code_gen_epilogue;
 #else
@@ -359,7 +360,9 @@ const void *HELPER(cogbt_lookup_tb_ptr)(CPUArchState *env)
     cflags = curr_cflags(cpu);
 
     tb = tb_lookup(cpu, pc, cs_base, flags, cflags);
-    if (tb == NULL) {
+    // if target tb is qemu tb, we should do context_switch as reg_mapping isn't
+    // used in qemu.
+    if (tb == NULL || (void *)tb->tc.ptr >= tb_cache_begin) {
         return cogbt_code_gen_epilogue;
     }
 
@@ -964,6 +967,16 @@ void debug_breakpoint(uint64_t pc);
 void debug_breakpoint(uint64_t pc) {
     fprintf(stderr, "Debug Breakpoint At 0x%lx\n", pc);
 }
+extern char *exec_path;
+void dump_path(uint64_t pc);
+void dump_path (uint64_t pc) {
+    static FILE *pf = NULL;
+    if (!pf) {
+        pf = fopen(strcat(exec_path, ".path"), "w+");
+    }
+    assert(pf);
+    fprintf(pf, "0x%lx\n", pc);
+}
 #endif
 int cpu_exec(CPUState *cpu)
 {
@@ -1061,6 +1074,7 @@ int cpu_exec(CPUState *cpu)
             if (tb == NULL) {
                 mmap_lock();
                 /* fprintf(stderr, "0x%lx\n", pc); */
+                /* dump_path(pc); */
                 tb = tb_gen_code(cpu, pc, cs_base, flags, cflags);
                 mmap_unlock();
                 /*
