@@ -453,7 +453,7 @@ static void handle_arg_runmode(const char *arg)
 {
     if (strcmp(arg, "tb_aot") == 0) {
         aotmode = 1;
-    } else if (strcmp(arg, "functioin_aot") == 0) {
+    } else if (strcmp(arg, "function_aot") == 0) {
         aotmode = 2;
     } else aotmode = 0;
 }

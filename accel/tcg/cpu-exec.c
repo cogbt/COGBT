@@ -972,10 +972,14 @@ void dump_path(uint64_t pc);
 void dump_path (uint64_t pc) {
     static FILE *pf = NULL;
     if (!pf) {
-        pf = fopen(strcat(exec_path, ".path"), "w+");
+        char *dump_file = malloc(sizeof(char) * (strlen(exec_path) + 6));
+        strcpy(dump_file, exec_path);
+        strcat(dump_file, ".path");
+        pf = fopen(dump_file, "w+");
     }
     assert(pf);
     fprintf(pf, "0x%lx\n", pc);
+    fflush(NULL);
 }
 #endif
 int cpu_exec(CPUState *cpu)

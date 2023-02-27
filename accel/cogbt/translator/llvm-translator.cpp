@@ -15,6 +15,7 @@
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
+#include "CogbtPass.h"
 #include <memory>
 #include <string>
 #include <sstream>
@@ -176,6 +177,7 @@ void LLVMTranslator::Optimize() {
     FPM.run(*TransFunc);
     FPM.doFinalization();
 
+    /* MPM.add(createFlagReductionPass()); */
     MPM.run(*Mod.get());
 #else
     legacy::FunctionPassManager FPM(Mod.get());
@@ -256,10 +258,10 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
         dbgs() << "+------------------------------------------------+\n";
         dbgs() << "|                 LLVM  IR                       |\n";
         dbgs() << "+------------------------------------------------+\n";
-        if (aotmode)
-            TransFunc->print(dbgs(), nullptr);
-        else
-            Mod->print(dbgs(), nullptr);
+        /* if (aotmode) */
+        /*     TransFunc->print(dbgs(), nullptr); */
+        /* else */
+        Mod->print(dbgs(), nullptr);
     }
     if (UseOptmizer) {
         Optimize();
@@ -267,10 +269,10 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
             dbgs() << "+------------------------------------------------+\n";
             dbgs() << "|                 LLVM  IR  OPT                  |\n";
             dbgs() << "+------------------------------------------------+\n";
-            if (aotmode)
-                TransFunc->print(dbgs(), nullptr);
-            else
-                Mod->print(dbgs(), nullptr);
+            /* if (aotmode) */
+            /*     TransFunc->print(dbgs(), nullptr); */
+            /* else */
+            Mod->print(dbgs(), nullptr);
         }
 
     }
@@ -285,7 +287,7 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
     CreateJIT(&Listener);
     std::string FuncName(TransFunc->getName());
     uint8_t *FuncAddr = (uint8_t *)EE->getFunctionAddress(FuncName);
-    if (TransFunc->getName() == "epilogue") {
+    if (TransFunc->getName() == "AOTEpilogue") {
         Epilogue = (uintptr_t)FuncAddr;
         /* dbgs() << "Epilogue addr " << Epilogue << "\n"; //debug */
     }

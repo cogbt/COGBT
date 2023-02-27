@@ -124,7 +124,8 @@ Value *X86Translator::GetLBTFlag(int mask) {
 }
 
 void X86Translator::GenPrologue() {
-    /* InitializeModule(); */
+    if (aotmode != 1)  // JIT and Function AOT mode
+        InitializeModule();
 
     FunctionType *FuncTy = FunctionType::get(VoidTy, false);
     TransFunc = Function::Create(FuncTy, Function::ExternalLinkage, "AOTPrologue",
@@ -204,7 +205,8 @@ void X86Translator::GenPrologue() {
 }
 
 void X86Translator::GenEpilogue() {
-    /* InitializeModule(); */
+    if (aotmode != 1)  // JIT and Function AOT mode
+        InitializeModule();
 
     TransFunc = Mod->getFunction("AOTEpilogue");
     /* FunctionType *FuncTy = FunctionType::get(VoidTy, false); */
@@ -854,8 +856,11 @@ void X86Translator::TranslateFinalize() {
 }
 
 void X86Translator::Translate() {
-    // Do translate initialization.
-    TranslateInitialize();
+    // FIXME: tb aot initialization.
+    if (aotmode == 1) {
+        // Do translate initialization.
+        TranslateInitialize();
+    }
 
     std::stringstream ss;
     ss << std::hex << TU->GetTUEntry();
