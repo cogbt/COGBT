@@ -4,7 +4,6 @@
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Object/ELFObjectFile.h"
 #include "llvm/Support/TargetSelect.h"
-/* #include "config-host.h" */
 
 using namespace llvm::object;
 using namespace llvm;

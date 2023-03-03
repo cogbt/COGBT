@@ -1,3 +1,4 @@
+#include "qemu/osdep.h"
 #include "function.h"
 #include "capstone.h"
 #include "translation-unit.h"
@@ -10,6 +11,7 @@
 #include <set>
 #include <deque>
 #include <algorithm>
+#include <sstream>
 
 // capsthone handler, will be used in some cs API.
 static csh handle;
@@ -25,6 +27,14 @@ bool func_tu_inst_is_terminator(cs_insn *insn) {
            cs_insn_group(handle, insn, CS_GRP_CALL) ||
            cs_insn_group(handle, insn, CS_GRP_RET) ||
            cs_insn_group(handle, insn, CS_GRP_INT);
+}
+
+bool func_tu_inst_is_funcexit(cs_insn *insn) {
+    return cs_insn_group(handle, insn, CS_GRP_INT) ||
+           cs_insn_group(handle, insn, CS_GRP_CALL) ||
+           cs_insn_group(handle, insn, CS_GRP_RET) ||
+           (cs_insn_group(handle, insn, CS_GRP_JUMP) &&
+            insn->detail->x86.operands[0].type == X86_OP_REG);
 }
 //===---------------------------------------------------------------------====//
 // JsonBlock is used to record basic block info in a json file.
@@ -74,18 +84,28 @@ public:
     Iterator begin() { return Blocks.begin(); }
     Iterator end() { return Blocks.end(); }
 
+    using Name_Iterator = std::vector<std::string>::iterator;
+    using Name_Reverse_Iterator = std::vector<std::string>::reverse_iterator;
+    Name_Iterator name_begin() { return BlockStrs.begin(); }
+    Name_Iterator name_end() { return BlockStrs.end(); }
+    Name_Iterator name_erase(Name_Iterator it, Name_Iterator et) {
+        return BlockStrs.erase(it, et);
+    }
+    Name_Reverse_Iterator name_rbegin() { return BlockStrs.rbegin(); }
+    Name_Reverse_Iterator name_rend() { return BlockStrs.rend(); }
+
     bool operator<(const JsonFunc &JF) const {
         return EntryPoint < JF.EntryPoint;
     }
 
-    void dump() {
-        fprintf(stderr, "Json Func :\n");
-        fprintf(stderr, "  Name: %s\n", Name.c_str());
-        fprintf(stderr, "  Entry: 0x%lx\n", EntryPoint);
-        fprintf(stderr, "  Exit: 0x%lx\n", ExitPoint);
-        fprintf(stderr, "  Blocks:\n");
+    void dump(FILE *ff) {
+        fprintf(ff, "Json Func :\n");
+        fprintf(ff, "  Name: %s\n", Name.c_str());
+        fprintf(ff, "  Entry: 0x%lx\n", EntryPoint);
+        fprintf(ff, "  Exit: 0x%lx\n", ExitPoint);
+        fprintf(ff, "  Blocks:\n");
         for (auto JB : Blocks) {
-            fprintf(stderr, "    [0x%lx, 0x%lx)\n", JB.getEntry(),
+            fprintf(ff, "    [0x%lx, 0x%lx)\n", JB.getEntry(),
                     JB.getExit());
         }
     }
@@ -179,12 +199,12 @@ static void parseFuncValue(const char *&scanner, std::string &Name,
 void JsonFunc::formalize(uint64_t Boundary) {
     std::set<uint64_t> Visited, Unvisited;
     std::deque<uint64_t> WorkList;
+#if 0
     for (auto &s : BlockStrs) {
         uint64_t Entry = stol(s, nullptr, 16);
         WorkList.push_back(Entry);
         Unvisited.insert(Entry);
     }
-
     // If json doesn't contain function exit point, Find it here.
     if (ExitPoint == 0) {
         uint64_t Exit = *Unvisited.rbegin(); // last block in this function.
@@ -219,7 +239,7 @@ void JsonFunc::formalize(uint64_t Boundary) {
             assert(res && "cs_disasm error");
             pc = pins->address + pins->size;
 
-            // Strictly speaking, call and ret are not the termination
+            // Strictly speaking, call and int are not the termination
             // instructions of the basic block, but in order to be
             // consistent with qemu, we also divide these two instructions
             // into the terminator of the basic block
@@ -238,6 +258,12 @@ void JsonFunc::formalize(uint64_t Boundary) {
 
     // Split overlapping basic blocks.
     assert(Unvisited.empty() && WorkList.empty());
+#else
+    for (auto &s : BlockStrs) {
+        uint64_t Entry = stol(s, nullptr, 16);
+        Visited.insert(Entry);
+    }
+#endif
     for (auto it = Visited.begin(); it != Visited.end(); ) {
         uint64_t Entry = *it;
         uint64_t NextEntry = ++it == Visited.end() ? ExitPoint : *it;
@@ -260,7 +286,6 @@ void JsonFunc::formalize(uint64_t Boundary) {
 }
 
 static void GenTU(JsonFunc &JF, TranslationUnit *TU) {
-    /* JF.dump(); //debug */
     tu_init(TU);
     for (auto it = JF.begin(); it != JF.end(); ++it) {
         uint64_t Entry = it->getEntry();
@@ -333,18 +358,137 @@ void func_tu_json_parse(const char *pf) {
         JsonFunc JF(Name, stol(EntryPoint, nullptr, 16), Blocks);
         JsonFuncs.push_back(std::move(JF));
     }
+
     std::sort(JsonFuncs.begin(), JsonFuncs.end());
 
-    // 3. generate TU
+    // 3. repartition function. Instructions that are considered as function
+    // ExitPoint are as follows: call, syscall, jmp %rax、ret.
+    std::vector<JsonFunc> NewFuns;
+    for(int i = 0; i < (int)JsonFuncs.size(); i++) {
+        uint64_t FuncBoundary = -1;
+#if 0
+        if (i+1 < (int)JsonFuncs.size())
+            FuncBoundary = JsonFuncs[i+1].getEntryPoint();
+        else {  // Calculate the last Function ExitPoint
+            uint64_t Exit = stol(*JsonFuncs[i].name_rbegin(), nullptr, 16);
+            cs_insn *pins = nullptr;
+            do {
+                if (pins)
+                    cs_free(pins, 1);
+                int res = cs_disasm(handle, (uint8_t *)Exit, 15, Exit, 1, &pins);
+                assert(res && "cs_disasm error");
+                Exit = pins->address + pins->size;
+            } while (!func_tu_inst_is_cfi(pins) && Exit < FuncBoundary);
+            FuncBoundary = Exit;
+        }
+#else
+        {  // Calculate the Function ExitPoint
+            if (i+1 < (int)JsonFuncs.size())
+                FuncBoundary = JsonFuncs[i+1].getEntryPoint();
+            uint64_t Exit = stol(*JsonFuncs[i].name_rbegin(), nullptr, 16);
+            cs_insn *pins = nullptr;
+            do {
+                if (pins)
+                    cs_free(pins, 1);
+                int res = cs_disasm(handle, (uint8_t *)Exit, 15, Exit, 1, &pins);
+                assert(res && "cs_disasm error");
+                Exit = pins->address + pins->size;
+            } while (!func_tu_inst_is_cfi(pins) && Exit < FuncBoundary);
+            FuncBoundary = Exit;
+        }
+#endif
+
+        uint64_t pc = JsonFuncs[i].getEntryPoint();
+        auto it = JsonFuncs[i].name_begin();
+        auto et = JsonFuncs[i].name_end();
+        uint64_t blockEntry = stol(*it, nullptr, 16);
+        cs_insn *pins = nullptr;
+        do {
+            if (pins)
+                cs_free(pins, 1);
+            int res = cs_disasm(handle, (uint8_t *)pc, 15, pc, 1, &pins);
+            assert(res && "cs_disasm error");
+            while (pc >= blockEntry && it != et) {
+                it++;
+                if (it != et)
+                    blockEntry = stol(*it, nullptr, 16);
+            }
+            pc = pins->address + pins->size;
+        } while (!func_tu_inst_is_funcexit(pins) && pc < FuncBoundary);
+        // Calculate function ExitPoint. if the loop exits due to
+        // pc >= FuncBoundary, then pc is not accurate as ExitPoint.
+        // An example:
+        //      functionA:
+        //          0x501:   jmp 851
+        //          0x506:   nop
+        //      functionB:
+        //          0x50d:
+        // In this case, functionA's ExitPoint is 0x506 rather than 0x50d.
+        /* if (pc < FuncBoundary) */
+            JsonFuncs[i].setExitPoint(pc);
+
+        auto erase_it = it;
+        while (pc < FuncBoundary) {    // need to partition
+            std::stringstream ss;
+            ss << std::hex << pc;
+            std::string Name("\"0x" + ss.str() + "\"");
+            uint64_t FuncEntry = pc;
+            std::vector<std::string> Blocks;
+            if (FuncEntry != blockEntry)
+                Blocks.push_back(ss.str());
+            do {
+                if (pins)
+                    cs_free(pins, 1);
+                int res = cs_disasm(handle, (uint8_t *)pc, 15, pc, 1, &pins);
+                assert(res && "cs_disasm error");
+                while (pc >= blockEntry && it != et) {
+                    Blocks.push_back(std::move(*it));   // add to new Func
+                    it++;
+                    if (it != et)
+                        blockEntry = stol(*it, nullptr, 16);
+                }
+                pc = pins->address + pins->size;
+            } while (!func_tu_inst_is_funcexit(pins) && pc < FuncBoundary);
+
+            JsonFunc JF(Name, FuncEntry, Blocks);
+            /* if (pc < FuncBoundary) */
+                JF.setExitPoint(pc);
+            NewFuns.push_back(std::move(JF));
+        }
+        JsonFuncs[i].name_erase(erase_it, et);
+    }
+    JsonFuncs.insert(JsonFuncs.end(), NewFuns.begin(), NewFuns.end());
+    std::sort(JsonFuncs.begin(), JsonFuncs.end());
+
+#ifdef CONFIG_COGBT_DEBUG
+    extern char* exec_path;
+    FILE *ff = NULL;
+    char func_file[1024] = {0};
+    strcpy(func_file, exec_path);
+    strcat(func_file, ".func.txt");
+    if (!ff) {
+        ff = fopen(func_file, "w+");
+    }
+#endif
+    // 4. generate TU
     for (int i = 0; i < (int)JsonFuncs.size(); i++) {
         uint64_t FuncBoundary = -1;
         if (i+1 < (int)JsonFuncs.size())
             FuncBoundary = JsonFuncs[i+1].getEntryPoint();
         JsonFuncs[i].formalize(FuncBoundary);
+#ifdef CONFIG_COGBT_DEBUG
+        JsonFuncs[i].dump(ff);
+#endif
         TranslationUnit *TU = new TranslationUnit();
         GenTU(JsonFuncs[i], TU);
         TUs.push_back(TU);
     }
+#ifdef CONFIG_COGBT_DEBUG
+    if (ff) {
+        fflush(ff);
+        fclose(ff);
+    }
+#endif
 }
 
 void aot_gen(const char *pf) {
@@ -366,6 +510,7 @@ void aot_gen(const char *pf) {
         llvm_translate(Translator);
         llvm_compile(Translator, true);
     }
+    llvm_finalize(Translator);
 }
 
 /* bool func_tu_inst_is_terminator(cs_insn *insn) { */

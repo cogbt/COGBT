@@ -118,6 +118,21 @@ void LLVMTranslator::InitializeModule() {
     Mod->addModuleFlag(Module::ModFlagBehavior::Max, "Debug Info Version", 3);
 }
 
+BasicBlock* LLVMTranslator::GetBasicBlock(Function *Func, StringRef Name) {
+    for (BasicBlock &BB : *Func)
+        if (BB.getName() == Name)
+            return &BB;
+    return nullptr;
+}
+
+BasicBlock* LLVMTranslator::GetOrInsertBasicBlock(Function *Func, StringRef Name,
+        BasicBlock *InsertBefore) {
+    BasicBlock *BB = GetBasicBlock(Func, Name);
+    if (!BB)
+        BB = BasicBlock::Create(Context, Name, Func, InsertBefore);
+    return BB;
+}
+
 void LLVMTranslator::InitializeBlock(GuestBlock &Block) {
     for (auto &GMRVal : GMRVals)
         GMRVal.clear();
@@ -125,18 +140,21 @@ void LLVMTranslator::InitializeBlock(GuestBlock &Block) {
     std::stringstream ss;
     ss << std::hex << PC;
     std::string Name(ss.str());
-    CurrBB = BasicBlock::Create(Context, Name, TransFunc, ExitBB);
     if (aotmode == 2) {
-        /* if (PC == TU->GetTUEntry()) { */
-        /*     dyn_cast<BranchInst>(EntryBB->getTerminator())->setSuccessor(0,
-         * CurrBB); */
-        /* } */
+        /* CurrBB = GetOrInsertBasicBlock(TransFunc, Name, ExitBB); */
+        CurrBB = GetBasicBlock(TransFunc, Name);
+        assert(CurrBB && "block does not exist.");
+        if (PC == TU->GetTUEntry()) {
+            dyn_cast<BranchInst>(EntryBB->getTerminator())->setSuccessor(0,
+        CurrBB);
+        }
     } else {
+        CurrBB = BasicBlock::Create(Context, Name, TransFunc, ExitBB);
         // Translation unit of jit mde or tb aot mode is block.
         dyn_cast<BranchInst>(EntryBB->getTerminator())->setSuccessor(0, CurrBB);
     }
     Builder.SetInsertPoint(CurrBB);
-    /* Mod->print(outs(), nullptr); */
+    /* Mod->print(gdbs(), nullptr); */
 }
 
 Value *LLVMTranslator::GetPhysicalRegValue(const char *RegName) {
@@ -160,25 +178,40 @@ void LLVMTranslator::SetPhysicalRegValue(const char *RegName, Value *RegValue) {
 void LLVMTranslator::TranslateFinalize() {
     // Finalize DIBuilder to make debug info correct.
     DIB->finalize();
+    // TODO: fix it to work with all modes
+    if (aotmode == 2) {
+#if 1
+        legacy::PassManager MPM;
+
+        PassManagerBuilder Builder;
+        Builder.OptLevel = 2;
+        Builder.LoopVectorize = true;
+        Builder.SLPVectorize = true;
+        Builder.populateModulePassManager(MPM);
+        MPM.run(*Mod.get());
+#else
+#endif
+        EmitObjectCode();
+    }
 }
 
 void LLVMTranslator::Optimize() {
 #if 1
     legacy::FunctionPassManager FPM(Mod.get());
-    legacy::PassManager MPM;
+    /* legacy::PassManager MPM; */
 
     PassManagerBuilder Builder;
     Builder.OptLevel = 2;
     Builder.LoopVectorize = true;
     Builder.SLPVectorize = true;
     Builder.populateFunctionPassManager(FPM);
-    Builder.populateModulePassManager(MPM);
+    /* Builder.populateModulePassManager(MPM); */
     FPM.doInitialization();
     FPM.run(*TransFunc);
     FPM.doFinalization();
 
     /* MPM.add(createFlagReductionPass()); */
-    MPM.run(*Mod.get());
+    /* MPM.run(*Mod.get()); */
 #else
     legacy::FunctionPassManager FPM(Mod.get());
     FPM.add(createPromoteMemoryToRegisterPass());
@@ -258,10 +291,12 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
         dbgs() << "+------------------------------------------------+\n";
         dbgs() << "|                 LLVM  IR                       |\n";
         dbgs() << "+------------------------------------------------+\n";
+        // TODO: fix debug information
         /* if (aotmode) */
         /*     TransFunc->print(dbgs(), nullptr); */
         /* else */
-        Mod->print(dbgs(), nullptr);
+        /* Mod->print(dbgs(), nullptr); */
+        TransFunc->print(dbgs());
     }
     if (UseOptmizer) {
         Optimize();
@@ -272,11 +307,16 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
             /* if (aotmode) */
             /*     TransFunc->print(dbgs(), nullptr); */
             /* else */
-            Mod->print(dbgs(), nullptr);
+            /* Mod->print(dbgs(), nullptr); */
+            TransFunc->print(dbgs());
         }
 
     }
-    if (aotmode) {
+    // TODO: modify it
+    if (aotmode == 2) {
+        return nullptr;
+    }
+    if (aotmode == 1) {
         EmitObjectCode();
         return nullptr;
     }

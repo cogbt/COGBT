@@ -21,6 +21,7 @@ uint8_t *llvm_compile(LLVMTranslator *translator, bool use_optimizer);
 void free_llvm_translator(LLVMTranslator *translator);
 
 void llvm_initialize(LLVMTranslator *translator);
+void llvm_finalize(LLVMTranslator *translator);
 void llvm_set_tu(LLVMTranslator *translator, TranslationUnit *tu);
 void llvm_translate(LLVMTranslator *translator);
 size_t llvm_get_code_size(LLVMTranslator *translator);

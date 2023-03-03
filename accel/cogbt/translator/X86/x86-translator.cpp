@@ -86,7 +86,8 @@ void X86Translator::InitializeFunction(StringRef Name) {
     SetPhysicalRegValue(HostRegNames[HostS2], IntEnv);
 
     // Call Epilogue to do context switch.
-    Builder.CreateCall(Mod->getFunction("epilogue"));
+    Function *Func = Mod->getFunction("epilogue");
+    Builder.CreateCall(Func);
     /* Builder.CreateRetVoid(); */
     Builder.CreateUnreachable();
 
@@ -124,7 +125,7 @@ Value *X86Translator::GetLBTFlag(int mask) {
 }
 
 void X86Translator::GenPrologue() {
-    if (aotmode != 1)  // JIT and Function AOT mode
+    if (aotmode == 0)  // JIT
         InitializeModule();
 
     FunctionType *FuncTy = FunctionType::get(VoidTy, false);
@@ -205,7 +206,7 @@ void X86Translator::GenPrologue() {
 }
 
 void X86Translator::GenEpilogue() {
-    if (aotmode != 1)  // JIT and Function AOT mode
+    if (aotmode == 0)  // JIT
         InitializeModule();
 
     TransFunc = Mod->getFunction("AOTEpilogue");
@@ -866,8 +867,19 @@ void X86Translator::Translate() {
     ss << std::hex << TU->GetTUEntry();
     std::string Entry(ss.str());
     /* InitializeFunction(std::to_string(TU->GetTUEntry())); */
-    if (aotmode != 1) { // JIT or Function AOT mode
+    if (aotmode == 1) { // JIT
         InitializeFunction(Entry);
+    }
+    if (aotmode == 2) { // Function AOT mode
+        std::stringstream ss;
+        ss << std::hex << Entry << "." << std::dec << TU->GetTUPCSize();
+        InitializeFunction(ss.str());
+        for (auto &block : *TU) {
+            ss.str("");
+            ss << std::hex << block.GetBlockEntry();
+            std::string Name(ss.str());
+            BasicBlock::Create(Context, Name, TransFunc, ExitBB);
+        }
     }
     for (auto &block : *TU) {
         assert(TU->size() && "TU size is expected to be non-zero!");
@@ -891,6 +903,7 @@ void X86Translator::Translate() {
 #include "x86-inst.def"
             }
         }
+#if 0
         // In debug mode, ONLY one guest instruction is in a block. So some IRs
         // should be added to save guest pc and jump to epilogue.
         X86InstHandler GuestInstHdl(*block.rbegin());
@@ -912,9 +925,37 @@ void X86Translator::Translate() {
             }
             Builder.CreateBr(ExitBB);
         }
+#endif
+        X86InstHandler GuestInstHdl(*block.rbegin());
+        if (aotmode == 2 && !GuestInstHdl.isTerminator()) {
+            std::stringstream ss;
+            ss << std::hex << GuestInstHdl.getNextPC();
+            std::string NextPCStr(ss.str());
+            BasicBlock* NextBB = GetBasicBlock(TransFunc, NextPCStr);
+            assert(NextBB && "nextpc label does not exist.");
+            /* BindPhysicalReg(); */
+            SyncAllGMRValue();
+            if (NextBB)
+                Builder.CreateBr(NextBB);
+            else {    // this label does not in this function, go to epilogue
+                FunctionType *FTy =
+                    FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
+                Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
+                Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
+                Value *NextPC = ConstInt(Int64Ty, GuestInstHdl.getNextPC());
+
+                BindPhysicalReg();
+                Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {NextPC, Off});
+                AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1);
+                Builder.CreateCall(Mod->getFunction("epilogue"));
+                Builder.CreateUnreachable();
+            }
+        }
         /* TransFunc->dump(); */
     }
 
     // Do translate finalization.
-    TranslateFinalize();
+    // TODO: move it to the end of translation
+    if (aotmode != 2)
+        TranslateFinalize();
 }

@@ -87,6 +87,24 @@ public:
         return (*GuestBlocks[0].begin())->address;
     }
 
+    /// GetTUExit - Get the last pc of TU.
+    uint64_t GetTUExit() {
+        if (GuestBlocks.empty()) {
+            exit(-1);
+        }
+        return (*GuestBlocks.rbegin()->rbegin())->address;
+    }
+
+    /// GetTUPCSize - Get size of target code for this TranslationUnit.
+    size_t GetTUPCSize() {
+        assert(!GuestBlocks.empty() && "TranslationUnit shouldn't be empty!");
+        size_t num = 0;
+        for (GuestBlock &B : GuestBlocks) {
+            num += B.GetBlockPCSize();
+        }
+        return num;
+    }
+
     /// @name All interfaces about iterators.
     using iterator = vector<GuestBlock>::iterator;
     using reverse_iterator = vector<GuestBlock>::reverse_iterator;

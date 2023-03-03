@@ -62,6 +62,10 @@ public:
         return OpndHdl.getOpndSize();
     }
 
+    uint64_t getPC() {
+        return Inst->address;
+    }
+
     uint64_t getNextPC() {
         return Inst->address + Inst->size;
     }

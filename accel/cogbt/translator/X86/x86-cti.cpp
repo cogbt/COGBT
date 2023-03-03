@@ -1,8 +1,61 @@
 #include "x86-translator.h"
 #include "emulator.h"
+#include <sstream>
 
 void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
     X86InstHandler InstHdl(Inst);
+    if (aotmode == 2) {    // Function AOT mode
+        std::stringstream ss;
+        ss << std::hex << InstHdl.getTargetPC();
+        std::string TargetPCStr(ss.str());
+
+        ss.str("");
+        ss << std::hex << InstHdl.getNextPC();
+        std::string NextPCStr(ss.str());
+
+        BasicBlock *TargetPCBB = nullptr, *NextPCBB = nullptr;
+        TargetPCBB = GetBasicBlock(TransFunc, TargetPCStr);
+        /* assert(TargetPCBB && "targetpc label does not exist."); */
+        NextPCBB = GetBasicBlock(TransFunc, NextPCStr);
+        /* assert(TargetPCBB && "nextpc label does not exist."); */
+        /* BindPhysicalReg(); */
+        if (TargetPCBB && NextPCBB) {
+            Builder.CreateCondBr(Cond, TargetPCBB, NextPCBB);
+            return;
+        } else {
+            FunctionType *FTy = FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
+            Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
+            Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
+            if (!TargetPCBB) {
+                TargetPCBB =
+                    BasicBlock::Create(Context, "target", TransFunc, ExitBB);
+                Builder.SetInsertPoint(TargetPCBB);
+                Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
+                // Create target link slot
+                Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
+                AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1);
+                // Jump back qemu.
+                Builder.CreateCall(Mod->getFunction("epilogue"));
+                Builder.CreateUnreachable();
+            }
+            if (!NextPCBB) {
+                NextPCBB =
+                    BasicBlock::Create(Context, "fallthrough", TransFunc, TargetPCBB);
+                // Create fallthrough link slot.
+                Builder.SetInsertPoint(NextPCBB);
+                Value *NextPC = ConstInt(Int64Ty, InstHdl.getNextPC());
+                Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {NextPC, Off});
+                AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 0);
+                // Jump back qemu.
+                Builder.CreateCall(Mod->getFunction("epilogue"));
+                Builder.CreateUnreachable();
+            }
+            Builder.SetInsertPoint(CurrBB);
+            BindPhysicalReg();
+            Builder.CreateCondBr(Cond, TargetPCBB, NextPCBB);
+            return;
+        }
+    }
     BasicBlock *TargetBB =
         BasicBlock::Create(Context, "target", TransFunc, ExitBB);
     BasicBlock *FallThroughBB =
@@ -206,19 +259,45 @@ void X86Translator::translate_jmp(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     // Create link here, NOTE! Distinguish direct jmp or indirect jmp first.
     X86OperandHandler OpndHdl(InstHdl.getOpnd(0));
-    if (OpndHdl.isImm()) { // can be directly linked
-        FunctionType *FTy =
-            FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
-        Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
-        Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
-        Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
+    if (OpndHdl.isImm()) {   // can be directly linked
+        if (aotmode == 2) {     // Function AOT mode
+            std::stringstream ss;
+            ss << std::hex << InstHdl.getTargetPC();
+            std::string TargetPCStr(ss.str());
 
-        BindPhysicalReg();
-        Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
-        AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1);
-        Builder.CreateCall(Mod->getFunction("epilogue"));
-        Builder.CreateUnreachable();
-        ExitBB->eraseFromParent();
+            BasicBlock *TargetBB = GetBasicBlock(TransFunc, TargetPCStr);
+            /* assert(TargetBB && "target label does not exist."); */
+            /* BindPhysicalReg(); */
+            if (TargetBB) {
+                Builder.CreateBr(TargetBB);
+            } else {    // this label does not in this function, go to epilogue
+                FunctionType *FTy =
+                    FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
+                Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
+                Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
+                Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
+
+                BindPhysicalReg();
+                Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
+                AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1);
+                Builder.CreateCall(Mod->getFunction("epilogue"));
+                Builder.CreateUnreachable();
+                /* ExitBB->eraseFromParent(); */
+            }
+        } else {    // JIT or TB AOT mode
+            FunctionType *FTy =
+                FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
+            Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
+            Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
+            Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
+
+            BindPhysicalReg();
+            Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
+            AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1);
+            Builder.CreateCall(Mod->getFunction("epilogue"));
+            Builder.CreateUnreachable();
+            ExitBB->eraseFromParent();
+        }
     } else {
         Value *Target = LoadOperand(InstHdl.getOpnd(0));
         Value *Off = ConstInt(Int64Ty, GuestEIPOffset());

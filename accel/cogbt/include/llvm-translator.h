@@ -128,6 +128,13 @@ public:
         return CodeCache.CodeCachePtr - CodeCache.CodeCacheBegin;
     }
 
+    /// IsExitPC - Return true if PC is the TranslationUnit's the last PC.
+    bool IsExitPC(uint64_t PC) {
+        if (TU->GetTUExit() == PC)
+            return true;
+        return false;
+    }
+
 protected:
     /// @name Core Member Variables
     std::string TargetTriple;    ///< LLVM backend target triple.
@@ -214,6 +221,20 @@ protected:
 
     /// @name AOT submodule
     void EmitObjectCode();
+
+    /// GetBasicBlock - Look up the specified block in the Func.
+    BasicBlock* GetBasicBlock(Function *Func, StringRef Name);
+
+    /// GetOrInsertBasicBlock - Look up the specified block in the Func.
+    /// 1. If it does not exist, create a Block and return it.
+    /// 2. Otherwise, return the block which label is Name.
+    ///
+    /// If a basicblock need to create and the InsertBefore parameter
+    /// is specified, the basic block is automatically inserted before
+    /// the specified basic block.
+    /// Otherwise, it is inserted at the end of the Func
+    BasicBlock* GetOrInsertBasicBlock(Function *Func, StringRef Name,
+            BasicBlock *InsertBefore = nullptr);
 };
 
 #endif
