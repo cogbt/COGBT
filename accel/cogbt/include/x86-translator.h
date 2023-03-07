@@ -139,6 +139,17 @@ private: /// Currently translated instruction.
     /// GenFCMOVHelper - Gen llvm irs to do fcmovcc by using lbt intrinsic \p
     /// LBTIntrinic.
     void GenFCMOVHelper(GuestInst *Inst, std::string LBTIntrinic);
+
+    /// @name X87 FPU translator helper functions.
+    /// LoadFPR - Load FPStack[currtop + sti] fpr reg from env. currtop is the
+    /// current FPU stack top value.
+    Value *LoadFPR(int sti);
+
+    /// StoreFPR - Store value V into FPStack[currtop + sti].
+    void StoreFPR(Value *V, int sti);
+
+    /// SetFPUTop - Adjust FPU stack top value to (currtop + sti).
+    void SetFPUTop(int sti);
 };
 
 #endif
