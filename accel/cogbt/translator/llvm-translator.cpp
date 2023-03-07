@@ -73,6 +73,11 @@ void LLVMTranslator::AttachLinkInfoToIR(Instruction *I, LIType Type,
     DISubprogram *DISP = I->getParent()->getParent()->getSubprogram();
     DILocation *DILoc = DILocation::get(Context, Val, Type, DISP);
     I->setDebugLoc(DILoc);
+    /* if (!DIGV) { */
+    /*     DIGV = DIB->createGlobalVariableExpression(DISP, "linkslot", "linkslot", */
+    /*             DIF, 1, DIB->createNullPtrType(), false); */
+    /* } */
+    /* I->setMetadata("dbg", DIGV); */
 }
 
 void LLVMTranslator::InitializeModule() {
@@ -181,17 +186,20 @@ void LLVMTranslator::TranslateFinalize() {
     // TODO: fix it to work with all modes
     if (aotmode == 2) {
 #if 1
+        legacy::FunctionPassManager FPM(Mod.get());
         legacy::PassManager MPM;
 
         PassManagerBuilder Builder;
         Builder.OptLevel = 2;
         Builder.LoopVectorize = true;
         Builder.SLPVectorize = true;
+        Builder.populateFunctionPassManager(FPM);
         Builder.populateModulePassManager(MPM);
         MPM.run(*Mod.get());
 #else
 #endif
         EmitObjectCode();
+        /* Mod->print(dbgs(), nullptr); */
     }
 }
 
@@ -205,6 +213,7 @@ void LLVMTranslator::Optimize() {
     Builder.LoopVectorize = true;
     Builder.SLPVectorize = true;
     Builder.populateFunctionPassManager(FPM);
+    /* FPM.add(createFlagReductionPass()); */
     /* Builder.populateModulePassManager(MPM); */
     FPM.doInitialization();
     FPM.run(*TransFunc);

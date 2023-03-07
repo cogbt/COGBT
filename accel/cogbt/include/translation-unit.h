@@ -65,8 +65,12 @@ typedef struct GuestBlock GuestBlock;
 #ifdef __cplusplus
 class TranslationUnit {
     vector<GuestBlock> GuestBlocks;
+    int linkSlotNum;
 
 public:
+    /// Constructor - Due to DWARFDebugLine::ROW.Line are numbered beginning at
+    /// 1, this linkSlotNum keep the same as it.
+    TranslationUnit() { linkSlotNum = 0; }
     ~TranslationUnit();
 
     /// CreateAndAddGuestBlock - Create a GuestBlock in this TU and return its
@@ -74,7 +78,10 @@ public:
     GuestBlock *CreateAndAddGuestBlock();
 
     /// Clear - Clear all guest blocks in this TU.
-    void Clear() { GuestBlocks.clear(); }
+    void Clear() {
+        GuestBlocks.clear();
+        linkSlotNum = 0;
+    }
 
     /// dump - Show all GuestInstructions in this TU.
     void dump(void);
@@ -105,6 +112,10 @@ public:
         return num;
     }
 
+    bool operator<(TranslationUnit &TU) {
+        return GetTUEntry() < TU.GetTUEntry();
+    }
+
     /// @name All interfaces about iterators.
     using iterator = vector<GuestBlock>::iterator;
     using reverse_iterator = vector<GuestBlock>::reverse_iterator;
@@ -115,6 +126,7 @@ public:
     reverse_iterator rend() { return GuestBlocks.rend(); }
     size_t size() { return GuestBlocks.size(); }
     bool empty() { return GuestBlocks.empty(); }
+    int IncLinkSlotNum() { linkSlotNum++; return linkSlotNum; }
 };
 #else
 typedef struct TranslationUnit TranslationUnit;

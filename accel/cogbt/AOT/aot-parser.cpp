@@ -83,6 +83,9 @@ AOTParser::AOTParser(uintptr_t CacheBegin, size_t CacheSize, const char *AOT)
     for (const DWARFDebugLine::Row &R : LT->Rows) {
         if (!R.IsStmt || R.EndSequence) continue;
         if (R.Column == LI_TBLINK) {
+            // FIXME: strengthen the logic here
+            /* fprintf(stderr, "DWARFAddr 0x%08lx, %d, %d\n", */
+            /*         (uint64_t)R.Address, R.Line, R.Column); */
             RegisterLinkSlot(R.Address, R.Line, R.Column);
         }
     }
@@ -218,7 +221,7 @@ void AOTParser::DoLink() {
         const std::string &Name = FI.getName();
         uint64_t CurrPC = std::stol(Name, 0, 16);
 #endif
-        for (int i = 0; i < 2; i++) {
+        for (int i = 1; i <= FI.getLinkSlotNumber(); i++) {
             if (!FI.getLoadAddr() || (FI.getLinkOffset(i) == -1))
                 continue;
             uint64_t LinkAddr = FI.getLoadAddr() + FI.getLinkOffset(i);
@@ -226,8 +229,13 @@ void AOTParser::DoLink() {
                 DecodePCFromCogbtExit((uint32_t *)(LinkAddr + 4));
             int idx = FindFunctionInfoAtPC(TargetPC);
             // If the target TU isn't in aot, Don't link it.
-            if (idx == -1)
+            if (idx == -1) {
+#ifdef CONFIG_COGBT_DEBUG
+                printf("TU(0x%08lx) is not in aot file, Don't link it.\n",
+                        TargetPC);
+#endif
                 continue;
+            }
             FunctionInfo &TargetFI = FuncInfos[idx];
             int32_t FixUpOffset = (TargetFI.getLoadAddr() - LinkAddr) >> 2;
 #ifdef CONFIG_COGBT_DEBUG

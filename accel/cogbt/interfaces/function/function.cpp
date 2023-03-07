@@ -34,7 +34,7 @@ bool func_tu_inst_is_funcexit(cs_insn *insn) {
            cs_insn_group(handle, insn, CS_GRP_CALL) ||
            cs_insn_group(handle, insn, CS_GRP_RET) ||
            (cs_insn_group(handle, insn, CS_GRP_JUMP) &&
-            insn->detail->x86.operands[0].type == X86_OP_REG);
+            insn->detail->x86.operands[0].type != X86_OP_IMM);
 }
 //===---------------------------------------------------------------------====//
 // JsonBlock is used to record basic block info in a json file.
@@ -489,6 +489,60 @@ void func_tu_json_parse(const char *pf) {
         fclose(ff);
     }
 #endif
+
+    // TODO: make it more graceful
+    // 5. Add BasicBlock in xxx.path to TU
+    #define MAX_INSN 200
+    extern char* exec_path;
+    char block_path[1024] = {0};
+    strcpy(block_path, exec_path);
+    strcat(block_path, ".path");
+    FILE *path = fopen(block_path, "r");
+    // The file is not exist
+    if (path == nullptr)
+        goto end;
+
+    uint64_t pc;
+    while (fscanf(path, "%lx", &pc) != EOF) {
+        cs_insn **insns = (cs_insn **)calloc(MAX_INSN, sizeof(cs_insn *));
+        int insn_cnt = 0;
+        for (int i = 0; i < MAX_INSN; i++) {
+            int res =
+                cs_disasm(handle, (const uint8_t *)pc, 15, pc, 1, insns + i);
+            if (res == 0) {
+                // TODO
+                printf("Error! Disassemble inst at 0x%lx failed\n", pc);
+                exit(-1);
+            }
+
+            ++insn_cnt;
+
+            // Check wether we have reached the terminator of a basic block
+            if (func_tu_inst_is_terminator(insns[i]))
+                break;
+
+            // Update pc of next instruction
+            pc = insns[i]->address + insns[i]->size;
+        }
+        insns = (cs_insn **)realloc(insns, sizeof(cs_insn *) * insn_cnt);
+
+        // Register block in TU
+        TranslationUnit *TU = new TranslationUnit();
+        tu_init(TU);
+        GuestBlock *block = guest_tu_create_block(TU);
+        for (int i = 0; i < insn_cnt; i++) {
+            guest_block_add_inst(block, insns[i]);
+        }
+        TUs.push_back(TU);
+    }
+    fclose(path);
+    #undef MAX_INSN
+
+end:
+    std::sort(TUs.begin(), TUs.end(),
+            [](TranslationUnit* t1, TranslationUnit* t2) {
+                return t1->GetTUEntry() < t2->GetTUEntry();
+            });
 }
 
 void aot_gen(const char *pf) {

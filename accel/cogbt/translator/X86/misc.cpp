@@ -330,10 +330,8 @@ void X86Translator::translate_haddps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction haddps\n";
     exit(-1);
 }
-void X86Translator::translate_hlt(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction hlt\n";
-    exit(-1);
-}
+void X86Translator::translate_hlt(GuestInst *Inst) {}
+
 void X86Translator::translate_hsubpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction hsubpd\n";
     exit(-1);

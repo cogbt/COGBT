@@ -18,43 +18,55 @@ void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
         /* assert(TargetPCBB && "targetpc label does not exist."); */
         NextPCBB = GetBasicBlock(TransFunc, NextPCStr);
         /* assert(TargetPCBB && "nextpc label does not exist."); */
-        /* BindPhysicalReg(); */
+
         if (TargetPCBB && NextPCBB) {
             Builder.CreateCondBr(Cond, TargetPCBB, NextPCBB);
-            return;
         } else {
             FunctionType *FTy = FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
             Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
             Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
+            uint8_t flag = 0;
+#define TARGETPCBB_FLAG  ((uint8_t) (1U << 0))
+#define NEXTPCBB_FLAG    ((uint8_t) (1U << 1))
             if (!TargetPCBB) {
+                flag |= TARGETPCBB_FLAG;
                 TargetPCBB =
                     BasicBlock::Create(Context, "target", TransFunc, ExitBB);
+            }
+            if (!NextPCBB) {
+                flag |= NEXTPCBB_FLAG;
+                NextPCBB =
+                    BasicBlock::Create(Context, "fallthrough", TransFunc, TargetPCBB);
+            }
+            BindPhysicalReg();
+            Builder.CreateCondBr(Cond, TargetPCBB, NextPCBB);
+            if (flag & TARGETPCBB_FLAG) {
                 Builder.SetInsertPoint(TargetPCBB);
                 Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
                 // Create target link slot
                 Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
-                AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1);
+                AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());
                 // Jump back qemu.
                 Builder.CreateCall(Mod->getFunction("epilogue"));
                 Builder.CreateUnreachable();
             }
-            if (!NextPCBB) {
-                NextPCBB =
-                    BasicBlock::Create(Context, "fallthrough", TransFunc, TargetPCBB);
+            if (flag & NEXTPCBB_FLAG) {
                 // Create fallthrough link slot.
                 Builder.SetInsertPoint(NextPCBB);
                 Value *NextPC = ConstInt(Int64Ty, InstHdl.getNextPC());
                 Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {NextPC, Off});
-                AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 0);
+                AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());
                 // Jump back qemu.
                 Builder.CreateCall(Mod->getFunction("epilogue"));
                 Builder.CreateUnreachable();
             }
-            Builder.SetInsertPoint(CurrBB);
-            BindPhysicalReg();
-            Builder.CreateCondBr(Cond, TargetPCBB, NextPCBB);
-            return;
+#undef TARGETPCBB_FLAG
+#undef NEXTPCBB_FLAG
         }
+        if (IsExitPC(InstHdl.getPC())) {
+            ExitBB->eraseFromParent();
+        }
+        return;
     }
     BasicBlock *TargetBB =
         BasicBlock::Create(Context, "target", TransFunc, ExitBB);
@@ -279,10 +291,12 @@ void X86Translator::translate_jmp(GuestInst *Inst) {
 
                 BindPhysicalReg();
                 Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
-                AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1);
+                AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());
                 Builder.CreateCall(Mod->getFunction("epilogue"));
                 Builder.CreateUnreachable();
-                /* ExitBB->eraseFromParent(); */
+            }
+            if (IsExitPC(InstHdl.getPC())) {
+                ExitBB->eraseFromParent();
             }
         } else {    // JIT or TB AOT mode
             FunctionType *FTy =
@@ -346,7 +360,10 @@ void X86Translator::translate_call(GuestInst *Inst) {
 
         BindPhysicalReg();
         Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
-        AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1);
+        if (aotmode == 2)
+            AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());
+        else
+            AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1);
         Builder.CreateCall(Mod->getFunction("epilogue"));
         Builder.CreateUnreachable();
         ExitBB->eraseFromParent();

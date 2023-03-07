@@ -348,9 +348,9 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
 const void *HELPER(cogbt_lookup_tb_ptr)(CPUArchState *env)
 {
     /* return cogbt_code_gen_epilogue; */
-#ifdef CONFIG_COGBT_DEBUG
-    return cogbt_code_gen_epilogue;
-#else
+/* #ifdef CONFIG_COGBT_DEBUG */
+/*     return cogbt_code_gen_epilogue; */
+/* #else */
     CPUState *cpu = env_cpu(env);
     TranslationBlock *tb;
     target_ulong cs_base, pc;
@@ -367,7 +367,7 @@ const void *HELPER(cogbt_lookup_tb_ptr)(CPUArchState *env)
     }
 
     return tb->tc.ptr;
-#endif
+/* #endif */
 }
 #endif
 
@@ -981,6 +981,11 @@ void dump_path (uint64_t pc) {
     fprintf(pf, "0x%lx\n", pc);
     fflush(NULL);
 }
+uint64_t qemu_to_llvm = 0;
+uint64_t llvm_to_qemu = 0;
+uint64_t switch_context = 0;
+uint64_t tb_not_find = 0;
+uint64_t syscall_number = 0;
 #endif
 int cpu_exec(CPUState *cpu)
 {
@@ -1007,6 +1012,9 @@ int cpu_exec(CPUState *cpu)
 
     /* prepare setjmp context for exception handling */
     if (sigsetjmp(cpu->jmp_env, 0) != 0) {
+#ifdef CONFIG_COGBT_DEBUG
+        syscall_number++;
+#endif
 #if defined(__clang__)
         /*
          * Some compilers wrongly smash all local variables after
@@ -1073,12 +1081,15 @@ int cpu_exec(CPUState *cpu)
             if (pc == debug_pc) {
                 debug_breakpoint(pc);
             }
+            switch_context++;
 #endif
             tb = tb_lookup(cpu, pc, cs_base, flags, cflags);
             if (tb == NULL) {
                 mmap_lock();
-                /* fprintf(stderr, "0x%lx\n", pc); */
+#ifdef CONFIG_COGBT_DEBUG
+                tb_not_find++;
                 /* dump_path(pc); */
+#endif
                 tb = tb_gen_code(cpu, pc, cs_base, flags, cflags);
                 mmap_unlock();
                 /*
@@ -1112,6 +1123,9 @@ int cpu_exec(CPUState *cpu)
 #ifdef CONFIG_COGBT
             /* llvm -> qemu, set CC_OP and CC_SRC */
             if (last_exit_is_llvm && tb->tc.ptr > tb_cache_begin) {
+#ifdef CONFIG_COGBT_DEBUG
+                llvm_to_qemu++;
+#endif
                 CPUX86State *env = cpu->env_ptr;
                 CC_SRC =
                     env->eflags & (CC_O | CC_S | CC_Z | CC_A | CC_P | CC_C);
@@ -1122,6 +1136,9 @@ int cpu_exec(CPUState *cpu)
             }
             /* qemu -> llvm, calculate all delayed eflags. */
             if (!last_exit_is_llvm && tb->tc.ptr < tb_cache_begin) {
+#ifdef CONFIG_COGBT_DEBUG
+                qemu_to_llvm++;
+#endif
                 CPUX86State *env = cpu->env_ptr;
 
                 env->eflags = cpu_compute_eflags(env);

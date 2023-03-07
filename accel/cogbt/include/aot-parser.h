@@ -1,6 +1,7 @@
 #ifndef AOT_PARSER_H
 #define AOT_PARSER_H
 
+/* #include "qemu/osdep.h" */
 #include "llvm-translator.h"
 #include "llvm/DebugInfo/DWARF/DWARFContext.h"
 #include "llvm/DebugInfo/DWARF/DWARFDebugLine.h"
@@ -15,13 +16,14 @@ class FunctionInfo {
     uint64_t EntryPC;            ///< TranslationUnit entry pc
     uint64_t BeginAddr, EndAddr; ///< Function address range[BeginAddr, EndAddr)
     uint64_t LoadAddr;           ///< The address loaded in memory.
-    int LinkOffset[2];           ///< Link instruction offset to entry.
+    /* int LinkOffset[2];           ///< Link instruction offset to entry. */
+    vector<int> LinkOffset;      ///< Link instruction offset to entry.
 
 public:
     FunctionInfo(std::string Name, uint64_t Address, size_t size)
         : Name(Name), EntryPC(0), BeginAddr(Address), EndAddr(Address + size),
-          LoadAddr(0) {
-        LinkOffset[0] = LinkOffset[1] = -1;
+          LoadAddr(0), LinkOffset(8, -1) {
+        /* LinkOffset[0] = LinkOffset[1] = -1; */
     }
 
     /// Implement custom operator to support compare and sort.
@@ -37,9 +39,18 @@ public:
     uint64_t &getLoadAddr() { return LoadAddr; }
     uint64_t &getEntryPC() { return EntryPC; }
     int &getLinkOffset(int idx) {
-        assert(idx == 1 || idx == 0);
+        /* assert(idx == 1 || idx == 0); */
+        // LinkOffset starts from 0, but idx(DWARF line number) starts from 1.
+        idx = idx - 1;
+        if (idx >= (int) LinkOffset.size()) {
+#ifdef CONFIG_COGBT_DEBUG
+            fprintf(stderr, "%s has %d ExitPoint\n", Name.c_str(), idx);
+#endif
+            LinkOffset.resize(idx+1, -1);
+        }
         return LinkOffset[idx];
     }
+    int getLinkSlotNumber() { return (int) LinkOffset.size(); }
 };
 
 //===----------------------------------------------------------------------===//

@@ -28,6 +28,14 @@
 extern void __gcov_dump(void);
 #endif
 
+#ifdef CONFIG_COGBT_DEBUG
+extern uint64_t llvm_to_qemu;
+extern uint64_t qemu_to_llvm;
+extern uint64_t switch_context;
+extern uint64_t tb_not_find;
+extern uint64_t syscall_number;
+#endif
+
 void preexit_cleanup(CPUArchState *env, int code)
 {
 #ifdef CONFIG_GPROF
@@ -35,6 +43,12 @@ void preexit_cleanup(CPUArchState *env, int code)
 #endif
 #ifdef CONFIG_GCOV
         __gcov_dump();
+#endif
+#ifdef CONFIG_COGBT_DEBUG
+        fprintf(stderr, "llvm_to_qemu = %ld, qemu_to_llvm = %ld\n", llvm_to_qemu, qemu_to_llvm);
+        fprintf(stderr, "tb_not_find = %ld\n", tb_not_find);
+        fprintf(stderr, "switch_context = %ld\n", switch_context);
+        fprintf(stderr, "syscall_number = %ld\n", syscall_number);
 #endif
         gdb_exit(code);
         qemu_plugin_user_exit();

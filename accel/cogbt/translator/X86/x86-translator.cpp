@@ -932,8 +932,8 @@ void X86Translator::Translate() {
             ss << std::hex << GuestInstHdl.getNextPC();
             std::string NextPCStr(ss.str());
             BasicBlock* NextBB = GetBasicBlock(TransFunc, NextPCStr);
-            assert(NextBB && "nextpc label does not exist.");
-            /* BindPhysicalReg(); */
+            /* assert(NextBB && "nextpc label does not exist."); */
+
             SyncAllGMRValue();
             if (NextBB)
                 Builder.CreateBr(NextBB);
@@ -946,9 +946,12 @@ void X86Translator::Translate() {
 
                 BindPhysicalReg();
                 Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {NextPC, Off});
-                AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1);
+                AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());
                 Builder.CreateCall(Mod->getFunction("epilogue"));
                 Builder.CreateUnreachable();
+            }
+            if (IsExitPC(GuestInstHdl.getPC())) {
+                ExitBB->eraseFromParent();
             }
         }
         /* TransFunc->dump(); */

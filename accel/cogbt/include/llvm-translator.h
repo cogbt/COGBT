@@ -135,6 +135,13 @@ public:
         return false;
     }
 
+    /// GetNextSlotNum - A TranslationUnit has multiple ExitPoints, this
+    /// function is uesd to get the next number of ExitPoint.
+    int GetNextSlotNum() {
+        assert(TU);
+        return TU->IncLinkSlotNum();
+    }
+
 protected:
     /// @name Core Member Variables
     std::string TargetTriple;    ///< LLVM backend target triple.
@@ -164,6 +171,7 @@ protected:
     std::unique_ptr<DIBuilder> DIB; ///< LLVM debug info builder.
     DIFile *DIF;                    ///< Debug info file.
     DISubroutineType *STy;          ///< Debug info subroutine type of function.
+    /* DIGlobalVariableExpression* DIGV; */
 
     /// AttachLinkInfoToIR - Attach some tb link information to the IR. These
     /// information will be retained in the ELF dwarf and we can parse them to
