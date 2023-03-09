@@ -41,7 +41,7 @@ public:
     int &getLinkOffset(int idx) {
         /* assert(idx == 1 || idx == 0); */
         // LinkOffset starts from 0, but idx(DWARF line number) starts from 1.
-        idx = idx - 1;
+        /* idx = idx - 1; */
         if (idx >= (int) LinkOffset.size()) {
 #ifdef CONFIG_COGBT_DEBUG
             fprintf(stderr, "%s has %d ExitPoint\n", Name.c_str(), idx);

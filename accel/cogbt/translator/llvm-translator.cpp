@@ -159,7 +159,6 @@ void LLVMTranslator::InitializeBlock(GuestBlock &Block) {
         dyn_cast<BranchInst>(EntryBB->getTerminator())->setSuccessor(0, CurrBB);
     }
     Builder.SetInsertPoint(CurrBB);
-    /* Mod->print(gdbs(), nullptr); */
 }
 
 Value *LLVMTranslator::GetPhysicalRegValue(const char *RegName) {
