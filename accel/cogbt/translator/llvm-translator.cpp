@@ -64,11 +64,17 @@ void LLVMTranslator::InitializeTypes() {
     Int128PtrTy = Type::getIntNPtrTy(Context, 128);
     Int80Ty = Type::getIntNTy(Context, 80);
     Int80PtrTy = Type::getIntNPtrTy(Context, 80);
+    FP80Ty = Type::getX86_FP80Ty(Context);
+    FP64Ty = Type::getDoubleTy(Context);
+    FP32Ty = Type::getFloatTy(Context);
+    FP80PtrTy = Type::getX86_FP80PtrTy(Context);
+    FP64PtrTy = Type::getDoublePtrTy(Context);
+    FP32PtrTy = Type::getFloatPtrTy(Context);
     CPUX86StatePtrTy = StructType::create(Context)->getPointerTo();
 };
 
 void LLVMTranslator::AttachLinkInfoToIR(Instruction *I, LIType Type,
-        unsigned int Val) {
+                                        unsigned int Val) {
     DISubprogram *DISP = I->getParent()->getParent()->getSubprogram();
     DILocation *DILoc = DILocation::get(Context, Val, Type, DISP);
     I->setDebugLoc(DILoc);
@@ -78,14 +84,15 @@ void LLVMTranslator::InitializeModule() {
     Mod.reset(new Module("cogbt", Context));
     RawMod = Mod.get();
 
-/* #ifdef CONFIG_HOST_X86 */
-/*     Mod->setTargetTriple("x86_64-pc-linux-gnu"); */
-/*     Mod->setDataLayout("e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-" */
-/*                        "n8:16:32:64-S128"); */
-/* #else */
+    /* #ifdef CONFIG_HOST_X86 */
+    /*     Mod->setTargetTriple("x86_64-pc-linux-gnu"); */
+    /*     Mod->setDataLayout("e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-"
+     */
+    /*                        "n8:16:32:64-S128"); */
+    /* #else */
     Mod->setTargetTriple("loongarch64-unknown-linux-gnu");
     Mod->setDataLayout("e-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128");
-/* #endif */
+    /* #endif */
     /* Mod->setTargetTriple(TargetTriple); */
     /* Mod->setDataLayout(TM->createDataLayout()); */
 
@@ -105,7 +112,8 @@ void LLVMTranslator::InitializeModule() {
     // InitializeFuncion.
     DIB.reset(new DIBuilder(*Mod));
     DIF = DIB->createFile("cogbt", "cogbt");
-    /* DIB->createCompileUnit(dwarf::DW_LANG_C99, DIF, "cogbt", false, "", 0); */
+    /* DIB->createCompileUnit(dwarf::DW_LANG_C99, DIF, "cogbt", false, "", 0);
+     */
     DIB->createCompileUnit(dwarf::DW_LANG_C99, DIF, "cogbt", false, "", 0,
                            StringRef(),
                            DICompileUnit::DebugEmissionKind::LineTablesOnly);
@@ -272,7 +280,6 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
             else
                 Mod->print(dbgs(), nullptr);
         }
-
     }
     if (aotmode) {
         EmitObjectCode();
@@ -289,8 +296,9 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
         Epilogue = (uintptr_t)FuncAddr;
         /* dbgs() << "Epilogue addr " << Epilogue << "\n"; //debug */
     }
-    //debug
-    /* fprintf(stderr, "After compiole, name epilogue is 0x%lx\n", EE->getAddressToGlobalIfAvailable("epilogue")); */
+    // debug
+    /* fprintf(stderr, "After compiole, name epilogue is 0x%lx\n",
+     * EE->getAddressToGlobalIfAvailable("epilogue")); */
     DeleteJIT(&Listener);
 
     if (DBG.DebugHostIns()) {
@@ -302,4 +310,3 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
     }
     return FuncAddr;
 }
-

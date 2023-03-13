@@ -5,8 +5,8 @@
 #include "x86.h"
 
 using llvm::LLVMContext;
-using llvm::Value;
 using llvm::Type;
+using llvm::Value;
 using X86Operand = struct cs_x86_op;
 
 class X86OperandHandler {
@@ -15,7 +15,7 @@ private:
 
 public:
     /// Constructor - Binding the x86 operand to handle.
-    X86OperandHandler(X86Operand *Opnd): Opnd(Opnd) {}
+    X86OperandHandler(X86Operand *Opnd) : Opnd(Opnd) {}
 
     /// GetGMRID - If operand is a x86 mapped register, return its id, otherwise
     /// return -1.
@@ -33,6 +33,10 @@ public:
     /// otherwise.
     int GetFPRID();
 
+    /// GetSTRID - If operand is a x87 fpu st register, return its index(0-7),
+    /// -1 otherwise.
+    int GetSTRID();
+
     /// GetBaseReg - If opnd is a memory operand, return the base reg id. -1
     /// otherwise.
     int GetBaseReg();
@@ -42,19 +46,13 @@ public:
     int GetIndexReg();
 
     /// isImmediate - Judge if Opnd is an immmediate operand.
-    bool isImm() {
-        return Opnd->type == X86_OP_IMM;
-    }
+    bool isImm() { return Opnd->type == X86_OP_IMM; }
 
     /// isRegister - Judge if Opnd is a register operand.
-    bool isReg() {
-        return Opnd->type == X86_OP_REG;
-    }
+    bool isReg() { return Opnd->type == X86_OP_REG; }
 
     /// isMem - Judge if Opnd is a memory operand.
-    bool isMem() {
-        return Opnd->type == X86_OP_MEM;
-    }
+    bool isMem() { return Opnd->type == X86_OP_MEM; }
 
     /// isGPR - Judge if Opnd is a GPR register.
     bool isGPR();
@@ -68,20 +66,22 @@ public:
     /// isMMX - Judeg if Opnd is a MMX register.
     bool isMMX();
 
+    /// isMMX - Judeg if Opnd is a ST register.
+    bool isSTR();
+
+    /// isMMX - Judeg if Opnd is a FP register.
+    bool isFPR();
     /// getOpndSize - Get the size(in bytes) of Opnd.
-    int getOpndSize() {
-        return Opnd->size;
-    }
+    int getOpndSize() { return Opnd->size; }
 
     /// setOpndSize - Use only in instrucion fnstsw
-    void setOpndSize(int size) {
-        Opnd->size = size;
-    }
+    void setOpndSize(int size) { Opnd->size = size; }
 
     /// getIMM - Get imm operand value.
-    int64_t getIMM() {
-        return Opnd->imm;
-    }
+    int64_t getIMM() { return Opnd->imm; }
+
+    X86Operand *getOpnd() { return Opnd; }
+
 private:
     X86Operand *Opnd;
 };

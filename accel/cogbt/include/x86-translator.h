@@ -9,11 +9,9 @@
 class X86Translator final : public LLVMTranslator, public X86Config {
 public:
     X86Translator(uintptr_t CacheBegin, size_t CacheSize)
-        : LLVMTranslator(
-              CacheBegin, CacheSize,
-              "loongarch64-pc-linux-gnu",
-              "loongarch64-pc-linux-gnu"), CurrInst(nullptr) {
-        }
+        : LLVMTranslator(CacheBegin, CacheSize, "loongarch64-pc-linux-gnu",
+                         "loongarch64-pc-linux-gnu"),
+          CurrInst(nullptr) {}
 
 private: /// Currently translated instruction.
     GuestInst *CurrInst;
@@ -141,15 +139,24 @@ private: /// Currently translated instruction.
     void GenFCMOVHelper(GuestInst *Inst, std::string LBTIntrinic);
 
     /// @name X87 FPU translator helper functions.
-    /// LoadFPR - Load FPStack[currtop + sti] fpr reg from env. currtop is the
-    /// current FPU stack top value.
-    Value *LoadFPR(int sti);
 
-    /// StoreFPR - Store value V into FPStack[currtop + sti].
-    void StoreFPR(Value *V, int sti);
+    /// StoreToFPR - Store value V into FPStack[sti].
+    void StoreToFPR(Value *V, Value *sti);
 
-    /// SetFPUTop - Adjust FPU stack top value to (currtop + sti).
-    void SetFPUTop(int sti);
+    /// SetFPUTop - Adjust FPU stack top value to sti.
+    void SetFPUTop(Value *sti);
+
+    /// SetFPTag - set FPTag[sti] to v.
+    void SetFPTag(Value *fpi, uint8_t v);
+
+    /// GetFPRPtr - Get the pointer of FPStack[sti].
+    Value *GetFPRPtr(Value *sti, Type *FPRType);
+
+    /// GetFPUTop - Get the current FPU stack top value.
+    Value *GetFPUTop(void);
+
+    /// LoadFromFPR - Load value from FPStack[sti].
+    Value *LoadFromFPR(Value *sti, Type *FPRType);
 };
 
 #endif

@@ -1,59 +1,55 @@
-#include "x86-translator.h"
 #include "emulator.h"
+#include "x86-translator.h"
 
-Value *X86Translator::LoadFPR(int sti) {
-    // Load fpstt from CPUX86State.
-    int Off = GuestFpsttOffset();
-    Value *FpsttAddr = Builder.CreateGEP(Int8Ty, CPUEnv,
-            ConstantInt::get(Int64Ty, Off));
-    Value *Ptr = Builder.CreateBitCast(FpsttAddr, Int32PtrTy);
-    Value *Fpstt = Builder.CreateLoad(Int32Ty, Ptr);
-
-    // FPRIdx = Fpstt + sti
-    Value *FPRIdx = Builder.CreateAdd(Fpstt, ConstInt(Int32Ty, sti));
-    // FPROff = sizeof(FPReg) * FPRIdx
-    Value *FPROff = Builder.CreateMul(FPRIdx, ConstInt(Int32Ty, GuestFPRegSize()));
-    // FPROff = offsetof(fpregs, CPUX86State) + sizeof(FPReg) * FPRIdx
-    FPROff = Builder.CreateAdd(ConstInt(Int32Ty, GuestFpregsOffset()), FPROff);
-
-    // Load value
-    Ptr = Builder.CreateBitCast(FPROff, Int64PtrTy);
-    Value *Reg = Builder.CreateLoad(Int64Ty, Ptr);
-    return Reg;
+void X86Translator::SetFPTag(Value *fpi, uint8_t v) {
+    Value *FPTagIdxOff =
+        Builder.CreateMul(fpi, ConstantInt::get(Int32Ty, GuestFpTagSize()));
+    Value *FPTagAddr = Builder.CreateAdd(
+        ConstantInt::get(Int32Ty, GuestFpTagOffset()), FPTagIdxOff);
+    Value *FPTagPtr = Builder.CreateGEP(Int8Ty, CPUEnv, FPTagAddr);
+    Builder.CreateStore(ConstantInt::get(Int8Ty, v), FPTagPtr);
 }
 
-void X86Translator::StoreFPR(Value *V, int sti) {
-    assert(V->getType()->getIntegerBitWidth() == 64);
-    // Load fpstt from CPUX86State.
-    int Off = GuestFpsttOffset();
-    Value *FpsttAddr = Builder.CreateGEP(Int8Ty, CPUEnv,
-                                         ConstantInt::get(Int64Ty, Off));
-    Value *Ptr = Builder.CreateBitCast(FpsttAddr, Int32PtrTy);
-    Value *Fpstt = Builder.CreateLoad(Int32Ty, Ptr);
-
-    // FPRIdx = Fpstt + sti
-    Value *FPRIdx = Builder.CreateAdd(Fpstt, ConstInt(Int32Ty, sti));
-    // FPROff = sizeof(FPReg) * FPRIdx
-    Value *FPROff = Builder.CreateMul(FPRIdx, ConstInt(Int32Ty, GuestFPRegSize()));
-    // FPROff = offsetof(fpregs, CPUX86State) + sizeof(FPReg) * FPRIdx
-    FPROff = Builder.CreateAdd(ConstInt(Int32Ty, GuestFpregsOffset()), FPROff);
-
-    // Store value
-    Ptr = Builder.CreateBitCast(FPROff, Int64PtrTy);
-    Builder.CreateStore(V, Ptr);
+Value *X86Translator::GetFPRPtr(Value *sti, Type *FPRPtrType) {
+    Value *FPRIdxOff =
+        Builder.CreateMul(sti, ConstInt(Int32Ty, GuestFPRegSize()));
+    Value *FPROff = Builder.CreateAdd(
+        FPRIdxOff, ConstantInt::get(Int32Ty, GuestFpregsOffset())); // add
+    Value *FPRAddr =
+        Builder.CreateGEP(Int8Ty, CPUEnv, FPROff); // fpreg[0] address in RAM
+    Value *FPRPtr =
+        Builder.CreateBitCast(FPRAddr, FPRPtrType); // transform to Ptr of INT32
+    return FPRPtr;
 }
 
-void X86Translator::SetFPUTop(int sti) {
+void X86Translator::StoreToFPR(Value *V, Value *sti) {
+    Value *FPRPtr = GetFPRPtr(sti, V->getType()->getPointerTo());
+    Builder.CreateStore(V, FPRPtr);
+}
+
+Value *X86Translator::LoadFromFPR(Value *sti, Type *FPRType) {
+    Value *FPRPtr = GetFPRPtr(sti, FPRType->getPointerTo());
+    return Builder.CreateLoad(FPRType, FPRPtr);
+}
+
+void X86Translator::SetFPUTop(Value *sti) {
     // Load fpstt from CPUX86State.
     int Off = GuestFpsttOffset();
-    Value *FpsttAddr = Builder.CreateGEP(Int8Ty, CPUEnv,
-                                         ConstantInt::get(Int64Ty, Off));
+    Value *FpsttAddr =
+        Builder.CreateGEP(Int8Ty, CPUEnv, ConstantInt::get(Int32Ty, Off));
     Value *Ptr = Builder.CreateBitCast(FpsttAddr, Int32PtrTy);
-    Value *Fpstt = Builder.CreateLoad(Int32Ty, Ptr);
+    Builder.CreateStore(sti, Ptr);
+}
 
-    // FPRIdx = Fpstt + sti
-    Value *FPRIdx = Builder.CreateAdd(Fpstt, ConstInt(Int32Ty, sti));
-    Builder.CreateStore(FPRIdx, Ptr);
+Value *X86Translator::GetFPUTop(void) {
+    Value *FpsttAddr = Builder.CreateGEP(
+        Int8Ty, CPUEnv,
+        ConstantInt::get(Int32Ty, GuestFpsttOffset())); // fpstt address in RAM
+    Value *FpsttPtr = Builder.CreateBitCast(
+        FpsttAddr, Int32PtrTy); // transform to Ptr of INT32PTR
+    Value *Fpstt =
+        Builder.CreateLoad(Int32Ty, FpsttPtr); // get the Value of top
+    return Fpstt;
 }
 
 void X86Translator::FlushFPRValue(std::string FPR, Value *FV, bool isInt) {
@@ -110,7 +106,7 @@ enum FPUFlag : int {
 // OneOpndModifySTN IsInt WithFPop
 void X86Translator::GenFPUHelper(GuestInst *Inst, std::string Name, int Flags) {
     X86InstHandler InstHdl(Inst);
-    bool MemValisInteger = Flags &  MEM_VAL_IS_INT;
+    bool MemValisInteger = Flags & MEM_VAL_IS_INT;
     bool DestOrFirstSrcIsST0 = Flags & DEST_IS_ST0;
     bool ShouldPopOnce = Flags & SHOULD_POP_ONCE;
     bool ShouldPopTwice = Flags & SHOULD_POP_TWICE;
@@ -146,8 +142,7 @@ void X86Translator::GenFPUHelper(GuestInst *Inst, std::string Name, int Flags) {
             CallFunc(FTy, "helper_fpop", CPUEnv);
             CallFunc(FTy, "helper_fpop", CPUEnv);
         }
-    }
-    else { // e.g fsub st0, sti means st(i) - st(0) -> st(i)
+    } else { // e.g fsub st0, sti means st(i) - st(0) -> st(i)
         FunctionType *FTy2 =
             FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
         X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
@@ -594,42 +589,57 @@ void X86Translator::translate_fld1(GuestInst *Inst) {
     CallFunc(FTy, "helper_fld1_ST0", {CPUEnv});
 }
 
+// void X86Translator::translate_fld(GuestInst *Inst) {
+//     X86InstHandler InstHdl(Inst);
+//     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+
+//     FunctionType *FPUSHTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+//     FunctionType *FMOVTy =
+//         FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
+//     FunctionType *FLDTTy =
+//         FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false);
+
+//     if (SrcOpnd.isMem()) { // fld m32fp/m64fp/m80fp
+//         if (SrcOpnd.getOpndSize() == 10) {
+//             Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
+//             CallFunc(FLDTTy, "helper_fldt_ST0", {CPUEnv, Addr});
+//         } else {
+//             Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+//             FlushFPRValue("ST0", MemVal, false);
+//         }
+//     } else {
+//         Value *DestFPRID = ConstInt(Int32Ty, (SrcOpnd.GetFPRID() + 1) & 7);
+
+//         CallFunc(FPUSHTy, "helper_fpush", {CPUEnv});
+//         CallFunc(FMOVTy, "helper_fmov_ST0_STN", {CPUEnv, DestFPRID});
+//     }
+// }
+
 void X86Translator::translate_fld(GuestInst *Inst) {
-    /* X86InstHandler InstHdl(Inst); */
-    /* X86OperandHandler SrcOpnd(InstHdl.getOpnd(0)); */
-
-    /* FunctionType *FPUSHTy = FunctionType::get(VoidTy, Int8PtrTy, false); */
-    /* FunctionType *FMOVTy = */
-    /*     FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false); */
-    /* FunctionType *FLDTTy = */
-    /*     FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false); */
-
-    /* if (SrcOpnd.isMem()) { // fld m32fp/m64fp/m80fp */
-    /*     if (SrcOpnd.getOpndSize() == 10) { */
-    /*         Value *Addr = CalcMemAddr(InstHdl.getOpnd(0)); */
-    /*         CallFunc(FLDTTy, "helper_fldt_ST0", {CPUEnv, Addr}); */
-    /*     } else { */
-    /*         Value *MemVal = LoadOperand(InstHdl.getOpnd(0)); */
-    /*         FlushFPRValue("ST0", MemVal, false); */
-    /*     } */
-    /* } else { */
-    /*     Value *DestFPRID = ConstInt(Int32Ty, (SrcOpnd.GetFPRID() + 1) & 7); */
-    /*     CallFunc(FPUSHTy, "helper_fpush", {CPUEnv}); */
-    /*     CallFunc(FMOVTy, "helper_fmov_ST0_STN", {CPUEnv, DestFPRID}); */
-    /* } */
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    FunctionType *FPUSHTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+    FunctionType *FMOVTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
     if (SrcOpnd.isMem()) { // fld m32fp/m64fp/m80fp
-        if (SrcOpnd.getOpndSize() == 10)
-            llvm_unreachable("80bit float needs to be done\n");
-        Value *V = LoadOperand(InstHdl.getOpnd(0));
-        StoreFPR(V, 0);
+        Value *MemVal = nullptr;
+        if (SrcOpnd.getOpndSize() == 4) {
+            llvm_unreachable("fld: 32 bit not supported\n");
+        } else if (SrcOpnd.getOpndSize() == 8 || SrcOpnd.getOpndSize() == 10) {
+            MemVal = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
+        } else {
+            llvm_unreachable("fld: unknow bit width\n");
+        }
+        Value *NewSti = GetFPUTop();
+        NewSti = Builder.CreateSub(NewSti, ConstInt(Int32Ty, 1));
+        NewSti = Builder.CreateAnd(NewSti, ConstInt(Int32Ty, 7));
+        StoreToFPR(MemVal, NewSti);
+        SetFPUTop(NewSti);
+        SetFPTag(NewSti, 0);
     } else {
-        int top = SrcOpnd.GetFPRID();
-        Value * V = LoadFPR(top);
-        int newtop = (top - 1) & 7;
-        SetFPUTop(newtop);
-        StoreFPR(V, newtop);
+        Value *DestFPRID = ConstInt(Int32Ty, (SrcOpnd.GetFPRID() + 1) & 7);
+        CallFunc(FPUSHTy, "helper_fpush", {CPUEnv});
+        CallFunc(FMOVTy, "helper_fmov_ST0_STN", {CPUEnv, DestFPRID});
     }
 }
 
@@ -657,23 +667,47 @@ void X86Translator::translate_fst(GuestInst *Inst) {
     }
 }
 
+// void X86Translator::translate_fstp(GuestInst *Inst) {
+//     X86InstHandler InstHdl(Inst);
+//     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+//     FunctionType *FPOPTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+//     FunctionType *FMOVTy =
+//         FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
+//     FunctionType *FSTTTy =
+//         FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false);
+
+//     if (SrcOpnd.isMem()) {
+//         if (SrcOpnd.getOpndSize() == 10) {
+//             Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
+//             CallFunc(FSTTTy, "helper_fstt_ST0", {CPUEnv, Addr});
+//         } else {
+//             Value *MemVal = ReloadFPRValue("ST0", SrcOpnd.getOpndSize(),
+//             false); StoreOperand(MemVal, InstHdl.getOpnd(0));
+//         }
+//     } else {
+//         Value *DestFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+//         CallFunc(FMOVTy, "helper_fmov_STN_ST0", {CPUEnv, DestFPRID});
+//     }
+//     CallFunc(FPOPTy, "helper_fpop", CPUEnv);
+// }
+
 void X86Translator::translate_fstp(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     FunctionType *FPOPTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     FunctionType *FMOVTy =
         FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
-    FunctionType *FSTTTy =
-        FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false);
-
     if (SrcOpnd.isMem()) {
+        Value *V = nullptr;
         if (SrcOpnd.getOpndSize() == 10) {
-            Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
-            CallFunc(FSTTTy, "helper_fstt_ST0", {CPUEnv, Addr});
-        } else {
-            Value *MemVal = ReloadFPRValue("ST0", SrcOpnd.getOpndSize(), false);
-            StoreOperand(MemVal, InstHdl.getOpnd(0));
+            V = LoadFromFPR(GetFPUTop(), Int64Ty);
+            SrcOpnd.setOpndSize(8);
+        } else if (SrcOpnd.getOpndSize() == 8) {
+            V = LoadFromFPR(GetFPUTop(), Int64Ty);
+        } else if (SrcOpnd.getOpndSize() == 4) {
+            llvm_unreachable("fstp: 32bit needs to be done\n");
         }
+        StoreOperand(V, SrcOpnd.getOpnd());
     } else {
         Value *DestFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
         CallFunc(FMOVTy, "helper_fmov_STN_ST0", {CPUEnv, DestFPRID});

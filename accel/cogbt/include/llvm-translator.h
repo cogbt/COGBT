@@ -83,8 +83,8 @@ public:
         : DBG(), Epilogue(0), Builder(Context),
           CodeCache(CacheBegin, CacheSize), HostDisAsm(HostTripleName),
           GuestDisAsm(GuestTripleName) {
-      InitializeTarget();
-      InitializeTypes();
+        InitializeTarget();
+        InitializeTypes();
     }
     virtual ~LLVMTranslator() = default;
 
@@ -130,9 +130,9 @@ public:
 
 protected:
     /// @name Core Member Variables
-    std::string TargetTriple;    ///< LLVM backend target triple.
-    const Target *TheTarget;     ///< LLVM backend target.
-    TargetMachine *TM;           ///< Machine description cogbt is targeting.
+    std::string TargetTriple; ///< LLVM backend target triple.
+    const Target *TheTarget;  ///< LLVM backend target.
+    TargetMachine *TM;        ///< Machine description cogbt is targeting.
     LLVMContext Context;
     std::unique_ptr<Module> Mod; ///< Container of all translated IR.
     Module *RawMod;              ///< Raw pointer of Mod.
@@ -167,8 +167,9 @@ protected:
 
     /// Basic types that are frequently used.
     Type *Int1Ty, *Int8Ty, *Int16Ty, *Int32Ty, *Int64Ty, *Int128Ty, *Int256Ty,
-         *Int512Ty, *VoidTy, *Int8PtrTy, *Int16PtrTy, *Int32PtrTy, *Int64PtrTy,
-         *Int128PtrTy, *CPUX86StatePtrTy, *Int80Ty, *Int80PtrTy;
+        *Int512Ty, *VoidTy, *Int8PtrTy, *Int16PtrTy, *Int32PtrTy, *Int64PtrTy,
+        *Int128PtrTy, *CPUX86StatePtrTy, *Int80Ty, *Int80PtrTy, *FP80Ty,
+        *FP80PtrTy, *FP64Ty, *FP64PtrTy, *FP32Ty, *FP32PtrTy;
 
     /// InitializeTypes - Cache some basic types that are frequently used in
     /// translator.

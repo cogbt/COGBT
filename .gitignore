@@ -22,3 +22,7 @@ capstone
 meson.build
 accel/cogbt/meson.build
 buildqemu
+*.log
+*.path
+*.out
+*.aot
