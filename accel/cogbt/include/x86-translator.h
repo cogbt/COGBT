@@ -140,23 +140,23 @@ private: /// Currently translated instruction.
 
     /// @name X87 FPU translator helper functions.
 
-    /// StoreToFPR - Store value V into FPStack[sti].
-    void StoreToFPR(Value *V, Value *sti);
+    /// StoreToFPR - Store value V into FPStack[fpi].
+    void StoreToFPR(Value *V, Value *fpi);
 
-    /// SetFPUTop - Adjust FPU stack top value to sti.
-    void SetFPUTop(Value *sti);
+    /// SetFPUTop - Adjust FPU stack top value to fpi.
+    void SetFPUTop(Value *fpi);
 
-    /// SetFPTag - set FPTag[sti] to v.
+    /// SetFPTag - set FPTag[fpi] to v.
     void SetFPTag(Value *fpi, uint8_t v);
 
-    /// GetFPRPtr - Get the pointer of FPStack[sti].
-    Value *GetFPRPtr(Value *sti, Type *FPRType);
+    /// GetFPRPtr - Get the pointer of FPStack[fpi].
+    Value *GetFPRPtr(Value *fpi, Type *FPRType);
 
     /// GetFPUTop - Get the current FPU stack top value.
     Value *GetFPUTop(void);
 
-    /// LoadFromFPR - Load value from FPStack[sti].
-    Value *LoadFromFPR(Value *sti, Type *FPRType);
+    /// LoadFromFPR - Load value from FPStack[fpi].
+    Value *LoadFromFPR(Value *fpi, Type *FPRType);
 };
 
 #endif

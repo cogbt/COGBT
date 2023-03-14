@@ -10,9 +10,9 @@ void X86Translator::SetFPTag(Value *fpi, uint8_t v) {
     Builder.CreateStore(ConstantInt::get(Int8Ty, v), FPTagPtr);
 }
 
-Value *X86Translator::GetFPRPtr(Value *sti, Type *FPRPtrType) {
+Value *X86Translator::GetFPRPtr(Value *fpi, Type *FPRPtrType) {
     Value *FPRIdxOff =
-        Builder.CreateMul(sti, ConstInt(Int32Ty, GuestFPRegSize()));
+        Builder.CreateMul(fpi, ConstInt(Int32Ty, GuestFPRegSize()));
     Value *FPROff = Builder.CreateAdd(
         FPRIdxOff, ConstantInt::get(Int32Ty, GuestFpregsOffset())); // add
     Value *FPRAddr =
@@ -22,23 +22,23 @@ Value *X86Translator::GetFPRPtr(Value *sti, Type *FPRPtrType) {
     return FPRPtr;
 }
 
-void X86Translator::StoreToFPR(Value *V, Value *sti) {
-    Value *FPRPtr = GetFPRPtr(sti, V->getType()->getPointerTo());
+void X86Translator::StoreToFPR(Value *V, Value *fpi) {
+    Value *FPRPtr = GetFPRPtr(fpi, V->getType()->getPointerTo());
     Builder.CreateStore(V, FPRPtr);
 }
 
-Value *X86Translator::LoadFromFPR(Value *sti, Type *FPRType) {
-    Value *FPRPtr = GetFPRPtr(sti, FPRType->getPointerTo());
+Value *X86Translator::LoadFromFPR(Value *fpi, Type *FPRType) {
+    Value *FPRPtr = GetFPRPtr(fpi, FPRType->getPointerTo());
     return Builder.CreateLoad(FPRType, FPRPtr);
 }
 
-void X86Translator::SetFPUTop(Value *sti) {
+void X86Translator::SetFPUTop(Value *fpi) {
     // Load fpstt from CPUX86State.
     int Off = GuestFpsttOffset();
     Value *FpsttAddr =
         Builder.CreateGEP(Int8Ty, CPUEnv, ConstantInt::get(Int32Ty, Off));
     Value *Ptr = Builder.CreateBitCast(FpsttAddr, Int32PtrTy);
-    Builder.CreateStore(sti, Ptr);
+    Builder.CreateStore(fpi, Ptr);
 }
 
 Value *X86Translator::GetFPUTop(void) {
@@ -157,8 +157,32 @@ void X86Translator::translate_fabs(GuestInst *Inst) {
     CallFunc(FuncTy, "helper_fabs_ST0", CPUEnv);
 }
 
+// void X86Translator::translate_fadd(GuestInst *Inst) {
+//     GenFPUHelper(Inst, "fadd", DEST_IS_ST0);
+// }
+
 void X86Translator::translate_fadd(GuestInst *Inst) {
-    GenFPUHelper(Inst, "fadd", DEST_IS_ST0);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    assert(SrcOpnd.isMem());
+    Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+    Value *RHS = nullptr;
+    if (SrcOpnd.getOpndSize() == 8 || SrcOpnd.getOpndSize() == 10) {
+        RHS = Builder.CreateBitCast(MemVal, FP64Ty);
+    } else if (SrcOpnd.getOpndSize() == 4) {
+        RHS = Builder.CreateBitCast(MemVal, FP32Ty);
+        RHS = Builder.CreateFPExt(RHS, FP64Ty);
+    }
+    Value *NewSt0 = GetFPUTop();
+    Value *LHS = LoadFromFPR(NewSt0, FP64Ty);
+    Value *res = Builder.CreateFAdd(LHS, RHS);
+    res = Builder.CreateBitCast(res, Int64Ty);
+    NewSt0 = Builder.CreateSub(NewSt0, ConstInt(Int32Ty, 1));
+    NewSt0 = Builder.CreateAnd(NewSt0, ConstInt(Int32Ty, 7));
+    StoreToFPR(res, NewSt0);
+    SetFPUTop(NewSt0);
+    SetFPTag(NewSt0, 0);
+    // TODO: merge_exception_flags
 }
 
 void X86Translator::translate_fiadd(GuestInst *Inst) {
@@ -618,28 +642,38 @@ void X86Translator::translate_fld1(GuestInst *Inst) {
 void X86Translator::translate_fld(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-    FunctionType *FPUSHTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    FunctionType *FMOVTy =
-        FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
+
     if (SrcOpnd.isMem()) { // fld m32fp/m64fp/m80fp
         Value *MemVal = nullptr;
         if (SrcOpnd.getOpndSize() == 4) {
-            llvm_unreachable("fld: 32 bit not supported\n");
+            MemVal = LoadOperand(InstHdl.getOpnd(0), FP32Ty);
+            MemVal = Builder.CreateFPExt(MemVal, FP64Ty);
         } else if (SrcOpnd.getOpndSize() == 8 || SrcOpnd.getOpndSize() == 10) {
             MemVal = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
         } else {
             llvm_unreachable("fld: unknow bit width\n");
         }
-        Value *NewSti = GetFPUTop();
-        NewSti = Builder.CreateSub(NewSti, ConstInt(Int32Ty, 1));
-        NewSti = Builder.CreateAnd(NewSti, ConstInt(Int32Ty, 7));
-        StoreToFPR(MemVal, NewSti);
-        SetFPUTop(NewSti);
-        SetFPTag(NewSti, 0);
+        Value *NewSt0 = GetFPUTop();
+        NewSt0 = Builder.CreateSub(NewSt0, ConstInt(Int32Ty, 1));
+        NewSt0 = Builder.CreateAnd(NewSt0, ConstInt(Int32Ty, 7));
+        StoreToFPR(MemVal, NewSt0);
+        SetFPUTop(NewSt0);
+        SetFPTag(NewSt0, 0);
+        // TODO: merge_exception_flags(env, old_flags)
+    } else if (SrcOpnd.isFPR() || SrcOpnd.isSTR()) { // fld from STR
+        Value *NewSt0 = GetFPUTop();
+        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+        Value *DestFPRID = Builder.CreateAdd(NewSt0, DestSTRID);
+        DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty, 7));
+        Value *Src = LoadFromFPR(DestFPRID, Int64Ty);
+        NewSt0 = Builder.CreateSub(NewSt0, ConstInt(Int32Ty, 1));
+        NewSt0 = Builder.CreateAnd(NewSt0, ConstInt(Int32Ty, 7));
+        StoreToFPR(Src, NewSt0);
+        SetFPUTop(NewSt0);
+        SetFPTag(NewSt0, 0);
+        // TODO: merge_exception_flags
     } else {
-        Value *DestFPRID = ConstInt(Int32Ty, (SrcOpnd.GetFPRID() + 1) & 7);
-        CallFunc(FPUSHTy, "helper_fpush", {CPUEnv});
-        CallFunc(FMOVTy, "helper_fmov_ST0_STN", {CPUEnv, DestFPRID});
+        llvm_unreachable("fld: unhandled Opnd\n");
     }
 }
 
@@ -694,9 +728,8 @@ void X86Translator::translate_fst(GuestInst *Inst) {
 void X86Translator::translate_fstp(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-    FunctionType *FPOPTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    FunctionType *FMOVTy =
-        FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
+    Value *ST0 = GetFPUTop();
+
     if (SrcOpnd.isMem()) {
         Value *V = nullptr;
         if (SrcOpnd.getOpndSize() == 10) {
@@ -705,14 +738,26 @@ void X86Translator::translate_fstp(GuestInst *Inst) {
         } else if (SrcOpnd.getOpndSize() == 8) {
             V = LoadFromFPR(GetFPUTop(), Int64Ty);
         } else if (SrcOpnd.getOpndSize() == 4) {
-            llvm_unreachable("fstp: 32bit needs to be done\n");
+            V = LoadFromFPR(GetFPUTop(), FP64Ty);
+            V = Builder.CreateFPTrunc(V, FP32Ty);
+            V = Builder.CreateBitCast(V, Int32Ty);
         }
         StoreOperand(V, SrcOpnd.getOpnd());
+
+    } else if (SrcOpnd.isFPR() || SrcOpnd.isSTR()) {
+        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+        Value *DestFPRID = Builder.CreateAdd(ST0, DestSTRID);
+        DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty, 7));
+        Value *V = LoadFromFPR(DestFPRID, Int64Ty);
+        StoreOperand(V, SrcOpnd.getOpnd());
     } else {
-        Value *DestFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
-        CallFunc(FMOVTy, "helper_fmov_STN_ST0", {CPUEnv, DestFPRID});
+        llvm_unreachable("fstp: unhandled Opnd\n");
+        return;
     }
-    CallFunc(FPOPTy, "helper_fpop", CPUEnv);
+    Value *NewST0 = Builder.CreateAdd(ST0, ConstInt(Int32Ty, 1));
+    NewST0 = Builder.CreateAnd(NewST0, ConstInt(Int32Ty, 7));
+    SetFPTag(NewST0, 1);
+    SetFPUTop(NewST0);
 }
 
 void X86Translator::translate_fstpnce(GuestInst *Inst) {
@@ -742,8 +787,32 @@ void X86Translator::translate_fsubrp(GuestInst *Inst) {
     GenFPUHelper(Inst, "fsubr", SHOULD_POP_ONCE);
 }
 
+// void X86Translator::translate_fsub(GuestInst *Inst) {
+//     GenFPUHelper(Inst, "fsub", DEST_IS_ST0);
+// }
+
 void X86Translator::translate_fsub(GuestInst *Inst) {
-    GenFPUHelper(Inst, "fsub", DEST_IS_ST0);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    assert(SrcOpnd.isMem());
+    Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+    Value *RHS = nullptr;
+    if (SrcOpnd.getOpndSize() == 8 || SrcOpnd.getOpndSize() == 10) {
+        RHS = Builder.CreateBitCast(MemVal, FP64Ty);
+    } else if (SrcOpnd.getOpndSize() == 4) {
+        RHS = Builder.CreateBitCast(MemVal, FP32Ty);
+        RHS = Builder.CreateFPExt(RHS, FP64Ty);
+    }
+    Value *NewSt0 = GetFPUTop();
+    Value *LHS = LoadFromFPR(NewSt0, FP64Ty);
+    Value *res = Builder.CreateFSub(LHS, RHS);
+    res = Builder.CreateBitCast(res, FP64Ty);
+    NewSt0 = Builder.CreateSub(NewSt0, ConstInt(Int32Ty, 1));
+    NewSt0 = Builder.CreateAnd(NewSt0, ConstInt(Int32Ty, 7));
+    StoreToFPR(res, NewSt0);
+    SetFPUTop(NewSt0);
+    SetFPTag(NewSt0, 0);
+    // TODO: merge_exception_flags
 }
 
 void X86Translator::translate_fisub(GuestInst *Inst) {
@@ -891,8 +960,32 @@ void X86Translator::translate_fcmovu(GuestInst *Inst) {
     GenFCMOVHelper(Inst, "llvm.loongarch.x86setjp");
 }
 
+// void X86Translator::translate_fmul(GuestInst *Inst) {
+//     GenFPUHelper(Inst, "fmul", DEST_IS_ST0);
+// }
+
 void X86Translator::translate_fmul(GuestInst *Inst) {
-    GenFPUHelper(Inst, "fmul", DEST_IS_ST0);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    assert(SrcOpnd.isMem());
+    Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+    Value *RHS = nullptr;
+    if (SrcOpnd.getOpndSize() == 8 || SrcOpnd.getOpndSize() == 10) {
+        RHS = Builder.CreateBitCast(MemVal, FP64Ty);
+    } else if (SrcOpnd.getOpndSize() == 4) {
+        RHS = Builder.CreateBitCast(MemVal, FP32Ty);
+        RHS = Builder.CreateFPExt(RHS, FP64Ty);
+    }
+    Value *NewSt0 = GetFPUTop();
+    Value *LHS = LoadFromFPR(NewSt0, FP64Ty);
+    Value *res = Builder.CreateFMul(LHS, RHS);
+    res = Builder.CreateBitCast(res, Int64Ty);
+    NewSt0 = Builder.CreateSub(NewSt0, ConstInt(Int32Ty, 1));
+    NewSt0 = Builder.CreateAnd(NewSt0, ConstInt(Int32Ty, 7));
+    StoreToFPR(res, NewSt0);
+    SetFPUTop(NewSt0);
+    SetFPTag(NewSt0, 0);
+    // TODO: merge_exception_flags
 }
 
 void X86Translator::translate_fimul(GuestInst *Inst) {
