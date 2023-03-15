@@ -10,8 +10,10 @@ void X86Translator::DeclareExternalSymbols() {
     // Declare epilogue.
     FunctionType *FuncTy = FunctionType::get(VoidTy, false);
     Function::Create(FuncTy, Function::ExternalLinkage, "epilogue", Mod.get());
-    Function::Create(FuncTy, Function::ExternalLinkage, "AOTEpilogue", Mod.get());
-    /* Function *EpilogFunc = Function::Create(FuncTy, Function::ExternalLinkage, */
+    Function::Create(FuncTy, Function::ExternalLinkage, "AOTEpilogue",
+                     Mod.get());
+    /* Function *EpilogFunc = Function::Create(FuncTy,
+     * Function::ExternalLinkage, */
     /*                                       "epilogue", Mod.get()); */
     /* EpilogFunc->addFnAttr(Attribute::NoReturn); */
 }
@@ -127,8 +129,8 @@ void X86Translator::GenPrologue() {
     /* InitializeModule(); */
 
     FunctionType *FuncTy = FunctionType::get(VoidTy, false);
-    TransFunc = Function::Create(FuncTy, Function::ExternalLinkage, "AOTPrologue",
-                                 Mod.get());
+    TransFunc = Function::Create(FuncTy, Function::ExternalLinkage,
+                                 "AOTPrologue", Mod.get());
     TransFunc->setCallingConv(CallingConv::C);
     TransFunc->addFnAttr(Attribute::NoReturn);
     TransFunc->addFnAttr(Attribute::NoUnwind);
@@ -208,7 +210,8 @@ void X86Translator::GenEpilogue() {
 
     TransFunc = Mod->getFunction("AOTEpilogue");
     /* FunctionType *FuncTy = FunctionType::get(VoidTy, false); */
-    /* TransFunc = Function::Create(FuncTy, Function::ExternalLinkage, "epilogue", */
+    /* TransFunc = Function::Create(FuncTy, Function::ExternalLinkage,
+     * "epilogue", */
     /*                              Mod.get()); */
     TransFunc->setCallingConv(CallingConv::C);
     TransFunc->addFnAttr(Attribute::NoReturn);
@@ -226,8 +229,8 @@ void X86Translator::GenEpilogue() {
         GuestVals[i] = GetPhysicalRegValue(HostRegNames[GMRToHMR(i)]);
         if (i == X86Config::EFLAG) {
             Value *LBTFlag = GetLBTFlag();
-            Value *DF =
-                Builder.CreateAnd(GuestVals[i], ConstInt(Int64Ty, DF_BIT|0x202));
+            Value *DF = Builder.CreateAnd(GuestVals[i],
+                                          ConstInt(Int64Ty, DF_BIT | 0x202));
             GuestVals[i] = Builder.CreateOr(LBTFlag, DF);
         }
     }
@@ -301,7 +304,7 @@ void X86Translator::FlushGMRValue(int GMRId) {
     Value *GMRV = LoadGMRValue(Int64Ty, GMRId);
     if (GMRId == X86Config::EFLAG) {
         Value *Flag = GetLBTFlag();
-        GMRV = Builder.CreateAnd(GMRV, ConstInt(Int64Ty, DF_BIT|0x202));
+        GMRV = Builder.CreateAnd(GMRV, ConstInt(Int64Ty, DF_BIT | 0x202));
         GMRV = Builder.CreateOr(GMRV, Flag);
     }
     Builder.CreateStore(GMRV, Ptr, true);
@@ -368,7 +371,8 @@ Value *X86Translator::LoadGMRValue(Type *Ty, int GMRId, bool isHSubReg) {
             return V;
         } else {
             if (isHSubReg) {
-                assert(Ty->getIntegerBitWidth() == 8 && "HSubReg should be 8 bit");
+                assert(Ty->getIntegerBitWidth() == 8 &&
+                       "HSubReg should be 8 bit");
                 V = Builder.CreateLShr(V, ConstInt(V->getType(), 8));
                 V = Builder.CreateAnd(V, ConstInt(V->getType(), 0xff));
             }
@@ -466,11 +470,20 @@ Value *X86Translator::CalcMemAddr(X86Operand *Opnd) {
         int scale = Opnd->mem.scale;
         int shift = 0;
         switch (scale) {
-            case 1: shift = 0; break;
-            case 2: shift = 1; break;
-            case 4: shift = 2; break;
-            case 8: shift = 3; break;
-            default: llvm_unreachable("scale should be power of 2");
+        case 1:
+            shift = 0;
+            break;
+        case 2:
+            shift = 1;
+            break;
+        case 4:
+            shift = 2;
+            break;
+        case 8:
+            shift = 3;
+            break;
+        default:
+            llvm_unreachable("scale should be power of 2");
         }
         Index = LoadGMRValue(Int64Ty, indexReg);
         Index = Builder.CreateShl(Index, ConstantInt::get(Int64Ty, shift));
@@ -485,8 +498,7 @@ Value *X86Translator::CalcMemAddr(X86Operand *Opnd) {
         MemAddr = Builder.CreateAdd(ConstInt(Int64Ty, 0),
                                     ConstInt(Int64Ty, Opnd->mem.disp));
     } else {
-        MemAddr = Builder.CreateAdd(MemAddr,
-                                    ConstInt(Int64Ty, Opnd->mem.disp));
+        MemAddr = Builder.CreateAdd(MemAddr, ConstInt(Int64Ty, Opnd->mem.disp));
     }
     /* } */
 
@@ -515,6 +527,12 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd, Type *LoadTy) {
                 Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
             Addr = Builder.CreateBitCast(Addr, LLVMTy->getPointerTo());
             Res = Builder.CreateLoad(LLVMTy, Addr);
+        } else if (OpndHdl.isFPR() || OpndHdl.isSTR()) {
+            Value *St0 = GetFPUTop();
+            Value *SrcSTRID = ConstInt(Int32Ty, OpndHdl.GetFPRID());
+            Value *SrcFPRID = Builder.CreateAdd(St0, SrcSTRID);
+            SrcFPRID = Builder.CreateAnd(SrcFPRID, ConstInt(Int32Ty, 7));
+            Res = LoadFromFPR(SrcFPRID, Int64Ty);
         } else {
             llvm_unreachable("Unhandled register operand type!");
         }
@@ -534,12 +552,14 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
 
     // If DestOpnd isn't MMX or XMM, then the bitwidth of ResVal is greater or
     // equal than DestOpnd.
-    assert(OpndHdl.isMMX() || OpndHdl.isXMM() || 
+    assert(OpndHdl.isMMX() || OpndHdl.isXMM() || OpndHdl.isFPR() ||
+           OpndHdl.isSTR() ||
            ResVal->getType()->getIntegerBitWidth() >=
                (unsigned)OpndHdl.getOpndSize() * 8);
 
     // If Dest isn't MMX/XMM, Trunc ResVal to the same bitwidth as DestOpnd.
-    if (!OpndHdl.isMMX() && !OpndHdl.isXMM() &&
+    if (!OpndHdl.isMMX() && !OpndHdl.isXMM() && !OpndHdl.isFPR() &&
+        !OpndHdl.isSTR() &&
         ResVal->getType()->getIntegerBitWidth() >
             (unsigned)(OpndHdl.getOpndSize() << 3)) {
         ResVal = Builder.CreateTrunc(ResVal, GetOpndLLVMType(DestOpnd));
@@ -569,17 +589,31 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
     } else if (OpndHdl.isXMM()) {
         // Current implementation is to store value into CPUX86State directly.
         int off = GuestXMMOffset(OpndHdl.GetXMMID());
-        Value *Addr =
-            Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
+        Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
         Addr = Builder.CreateBitCast(Addr, ResVal->getType()->getPointerTo());
         Builder.CreateStore(ResVal, Addr);
+    } else if (OpndHdl.isFPR() || OpndHdl.isSTR()) {
+        if (ResVal->getType()->getIntegerBitWidth() == 32) {
+            ResVal = Builder.CreateBitCast(ResVal, FP32Ty);
+            ResVal = Builder.CreateFPExt(ResVal, FP64Ty);
+        } else if (ResVal->getType()->getIntegerBitWidth() == 64) {
+            ResVal = Builder.CreateBitCast(ResVal, FP64Ty);
+        } else {
+            llvm_unreachable("unhandled bitwidth!");
+        }
+        Value *St0 = GetFPUTop();
+        Value *DestSTRID = ConstInt(Int32Ty, OpndHdl.GetFPRID());
+        Value *DestFPRID = Builder.CreateAdd(St0, DestSTRID);
+        DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty, 7));
+        StoreToFPR(ResVal, DestFPRID);
     } else {
         llvm_unreachable("Unhandled StoreOperand type!");
     }
 }
 
 void X86Translator::FlushXMMT0(Value *XMMV, Type *FlushTy) {
-    if (!FlushTy) FlushTy = Int128PtrTy;
+    if (!FlushTy)
+        FlushTy = Int128PtrTy;
     int off = GuestXMMT0Offset();
     Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
     Addr = Builder.CreateBitCast(Addr, FlushTy);
@@ -587,7 +621,8 @@ void X86Translator::FlushXMMT0(Value *XMMV, Type *FlushTy) {
 }
 
 void X86Translator::FlushMMXT0(Value *MMXV, Type *FlushTy) {
-    if (!FlushTy) FlushTy = Int64PtrTy;
+    if (!FlushTy)
+        FlushTy = Int64PtrTy;
     int off = GuestMMXT0Offset();
     Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
     Addr = Builder.CreateBitCast(Addr, FlushTy);
@@ -595,7 +630,11 @@ void X86Translator::FlushMMXT0(Value *MMXV, Type *FlushTy) {
 }
 
 Value *X86Translator::CallFunc(FunctionType *FuncTy, std::string Name,
-        ArrayRef<Value *> Args) {
+                               ArrayRef<Value *> Args) {
+    if (Name.substr(0, 8) == "helper_f") {
+        dbgs() << "call fp helper: " << Name << "\n";
+        exit(1);
+    }
 #if (LLVM_VERSION_MAJOR > 8)
     FunctionCallee F = Mod->getOrInsertFunction(Name, FuncTy);
     Value *CallInst = Builder.CreateCall(FuncTy, F.getCallee(), Args);
@@ -608,72 +647,99 @@ Value *X86Translator::CallFunc(FunctionType *FuncTy, std::string Name,
 
 void X86Translator::AddExternalSyms() {
     /* EE->addGlobalMapping("PFTable", X86InstHandler::getPFTable()); */
-    EE->addGlobalMapping("helper_raise_syscall", (uint64_t)helper_raise_syscall);
+    EE->addGlobalMapping("helper_raise_syscall",
+                         (uint64_t)helper_raise_syscall);
     EE->addGlobalMapping("helper_divb_AL", (uint64_t)helper_divb_AL_wrapper);
     EE->addGlobalMapping("helper_divw_AX", (uint64_t)helper_divw_AX_wrapper);
     EE->addGlobalMapping("helper_divl_EAX", (uint64_t)helper_divl_EAX_wrapper);
     EE->addGlobalMapping("helper_divq_EAX", (uint64_t)helper_divq_EAX_wrapper);
     EE->addGlobalMapping("helper_idivb_AL", (uint64_t)helper_idivb_AL_wrapper);
     EE->addGlobalMapping("helper_idivw_AX", (uint64_t)helper_idivw_AX_wrapper);
-    EE->addGlobalMapping("helper_idivl_EAX", (uint64_t)helper_idivl_EAX_wrapper);
-    EE->addGlobalMapping("helper_idivq_EAX", (uint64_t)helper_idivq_EAX_wrapper);
+    EE->addGlobalMapping("helper_idivl_EAX",
+                         (uint64_t)helper_idivl_EAX_wrapper);
+    EE->addGlobalMapping("helper_idivq_EAX",
+                         (uint64_t)helper_idivq_EAX_wrapper);
 
     EE->addGlobalMapping("helper_rdtsc", (uint64_t)helper_rdtsc_wrapper);
-    /* EE->addGlobalMapping("helper_pxor_xmm", (uint64_t)helper_pxor_xmm_wrapper); */
-    /* EE->addGlobalMapping("helper_pxor_mmx", (uint64_t)helper_pxor_mmx_wrapper); */
-    /* EE->addGlobalMapping("helper_pcmpeqb_xmm", (uint64_t)helper_pcmpeqb_xmm_wrapper); */
-    /* EE->addGlobalMapping("helper_pcmpeqb_mmx", (uint64_t)helper_pcmpeqb_mmx_wrapper); */
-    EE->addGlobalMapping("helper_pmovmskb_xmm", (uint64_t)helper_pmovmskb_xmm_wrapper);
-    EE->addGlobalMapping("helper_pmovmskb_mmx", (uint64_t)helper_pmovmskb_mmx_wrapper);
-    /* EE->addGlobalMapping("helper_punpcklbw_xmm", (uint64_t)helper_punpcklbw_xmm_wrapper); */
-    /* EE->addGlobalMapping("helper_punpcklbw_mmx", (uint64_t)helper_punpcklbw_mmx_wrapper); */
-    /* EE->addGlobalMapping("helper_punpcklwd_xmm", (uint64_t)helper_punpcklwd_xmm_wrapper); */
-    /* EE->addGlobalMapping("helper_punpcklwd_mmx", (uint64_t)helper_punpcklwd_mmx_wrapper); */
+    /* EE->addGlobalMapping("helper_pxor_xmm",
+     * (uint64_t)helper_pxor_xmm_wrapper); */
+    /* EE->addGlobalMapping("helper_pxor_mmx",
+     * (uint64_t)helper_pxor_mmx_wrapper); */
+    /* EE->addGlobalMapping("helper_pcmpeqb_xmm",
+     * (uint64_t)helper_pcmpeqb_xmm_wrapper); */
+    /* EE->addGlobalMapping("helper_pcmpeqb_mmx",
+     * (uint64_t)helper_pcmpeqb_mmx_wrapper); */
+    EE->addGlobalMapping("helper_pmovmskb_xmm",
+                         (uint64_t)helper_pmovmskb_xmm_wrapper);
+    EE->addGlobalMapping("helper_pmovmskb_mmx",
+                         (uint64_t)helper_pmovmskb_mmx_wrapper);
+    /* EE->addGlobalMapping("helper_punpcklbw_xmm",
+     * (uint64_t)helper_punpcklbw_xmm_wrapper); */
+    /* EE->addGlobalMapping("helper_punpcklbw_mmx",
+     * (uint64_t)helper_punpcklbw_mmx_wrapper); */
+    /* EE->addGlobalMapping("helper_punpcklwd_xmm",
+     * (uint64_t)helper_punpcklwd_xmm_wrapper); */
+    /* EE->addGlobalMapping("helper_punpcklwd_mmx",
+     * (uint64_t)helper_punpcklwd_mmx_wrapper); */
     EE->addGlobalMapping("helper_pshufd", (uint64_t)helper_pshufd_xmm_wrapper);
     EE->addGlobalMapping("helper_comiss", (uint64_t)helper_comiss_wrapper);
-    /* EE->addGlobalMapping("helper_paddb_xmm", (uint64_t)helper_paddb_xmm_wrapper); */
-    /* EE->addGlobalMapping("helper_paddl_xmm", (uint64_t)helper_paddl_xmm_wrapper); */
-    /* EE->addGlobalMapping("helper_paddw_xmm", (uint64_t)helper_paddw_xmm_wrapper); */
-    /* EE->addGlobalMapping("helper_paddq_xmm", (uint64_t)helper_paddq_xmm_wrapper); */
-    EE->addGlobalMapping("helper_cvtsi2sd" , (uint64_t)helper_cvtsi2sd_wrapper );
-    EE->addGlobalMapping("helper_cvtsq2sd" , (uint64_t)helper_cvtsq2sd_wrapper );
-    EE->addGlobalMapping("helper_cvttsd2si", (uint64_t)helper_cvttsd2si_wrapper);
-    EE->addGlobalMapping("helper_cvttsd2sq", (uint64_t)helper_cvttsd2sq_wrapper);
-    EE->addGlobalMapping("helper_cvttss2si", (uint64_t)helper_cvttss2si_wrapper);
-    EE->addGlobalMapping("helper_cvttss2sq", (uint64_t)helper_cvttss2sq_wrapper);
-    EE->addGlobalMapping("helper_cvtss2sd" , (uint64_t)helper_cvtss2sd_wrapper );
-    EE->addGlobalMapping("helper_cvtsd2ss" , (uint64_t)helper_cvtsd2ss_wrapper );
-    EE->addGlobalMapping("helper_cvtsi2ss" , (uint64_t)helper_cvtsi2ss_wrapper );
-    EE->addGlobalMapping("helper_cvtsq2ss" , (uint64_t)helper_cvtsq2ss_wrapper );
+    /* EE->addGlobalMapping("helper_paddb_xmm",
+     * (uint64_t)helper_paddb_xmm_wrapper); */
+    /* EE->addGlobalMapping("helper_paddl_xmm",
+     * (uint64_t)helper_paddl_xmm_wrapper); */
+    /* EE->addGlobalMapping("helper_paddw_xmm",
+     * (uint64_t)helper_paddw_xmm_wrapper); */
+    /* EE->addGlobalMapping("helper_paddq_xmm",
+     * (uint64_t)helper_paddq_xmm_wrapper); */
+    EE->addGlobalMapping("helper_cvtsi2sd", (uint64_t)helper_cvtsi2sd_wrapper);
+    EE->addGlobalMapping("helper_cvtsq2sd", (uint64_t)helper_cvtsq2sd_wrapper);
+    EE->addGlobalMapping("helper_cvttsd2si",
+                         (uint64_t)helper_cvttsd2si_wrapper);
+    EE->addGlobalMapping("helper_cvttsd2sq",
+                         (uint64_t)helper_cvttsd2sq_wrapper);
+    EE->addGlobalMapping("helper_cvttss2si",
+                         (uint64_t)helper_cvttss2si_wrapper);
+    EE->addGlobalMapping("helper_cvttss2sq",
+                         (uint64_t)helper_cvttss2sq_wrapper);
+    EE->addGlobalMapping("helper_cvtss2sd", (uint64_t)helper_cvtss2sd_wrapper);
+    EE->addGlobalMapping("helper_cvtsd2ss", (uint64_t)helper_cvtsd2ss_wrapper);
+    EE->addGlobalMapping("helper_cvtsi2ss", (uint64_t)helper_cvtsi2ss_wrapper);
+    EE->addGlobalMapping("helper_cvtsq2ss", (uint64_t)helper_cvtsq2ss_wrapper);
 
-    EE->addGlobalMapping("helper_fcomi_ST0_FT0_cogbt", (uint64_t)helper_fcomi_ST0_FT0_wrapper);
-    EE->addGlobalMapping("helper_fucomi_ST0_FT0_cogbt", (uint64_t)helper_fucomi_ST0_FT0_wrapper);
+    EE->addGlobalMapping("helper_fcomi_ST0_FT0_cogbt",
+                         (uint64_t)helper_fcomi_ST0_FT0_wrapper);
+    EE->addGlobalMapping("helper_fucomi_ST0_FT0_cogbt",
+                         (uint64_t)helper_fucomi_ST0_FT0_wrapper);
 
-    EE->addGlobalMapping("helper_cogbt_lookup_tb_ptr", (uint64_t)helper_cogbt_lookup_tb_ptr_wrapper);
+    EE->addGlobalMapping("helper_cogbt_lookup_tb_ptr",
+                         (uint64_t)helper_cogbt_lookup_tb_ptr_wrapper);
 }
 
 void X86Translator::GetLBTIntrinsic(StringRef Name, Value *Src0, Value *Src1) {
     if (Src1) {
-        FunctionType *FTy =
-            FunctionType::get(VoidTy, {Src1->getType(), Src0->getType()}, false);
+        FunctionType *FTy = FunctionType::get(
+            VoidTy, {Src1->getType(), Src0->getType()}, false);
         Value *Func = Mod->getOrInsertFunction(Name, FTy);
         Builder.CreateCall(FTy, Func, {Src1, Src0});
     } else {
-        FunctionType *FTy =
-            FunctionType::get(VoidTy, {Src0->getType()}, false);
+        FunctionType *FTy = FunctionType::get(VoidTy, {Src0->getType()}, false);
         Value *Func = Mod->getOrInsertFunction(Name, FTy);
         Builder.CreateCall(FTy, Func, {Src0});
-
     }
 }
 
 std::string GetSuffixAccordingType(Type *Ty) {
     switch (Ty->getIntegerBitWidth()) {
-    case 8: return ".b";
-    case 16: return ".h";
-    case 32: return ".w";
-    case 64: return ".d";
-    default: llvm_unreachable("Error LBT Type!");
+    case 8:
+        return ".b";
+    case 16:
+        return ".h";
+    case 32:
+        return ".w";
+    case 64:
+        return ".d";
+    default:
+        llvm_unreachable("Error LBT Type!");
     }
 }
 
@@ -756,11 +822,11 @@ void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src0,
         X86OperandHandler OpndHdl(InstHdl.getOpnd(0));
         if (OpndHdl.isImm()) {
             Name = std::string("llvm.loongarch.x86slli") +
-                GetSuffixAccordingType(Src1Ty);
+                   GetSuffixAccordingType(Src1Ty);
             GetLBTIntrinsic(Name, ConstInt(Int32Ty, OpndHdl.getIMM()), Src1);
         } else {
             Name = std::string("llvm.loongarch.x86sll") +
-                GetSuffixAccordingType(Src1Ty);
+                   GetSuffixAccordingType(Src1Ty);
             GetLBTIntrinsic(Name, Src0, Src1);
         }
         break;
@@ -769,11 +835,11 @@ void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src0,
         X86OperandHandler OpndHdl(InstHdl.getOpnd(0));
         if (OpndHdl.isImm()) {
             Name = std::string("llvm.loongarch.x86srli") +
-                GetSuffixAccordingType(Src1Ty);
+                   GetSuffixAccordingType(Src1Ty);
             GetLBTIntrinsic(Name, ConstInt(Int32Ty, OpndHdl.getIMM()), Src1);
         } else {
             Name = std::string("llvm.loongarch.x86srl") +
-                GetSuffixAccordingType(Src1Ty);
+                   GetSuffixAccordingType(Src1Ty);
             GetLBTIntrinsic(Name, Src0, Src1);
         }
         break;
@@ -782,23 +848,23 @@ void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src0,
         X86OperandHandler OpndHdl(InstHdl.getOpnd(0));
         if (OpndHdl.isImm()) {
             Name = std::string("llvm.loongarch.x86srai") +
-                GetSuffixAccordingType(Src1->getType());
+                   GetSuffixAccordingType(Src1->getType());
             GetLBTIntrinsic(Name, ConstInt(Int32Ty, OpndHdl.getIMM()), Src1);
         } else {
             Name = std::string("llvm.loongarch.x86sra") +
-                GetSuffixAccordingType(Src1Ty);
+                   GetSuffixAccordingType(Src1Ty);
             GetLBTIntrinsic(Name, Src0, Src1);
         }
         break;
     }
     case X86_INS_RCL:
         Name = std::string("llvm.loongarch.x86rcl") +
-            GetSuffixAccordingType(Src1Ty);
+               GetSuffixAccordingType(Src1Ty);
         GetLBTIntrinsic(Name, Src0, Src1);
         break;
     case X86_INS_RCR:
         Name = std::string("llvm.loongarch.x86rcr") +
-            GetSuffixAccordingType(Src1Ty);
+               GetSuffixAccordingType(Src1Ty);
         GetLBTIntrinsic(Name, Src0, Src1);
         break;
     case X86_INS_MUL:
@@ -849,9 +915,7 @@ void X86Translator::TranslateInitialize() {
     GenEpilogue();
 }
 
-void X86Translator::TranslateFinalize() {
-    LLVMTranslator::TranslateFinalize();
-}
+void X86Translator::TranslateFinalize() { LLVMTranslator::TranslateFinalize(); }
 
 void X86Translator::Translate() {
     // Do translate initialization.
@@ -871,7 +935,7 @@ void X86Translator::Translate() {
             ss << std::hex << block.GetBlockEntry() << "." << std::dec
                << block.GetBlockPCSize();
             InitializeFunction(ss.str());
-            dbgs() << ss.str() << "\n";
+            // dbgs() << ss.str() << "\n";
         }
         InitializeBlock(block);
         for (auto &inst : block) {
