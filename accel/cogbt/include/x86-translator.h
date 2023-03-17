@@ -140,6 +140,19 @@ private: /// Currently translated instruction.
 
     /// @name X87 FPU translator helper functions.
 
+    ///   FP64CompareSW - f64 compares with f64 , result show in FPU State Words
+    ///   Note: if LHS > RHS ZF:CF = 00 , LHS = RHS 10 , LHS < RHS 01
+    ///   Usually ST0 is RHS
+    void FP64CompareSW(Value *LHS, Value *RHS);
+
+    ///   FP64CompareSW - f64 compares with f64  , result show in EFlag
+    ///   Note: if LHS > RHS ZF:CF = 00 , LHS = RHS 10 , LHS < RHS 01
+    ///   Usually ST0 is RHS
+    ///   NEEDED TO FLASH GMR
+    void FP64CompareEFLAG(Value *LHS, Value *RHS);
+
+    Value *GetFpusPtr(void);
+
     /// StoreToFPR - Store value V into FPStack[fpi].
     void StoreToFPR(Value *V, Value *fpi);
 

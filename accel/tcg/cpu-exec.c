@@ -67,8 +67,7 @@ typedef struct SyncClocks {
 static int64_t max_delay;
 static int64_t max_advance;
 
-static void align_clocks(SyncClocks *sc, CPUState *cpu)
-{
+static void align_clocks(SyncClocks *sc, CPUState *cpu) {
     int64_t cpu_icount;
 
     if (!icount_align_option) {
@@ -96,8 +95,7 @@ static void align_clocks(SyncClocks *sc, CPUState *cpu)
     }
 }
 
-static void print_delay(const SyncClocks *sc)
-{
+static void print_delay(const SyncClocks *sc) {
     static float threshold_delay;
     static int64_t last_realtime_clock;
     static int nb_prints;
@@ -109,24 +107,22 @@ static void print_delay(const SyncClocks *sc)
             (-sc->diff_clk / (float)1000000000LL <
              (threshold_delay - THRESHOLD_REDUCE))) {
             threshold_delay = (-sc->diff_clk / 1000000000LL) + 1;
-            qemu_printf("Warning: The guest is now late by %.1f to %.1f seconds\n",
-                        threshold_delay - 1,
-                        threshold_delay);
+            qemu_printf(
+                "Warning: The guest is now late by %.1f to %.1f seconds\n",
+                threshold_delay - 1, threshold_delay);
             nb_prints++;
             last_realtime_clock = sc->realtime_clock;
         }
     }
 }
 
-static void init_delay_params(SyncClocks *sc, CPUState *cpu)
-{
+static void init_delay_params(SyncClocks *sc, CPUState *cpu) {
     if (!icount_align_option) {
         return;
     }
     sc->realtime_clock = qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL_RT);
     sc->diff_clk = qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL) - sc->realtime_clock;
-    sc->last_cpu_icount
-        = cpu->icount_extra + cpu_neg(cpu)->icount_decr.u16.low;
+    sc->last_cpu_icount = cpu->icount_extra + cpu_neg(cpu)->icount_decr.u16.low;
     if (sc->diff_clk < max_delay) {
         max_delay = sc->diff_clk;
     }
@@ -139,17 +135,12 @@ static void init_delay_params(SyncClocks *sc, CPUState *cpu)
     print_delay(sc);
 }
 #else
-static void align_clocks(SyncClocks *sc, const CPUState *cpu)
-{
-}
+static void align_clocks(SyncClocks *sc, const CPUState *cpu) {}
 
-static void init_delay_params(SyncClocks *sc, const CPUState *cpu)
-{
-}
+static void init_delay_params(SyncClocks *sc, const CPUState *cpu) {}
 #endif /* CONFIG USER ONLY */
 
-uint32_t curr_cflags(CPUState *cpu)
-{
+uint32_t curr_cflags(CPUState *cpu) {
     uint32_t cflags = cpu->tcg_cflags;
 
     /*
@@ -172,9 +163,8 @@ uint32_t curr_cflags(CPUState *cpu)
 
 /* Might cause an exception, so have a longjmp destination ready */
 static inline TranslationBlock *tb_lookup(CPUState *cpu, target_ulong pc,
-                                          target_ulong cs_base,
-                                          uint32_t flags, uint32_t cflags)
-{
+                                          target_ulong cs_base, uint32_t flags,
+                                          uint32_t cflags) {
     TranslationBlock *tb;
     uint32_t hash;
 
@@ -184,9 +174,7 @@ static inline TranslationBlock *tb_lookup(CPUState *cpu, target_ulong pc,
     hash = tb_jmp_cache_hash_func(pc);
     tb = qatomic_rcu_read(&cpu->tb_jmp_cache[hash]);
 
-    if (likely(tb &&
-               tb->pc == pc &&
-               tb->cs_base == cs_base &&
+    if (likely(tb && tb->pc == pc && tb->cs_base == cs_base &&
                tb->flags == flags &&
                tb->trace_vcpu_dstate == *cpu->trace_dstate &&
                tb_cflags(tb) == cflags)) {
@@ -194,7 +182,8 @@ static inline TranslationBlock *tb_lookup(CPUState *cpu, target_ulong pc,
     }
     tb = tb_htable_lookup(cpu, pc, cs_base, flags, cflags);
     if (tb == NULL) {
-        /* fprintf(stderr, "Lookup TB Error pc 0x%lx cs_base 0x%lx flags 0x%x cflags 0x%x\n", pc, cs_base, flags, cflags); //debug */
+        /* fprintf(stderr, "Lookup TB Error pc 0x%lx cs_base 0x%lx flags 0x%x
+         * cflags 0x%x\n", pc, cs_base, flags, cflags); //debug */
         return NULL;
     }
     qatomic_set(&cpu->tb_jmp_cache[hash], tb);
@@ -202,16 +191,15 @@ static inline TranslationBlock *tb_lookup(CPUState *cpu, target_ulong pc,
 }
 
 static inline void log_cpu_exec(target_ulong pc, CPUState *cpu,
-                                const TranslationBlock *tb)
-{
-    if (unlikely(qemu_loglevel_mask(CPU_LOG_TB_CPU | CPU_LOG_EXEC))
-        && qemu_log_in_addr_range(pc)) {
+                                const TranslationBlock *tb) {
+    if (unlikely(qemu_loglevel_mask(CPU_LOG_TB_CPU | CPU_LOG_EXEC)) &&
+        qemu_log_in_addr_range(pc)) {
 
         qemu_log_mask(CPU_LOG_EXEC,
-                      "Trace %d: %p [" TARGET_FMT_lx
-                      "/" TARGET_FMT_lx "/%08x/%08x] %s\n",
-                      cpu->cpu_index, tb->tc.ptr, tb->cs_base, pc,
-                      tb->flags, tb->cflags, lookup_symbol(pc));
+                      "Trace %d: %p [" TARGET_FMT_lx "/" TARGET_FMT_lx
+                      "/%08x/%08x] %s\n",
+                      cpu->cpu_index, tb->tc.ptr, tb->cs_base, pc, tb->flags,
+                      tb->cflags, lookup_symbol(pc));
 
 #if defined(DEBUG_DISAS)
         if (qemu_loglevel_mask(CPU_LOG_TB_CPU)) {
@@ -234,8 +222,7 @@ static inline void log_cpu_exec(target_ulong pc, CPUState *cpu,
 }
 
 static bool check_for_breakpoints(CPUState *cpu, target_ulong pc,
-                                  uint32_t *cflags)
-{
+                                  uint32_t *cflags) {
     CPUBreakpoint *bp;
     bool match_page = false;
 
@@ -311,8 +298,7 @@ static bool check_for_breakpoints(CPUState *cpu, target_ulong pc,
  * If found, return the code pointer.  If not found, return
  * the tcg epilogue so that we return into cpu_tb_exec.
  */
-const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
-{
+const void *HELPER(lookup_tb_ptr)(CPUArchState *env) {
 #ifdef CONFIG_COGBT_DEBUG
     return tcg_code_gen_epilogue;
 #else
@@ -345,8 +331,7 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
 #endif
 }
 #ifdef CONFIG_COGBT
-const void *HELPER(cogbt_lookup_tb_ptr)(CPUArchState *env)
-{
+const void *HELPER(cogbt_lookup_tb_ptr)(CPUArchState *env) {
     /* return cogbt_code_gen_epilogue; */
 #ifdef CONFIG_COGBT_DEBUG
     return cogbt_code_gen_epilogue;
@@ -386,9 +371,8 @@ bool last_is_rep = false;
 uint64_t curr_tb_cnter = -1;
 extern uint64_t debug_start_cnter, debug_end_cnter;
 #endif
-static inline TranslationBlock * QEMU_DISABLE_CFI
-cpu_tb_exec(CPUState *cpu, TranslationBlock *itb, int *tb_exit)
-{
+static inline TranslationBlock *QEMU_DISABLE_CFI
+cpu_tb_exec(CPUState *cpu, TranslationBlock *itb, int *tb_exit) {
     CPUArchState *env = cpu->env_ptr;
     uintptr_t ret;
     TranslationBlock *last_tb;
@@ -400,20 +384,19 @@ cpu_tb_exec(CPUState *cpu, TranslationBlock *itb, int *tb_exit)
     if (!last_is_rep && curr_tb_cnter >= debug_start_cnter &&
         curr_tb_cnter < debug_end_cnter)
 #endif
-    log_cpu_exec(itb->pc, cpu, itb);
+        log_cpu_exec(itb->pc, cpu, itb);
 
     qemu_thread_jit_execute();
 #ifdef CONFIG_COGBT
     if (tb_ptr < tb_cache_begin) {
         ret = cogbt_tb_exec(env, tb_ptr);
-    }
-    else {
+    } else {
 #endif
 #ifdef CONFIG_COGBT
         /* fprintf(stderr, "COGBT PANIC\n"); */
         /* exit(-1); */
 #endif
-    ret = tcg_qemu_tb_exec(env, tb_ptr);
+        ret = tcg_qemu_tb_exec(env, tb_ptr);
 #ifdef CONFIG_COGBT
     }
 #endif
@@ -448,11 +431,10 @@ cpu_tb_exec(CPUState *cpu, TranslationBlock *itb, int *tb_exit)
          * of the start of the TB.
          */
         CPUClass *cc = CPU_GET_CLASS(cpu);
-        qemu_log_mask_and_addr(CPU_LOG_EXEC, last_tb->pc,
-                               "Stopped execution of TB chain before %p ["
-                               TARGET_FMT_lx "] %s\n",
-                               last_tb->tc.ptr, last_tb->pc,
-                               lookup_symbol(last_tb->pc));
+        qemu_log_mask_and_addr(
+            CPU_LOG_EXEC, last_tb->pc,
+            "Stopped execution of TB chain before %p [" TARGET_FMT_lx "] %s\n",
+            last_tb->tc.ptr, last_tb->pc, lookup_symbol(last_tb->pc));
         if (cc->tcg_ops->synchronize_from_tb) {
             cc->tcg_ops->synchronize_from_tb(cpu, last_tb);
         } else {
@@ -474,9 +456,7 @@ cpu_tb_exec(CPUState *cpu, TranslationBlock *itb, int *tb_exit)
     return last_tb;
 }
 
-
-static void cpu_exec_enter(CPUState *cpu)
-{
+static void cpu_exec_enter(CPUState *cpu) {
     CPUClass *cc = CPU_GET_CLASS(cpu);
 
     if (cc->tcg_ops->cpu_exec_enter) {
@@ -484,8 +464,7 @@ static void cpu_exec_enter(CPUState *cpu)
     }
 }
 
-static void cpu_exec_exit(CPUState *cpu)
-{
+static void cpu_exec_exit(CPUState *cpu) {
     CPUClass *cc = CPU_GET_CLASS(cpu);
 
     if (cc->tcg_ops->cpu_exec_exit) {
@@ -493,8 +472,7 @@ static void cpu_exec_exit(CPUState *cpu)
     }
 }
 
-void cpu_exec_step_atomic(CPUState *cpu)
-{
+void cpu_exec_step_atomic(CPUState *cpu) {
     CPUArchState *env = cpu->env_ptr;
     TranslationBlock *tb;
     target_ulong cs_base, pc;
@@ -569,15 +547,12 @@ struct tb_desc {
     uint32_t trace_vcpu_dstate;
 };
 
-static bool tb_lookup_cmp(const void *p, const void *d)
-{
+static bool tb_lookup_cmp(const void *p, const void *d) {
     const TranslationBlock *tb = p;
     const struct tb_desc *desc = d;
 
-    if (tb->pc == desc->pc &&
-        tb->page_addr[0] == desc->phys_page1 &&
-        tb->cs_base == desc->cs_base &&
-        tb->flags == desc->flags &&
+    if (tb->pc == desc->pc && tb->page_addr[0] == desc->phys_page1 &&
+        tb->cs_base == desc->cs_base && tb->flags == desc->flags &&
         tb->trace_vcpu_dstate == desc->trace_vcpu_dstate &&
         tb_cflags(tb) == desc->cflags) {
         /* check next page if needed */
@@ -599,8 +574,7 @@ static bool tb_lookup_cmp(const void *p, const void *d)
 
 TranslationBlock *tb_htable_lookup(CPUState *cpu, target_ulong pc,
                                    target_ulong cs_base, uint32_t flags,
-                                   uint32_t cflags)
-{
+                                   uint32_t cflags) {
     tb_page_addr_t phys_pc;
     struct tb_desc desc;
     uint32_t h;
@@ -620,8 +594,7 @@ TranslationBlock *tb_htable_lookup(CPUState *cpu, target_ulong pc,
     return qht_lookup_custom(&tb_ctx.htable, &desc, h, tb_lookup_cmp);
 }
 
-void tb_set_jmp_target(TranslationBlock *tb, int n, uintptr_t addr)
-{
+void tb_set_jmp_target(TranslationBlock *tb, int n, uintptr_t addr) {
     if (TCG_TARGET_HAS_direct_jump) {
         uintptr_t offset = tb->jmp_target_arg[n];
         uintptr_t tc_ptr = (uintptr_t)tb->tc.ptr;
@@ -634,8 +607,7 @@ void tb_set_jmp_target(TranslationBlock *tb, int n, uintptr_t addr)
 }
 
 static inline void tb_add_jump(TranslationBlock *tb, int n,
-                               TranslationBlock *tb_next)
-{
+                               TranslationBlock *tb_next) {
     uintptr_t old;
 
     qemu_thread_jit_write();
@@ -647,8 +619,8 @@ static inline void tb_add_jump(TranslationBlock *tb, int n,
         goto out_unlock_next;
     }
     /* Atomically claim the jump destination slot only if it was NULL */
-    old = qatomic_cmpxchg(&tb->jmp_dest[n], (uintptr_t)NULL,
-                          (uintptr_t)tb_next);
+    old =
+        qatomic_cmpxchg(&tb->jmp_dest[n], (uintptr_t)NULL, (uintptr_t)tb_next);
     if (old) {
         goto out_unlock_next;
     }
@@ -665,17 +637,15 @@ static inline void tb_add_jump(TranslationBlock *tb, int n,
     qemu_log_mask_and_addr(CPU_LOG_EXEC, tb->pc,
                            "Linking TBs %p [" TARGET_FMT_lx
                            "] index %d -> %p [" TARGET_FMT_lx "]\n",
-                           tb->tc.ptr, tb->pc, n,
-                           tb_next->tc.ptr, tb_next->pc);
+                           tb->tc.ptr, tb->pc, n, tb_next->tc.ptr, tb_next->pc);
     return;
 
- out_unlock_next:
+out_unlock_next:
     qemu_spin_unlock(&tb_next->jmp_lock);
     return;
 }
 
-static inline bool cpu_handle_halt(CPUState *cpu)
-{
+static inline bool cpu_handle_halt(CPUState *cpu) {
 #ifndef CONFIG_USER_ONLY
     if (cpu->halted) {
 #if defined(TARGET_I386)
@@ -698,8 +668,7 @@ static inline bool cpu_handle_halt(CPUState *cpu)
     return false;
 }
 
-static inline void cpu_handle_debug_exception(CPUState *cpu)
-{
+static inline void cpu_handle_debug_exception(CPUState *cpu) {
     CPUClass *cc = CPU_GET_CLASS(cpu);
     CPUWatchpoint *wp;
 
@@ -714,15 +683,14 @@ static inline void cpu_handle_debug_exception(CPUState *cpu)
     }
 }
 
-static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
-{
+static inline bool cpu_handle_exception(CPUState *cpu, int *ret) {
     if (cpu->exception_index < 0) {
 #ifndef CONFIG_USER_ONLY
-        if (replay_has_exception()
-            && cpu_neg(cpu)->icount_decr.u16.low + cpu->icount_extra == 0) {
+        if (replay_has_exception() &&
+            cpu_neg(cpu)->icount_decr.u16.low + cpu->icount_extra == 0) {
             /* Execute just one insn to trigger exception pending in the log */
-            cpu->cflags_next_tb = (curr_cflags(cpu) & ~CF_USE_ICOUNT)
-                | CF_NOIRQ | 1;
+            cpu->cflags_next_tb =
+                (curr_cflags(cpu) & ~CF_USE_ICOUNT) | CF_NOIRQ | 1;
         }
 #endif
         return false;
@@ -782,8 +750,7 @@ static inline bool cpu_handle_exception(CPUState *cpu, int *ret)
  * "real" interrupt event later. It does not need to be recorded for
  * replay purposes.
  */
-static inline bool need_replay_interrupt(int interrupt_request)
-{
+static inline bool need_replay_interrupt(int interrupt_request) {
 #if defined(TARGET_I386)
     return !(interrupt_request & CPU_INTERRUPT_POLL);
 #else
@@ -793,8 +760,7 @@ static inline bool need_replay_interrupt(int interrupt_request)
 #endif /* !CONFIG_USER_ONLY */
 
 static inline bool cpu_handle_interrupt(CPUState *cpu,
-                                        TranslationBlock **last_tb)
-{
+                                        TranslationBlock **last_tb) {
     /*
      * If we have requested custom cflags with CF_NOIRQ we should
      * skip checking here. Any pending interrupts will get picked up
@@ -897,10 +863,10 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
     }
 
     /* Finally, check if we need to exit to the main loop.  */
-    if (unlikely(qatomic_read(&cpu->exit_request))
-        || (icount_enabled()
-            && (cpu->cflags_next_tb == -1 || cpu->cflags_next_tb & CF_USE_ICOUNT)
-            && cpu_neg(cpu)->icount_decr.u16.low + cpu->icount_extra == 0)) {
+    if (unlikely(qatomic_read(&cpu->exit_request)) ||
+        (icount_enabled() &&
+         (cpu->cflags_next_tb == -1 || cpu->cflags_next_tb & CF_USE_ICOUNT) &&
+         cpu_neg(cpu)->icount_decr.u16.low + cpu->icount_extra == 0)) {
         qatomic_set(&cpu->exit_request, 0);
         if (cpu->exception_index == -1) {
             cpu->exception_index = EXCP_INTERRUPT;
@@ -912,8 +878,7 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
 }
 
 static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
-                                    TranslationBlock **last_tb, int *tb_exit)
-{
+                                    TranslationBlock **last_tb, int *tb_exit) {
     int32_t insns_left;
 
     trace_exec_tb(tb, tb->pc);
@@ -951,7 +916,7 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
      * execute we need to ensure we find/generate a TB with exactly
      * insns_left instructions in it.
      */
-    if (insns_left > 0 && insns_left < tb->icount)  {
+    if (insns_left > 0 && insns_left < tb->icount) {
         assert(insns_left <= CF_COUNT_MASK);
         assert(cpu->icount_extra == 0);
         cpu->cflags_next_tb = (tb->cflags & ~CF_COUNT_MASK) | insns_left;
@@ -969,7 +934,7 @@ void debug_breakpoint(uint64_t pc) {
 }
 extern char *exec_path;
 void dump_path(uint64_t pc);
-void dump_path (uint64_t pc) {
+void dump_path(uint64_t pc) {
     static FILE *pf = NULL;
     if (!pf) {
         pf = fopen(strcat(exec_path, ".path"), "w+");
@@ -978,10 +943,9 @@ void dump_path (uint64_t pc) {
     fprintf(pf, "0x%lx\n", pc);
 }
 #endif
-int cpu_exec(CPUState *cpu)
-{
+int cpu_exec(CPUState *cpu) {
     int ret;
-    SyncClocks sc = { 0 };
+    SyncClocks sc = {0};
 
     /* replay_interrupt may need current_cpu */
     current_cpu = cpu;
@@ -1073,7 +1037,10 @@ int cpu_exec(CPUState *cpu)
             tb = tb_lookup(cpu, pc, cs_base, flags, cflags);
             if (tb == NULL) {
                 mmap_lock();
-                /* fprintf(stderr, "0x%lx\n", pc); */
+                FILE *fp = fopen("./e1.out.path", "a+");
+
+                fprintf(fp, "0x%lx\n", pc);
+                fclose(fp);
                 /* dump_path(pc); */
                 tb = tb_gen_code(cpu, pc, cs_base, flags, cflags);
                 mmap_unlock();
@@ -1140,8 +1107,7 @@ int cpu_exec(CPUState *cpu)
     return ret;
 }
 
-void tcg_exec_realizefn(CPUState *cpu, Error **errp)
-{
+void tcg_exec_realizefn(CPUState *cpu, Error **errp) {
     static bool tcg_target_initialized;
     CPUClass *cc = CPU_GET_CLASS(cpu);
 
@@ -1158,8 +1124,7 @@ void tcg_exec_realizefn(CPUState *cpu, Error **errp)
 }
 
 /* undo the initializations in reverse order */
-void tcg_exec_unrealizefn(CPUState *cpu)
-{
+void tcg_exec_unrealizefn(CPUState *cpu) {
 #ifndef CONFIG_USER_ONLY
     tcg_iommu_free_notifier_list(cpu);
 #endif /* !CONFIG_USER_ONLY */
@@ -1170,18 +1135,17 @@ void tcg_exec_unrealizefn(CPUState *cpu)
 
 #ifndef CONFIG_USER_ONLY
 
-static void dump_drift_info(GString *buf)
-{
+static void dump_drift_info(GString *buf) {
     if (!icount_enabled()) {
         return;
     }
 
-    g_string_append_printf(buf, "Host - Guest clock  %"PRIi64" ms\n",
+    g_string_append_printf(buf, "Host - Guest clock  %" PRIi64 " ms\n",
                            (cpu_get_clock() - icount_get()) / SCALE_MS);
     if (icount_align_option) {
-        g_string_append_printf(buf, "Max guest delay     %"PRIi64" ms\n",
+        g_string_append_printf(buf, "Max guest delay     %" PRIi64 " ms\n",
                                -max_delay / SCALE_MS);
-        g_string_append_printf(buf, "Max guest advance   %"PRIi64" ms\n",
+        g_string_append_printf(buf, "Max guest advance   %" PRIi64 " ms\n",
                                max_advance / SCALE_MS);
     } else {
         g_string_append_printf(buf, "Max guest delay     NA\n");
@@ -1189,8 +1153,7 @@ static void dump_drift_info(GString *buf)
     }
 }
 
-HumanReadableText *qmp_x_query_jit(Error **errp)
-{
+HumanReadableText *qmp_x_query_jit(Error **errp) {
     g_autoptr(GString) buf = g_string_new("");
 
     if (!tcg_enabled()) {
@@ -1204,12 +1167,12 @@ HumanReadableText *qmp_x_query_jit(Error **errp)
     return human_readable_text_from_str(buf);
 }
 
-HumanReadableText *qmp_x_query_opcount(Error **errp)
-{
+HumanReadableText *qmp_x_query_opcount(Error **errp) {
     g_autoptr(GString) buf = g_string_new("");
 
     if (!tcg_enabled()) {
-        error_setg(errp, "Opcode count information is only available with accel=tcg");
+        error_setg(errp,
+                   "Opcode count information is only available with accel=tcg");
         return NULL;
     }
 
@@ -1222,8 +1185,7 @@ HumanReadableText *qmp_x_query_opcount(Error **errp)
 
 int64_t dev_time;
 
-HumanReadableText *qmp_x_query_profile(Error **errp)
-{
+HumanReadableText *qmp_x_query_profile(Error **errp) {
     g_autoptr(GString) buf = g_string_new("");
     static int64_t last_cpu_exec_time;
     int64_t cpu_exec_time;
@@ -1232,18 +1194,17 @@ HumanReadableText *qmp_x_query_profile(Error **errp)
     cpu_exec_time = tcg_cpu_exec_time();
     delta = cpu_exec_time - last_cpu_exec_time;
 
-    g_string_append_printf(buf, "async time  %" PRId64 " (%0.3f)\n",
-                           dev_time, dev_time / (double)NANOSECONDS_PER_SECOND);
-    g_string_append_printf(buf, "qemu time   %" PRId64 " (%0.3f)\n",
-                           delta, delta / (double)NANOSECONDS_PER_SECOND);
+    g_string_append_printf(buf, "async time  %" PRId64 " (%0.3f)\n", dev_time,
+                           dev_time / (double)NANOSECONDS_PER_SECOND);
+    g_string_append_printf(buf, "qemu time   %" PRId64 " (%0.3f)\n", delta,
+                           delta / (double)NANOSECONDS_PER_SECOND);
     last_cpu_exec_time = cpu_exec_time;
     dev_time = 0;
 
     return human_readable_text_from_str(buf);
 }
 #else
-HumanReadableText *qmp_x_query_profile(Error **errp)
-{
+HumanReadableText *qmp_x_query_profile(Error **errp) {
     error_setg(errp, "Internal profiler not compiled");
     return NULL;
 }

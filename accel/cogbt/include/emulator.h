@@ -35,6 +35,8 @@ int GuestFPRegSize(void);
 int GuestFpregsOffset(void);
 int GuestFpTagOffset(void);
 int GuestFpTagSize(void);
+int GuestFpusOffset(void);
+int GuestFpusSize(void);
 
 void helper_raise_syscall(void *p, uint64_t next_eip);
 void helper_divb_AL_wrapper(void *p, uint64_t divisor);

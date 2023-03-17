@@ -633,7 +633,7 @@ Value *X86Translator::CallFunc(FunctionType *FuncTy, std::string Name,
                                ArrayRef<Value *> Args) {
     if (Name.substr(0, 8) == "helper_f") {
         dbgs() << "call fp helper: " << Name << "\n";
-        exit(1);
+        // exit(1);
     }
 #if (LLVM_VERSION_MAJOR > 8)
     FunctionCallee F = Mod->getOrInsertFunction(Name, FuncTy);

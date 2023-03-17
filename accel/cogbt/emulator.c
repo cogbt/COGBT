@@ -115,6 +115,10 @@ int GuestFpTagOffset(void) { return offsetof(CPUX86State, fptags); }
 
 int GuestFpregsOffset(void) { return offsetof(CPUX86State, fpregs); }
 
+int GuestFpusOffset(void) { return offsetof(CPUX86State, fpus); }
+
+int GuestFpusSize(void) { return sizeof(uint16_t); };
+
 int GuestST0Offset(void *p) {
     CPUX86State *env = (CPUX86State *)p;
     return GuestFPUOffset(env->fpstt);
