@@ -38,10 +38,11 @@ void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
                 NextPCBB =
                     BasicBlock::Create(Context, "fallthrough", TransFunc, TargetPCBB);
             }
-            BindPhysicalReg();
+            /* BindPhysicalReg(); */
             Builder.CreateCondBr(Cond, TargetPCBB, NextPCBB);
             if (flag & TARGETPCBB_FLAG) {
                 Builder.SetInsertPoint(TargetPCBB);
+                BindPhysicalReg();
                 Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
                 // Create target link slot
                 Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
@@ -53,6 +54,7 @@ void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
             if (flag & NEXTPCBB_FLAG) {
                 // Create fallthrough link slot.
                 Builder.SetInsertPoint(NextPCBB);
+                BindPhysicalReg();
                 Value *NextPC = ConstInt(Int64Ty, InstHdl.getNextPC());
                 Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {NextPC, Off});
                 AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());

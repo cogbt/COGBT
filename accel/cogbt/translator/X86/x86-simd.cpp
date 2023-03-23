@@ -1064,6 +1064,18 @@ void X86Translator::translate_psrldq(GuestInst *Inst) {
              {CPUEnv, DestXMMID, ConstInt(Int64Ty, -1)});
 }
 
+void X86Translator::translate_psrld(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction psrld\n";
+    exit(-1);
+}
+void X86Translator::translate_psrlq(GuestInst *Inst) {
+    GenMMXSSEHelper("helper_psrlq", Inst);
+}
+void X86Translator::translate_psrlw(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction psrlw\n";
+    exit(-1);
+}
+
 void X86Translator::translate_orpd(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     X86OperandHandler Opnd0(InstHdl.getOpnd(0));
@@ -1088,6 +1100,24 @@ void X86Translator::translate_orpd(GuestInst *Inst) {
 }
 
 void X86Translator::translate_orps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction orps\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler Opnd0(InstHdl.getOpnd(0));
+    X86OperandHandler Opnd1(InstHdl.getOpnd(1));
+
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int8PtrTy, Int8PtrTy}, false);
+
+    // Get Src operand zmmreg offset in CPUX86State
+    Value *SrcXMMOff = nullptr;
+    if (Opnd0.isMem()) {
+        Value *Src = LoadOperand(InstHdl.getOpnd(0));
+        FlushXMMT0(Src, Int32PtrTy);
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMT0Offset());
+    } else
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd0.GetXMMID()));
+
+    Value *DestXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd1.GetXMMID()));
+    Value *SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcXMMOff);
+    Value *DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestXMMOff);
+    CallFunc(FTy, "helper_por_xmm", {CPUEnv, DestAddr, SrcAddr});
 }

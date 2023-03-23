@@ -43,8 +43,26 @@ void X86Translator::translate_andn(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_andnps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction andnps\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler Opnd0(InstHdl.getOpnd(0));
+    X86OperandHandler Opnd1(InstHdl.getOpnd(1));
+
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int8PtrTy, Int8PtrTy}, false);
+
+    // Get Src operand zmmreg offset in CPUX86State
+    Value *SrcXMMOff = nullptr;
+    if (Opnd0.isMem()) {
+        Value *Src = LoadOperand(InstHdl.getOpnd(0));
+        FlushXMMT0(Src, Int32PtrTy);
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMT0Offset());
+    } else
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd0.GetXMMID()));
+
+    Value *DestXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd1.GetXMMID()));
+    Value *SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcXMMOff);
+    Value *DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestXMMOff);
+    CallFunc(FTy, "helper_pandn_xmm", {CPUEnv, DestAddr, SrcAddr});
 }
 void X86Translator::translate_arpl(GuestInst *Inst) {
     dbgs() << "Untranslated instruction arpl\n";
@@ -981,18 +999,6 @@ void X86Translator::translate_psraw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction psraw\n";
     exit(-1);
 }
-void X86Translator::translate_psrld(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction psrld\n";
-    exit(-1);
-}
-void X86Translator::translate_psrlq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction psrlq\n";
-    exit(-1);
-}
-void X86Translator::translate_psrlw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction psrlw\n";
-    exit(-1);
-}
 void X86Translator::translate_monitor(GuestInst *Inst) {
     dbgs() << "Untranslated instruction monitor\n";
     exit(-1);
@@ -1025,10 +1031,7 @@ void X86Translator::translate_packusdw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction packusdw\n";
     exit(-1);
 }
-void X86Translator::translate_pause(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pause\n";
-    exit(-1);
-}
+void X86Translator::translate_pause(GuestInst *Inst) {}
 void X86Translator::translate_pavgusb(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pavgusb\n";
     exit(-1);
@@ -1500,8 +1503,26 @@ void X86Translator::translate_rsqrtps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_rsqrtss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction rsqrtss\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler Opnd0(InstHdl.getOpnd(0));
+    X86OperandHandler Opnd1(InstHdl.getOpnd(1));
+
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int8PtrTy, Int8PtrTy}, false);
+
+    // Get Src operand zmmreg offset in CPUX86State
+    Value *SrcXMMOff = nullptr;
+    if (Opnd0.isMem()) {
+        Value *Src = LoadOperand(InstHdl.getOpnd(0));
+        FlushXMMT0(Src, Int32PtrTy);
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMT0Offset());
+    } else
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd0.GetXMMID()));
+
+    Value *DestXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd1.GetXMMID()));
+    Value *SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcXMMOff);
+    Value *DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestXMMOff);
+    CallFunc(FTy, "helper_rsqrtss", {CPUEnv, DestAddr, SrcAddr});
 }
 void X86Translator::translate_sahf(GuestInst *Inst) {
     dbgs() << "Untranslated instruction sahf\n";

@@ -12,6 +12,7 @@
 #include <deque>
 #include <algorithm>
 #include <sstream>
+#include <memory>
 
 // capsthone handler, will be used in some cs API.
 static csh handle;
@@ -310,6 +311,161 @@ static void GenTU(JsonFunc &JF, TranslationUnit *TU) {
     }
 }
 
+// Repartition Function.
+// There are two scenarios that need to repartition.
+//
+// - Instructions that are considered as function ExitPoint are
+//   as follows: call, syscall, jmp %rax、ret.
+// - One Func's guest physical address range can overlap at most two pages.
+void repartitionFunction(JsonFunc &func, vector<JsonFunc> &NewFuncs) {
+#define X86_PAGE_BITS   12
+#define X86_PAGE_SIZE   (1 << X86_PAGE_BITS)
+#define X86_PAGE_MASK   ((int64_t)-1 << X86_PAGE_BITS)
+    uint64_t pc = func.getEntryPoint();
+    auto it = func.name_begin();
+    auto et = func.name_end();
+    uint64_t blockEntry = stol(*it, nullptr, 16);
+    uint64_t FuncBoundary = func.getExitPoint();
+    // two pages boundary that current function can reach
+    uint64_t pageBoundary = (pc & X86_PAGE_MASK) + X86_PAGE_SIZE * 2;
+    // functions in partitionFuncs need to be partition again
+    vector<int> partitionFuncs;
+
+    // 1. Partition by exit instrcutions
+    cs_insn *pins = nullptr;
+    do {
+        if (pins)
+            cs_free(pins, 1);
+        int res = cs_disasm(handle, (uint8_t *)pc, 15, pc, 1, &pins);
+        assert(res && "cs_disasm error");
+        while (pc >= blockEntry && it != et) {
+            // this block belong to current function
+            it++;
+            if (it != et)
+                blockEntry = stol(*it, nullptr, 16);
+        }
+        pc = pins->address + pins->size;
+    } while (!func_tu_inst_is_funcexit(pins) && pc < FuncBoundary);
+
+    func.setExitPoint(pc);
+    if (pc > pageBoundary) {
+        partitionFuncs.push_back(-1);
+    }
+
+    // Partition - Construct new Function
+    auto erase_it = it;
+    while (pc < FuncBoundary) {
+        std::stringstream ss;
+        ss << std::hex << pc;
+        std::string Name("\"0x" + ss.str() + "\"");
+        uint64_t FuncEntry = pc;
+        pageBoundary = (pc & X86_PAGE_MASK) + X86_PAGE_SIZE * 2;
+
+        std::vector<std::string> Blocks;
+        if (FuncEntry != blockEntry)
+            Blocks.push_back("0x" + ss.str());
+
+        do {
+            if (pins)
+                cs_free(pins, 1);
+            int res = cs_disasm(handle, (uint8_t *)pc, 15, pc, 1, &pins);
+            assert(res && "cs_disasm error");
+            while (pc >= blockEntry && it != et) {
+                Blocks.push_back(std::move(*it));   // add to new Func
+                it++;
+                if (it != et)
+                    blockEntry = stol(*it, nullptr, 16);
+            }
+            pc = pins->address + pins->size;
+        } while (!func_tu_inst_is_funcexit(pins) && pc < FuncBoundary);
+
+        std::unique_ptr<JsonFunc> JF(new JsonFunc(Name, FuncEntry, Blocks));
+        JF->setExitPoint(pc);
+        NewFuncs.push_back(std::move(*JF));
+        if (pc > pageBoundary) {
+            partitionFuncs.push_back(NewFuncs.size());
+        }
+    }
+    func.name_erase(erase_it, et);
+
+    // 2. Partition by GPA range
+    while (!partitionFuncs.empty()) {
+        // pop the last from the container
+        int position = partitionFuncs.back();
+        JsonFunc *JF = (position == -1) ? &func : &NewFuncs[position - 1];
+        partitionFuncs.pop_back();
+
+        pc = JF->getEntryPoint();
+        pageBoundary = (pc & X86_PAGE_MASK) + X86_PAGE_SIZE * 2;
+        uint64_t exitPoint = JF->getExitPoint();
+        assert(exitPoint > pageBoundary);
+
+        it = JF->name_begin();
+        et = JF->name_end();
+        do {
+            blockEntry = stol(*it, nullptr, 16);
+            if (blockEntry > pageBoundary) {
+                // the last block GPA range overlap two pages, so it--.
+                it--;
+                break;
+            } else if (blockEntry == pageBoundary)
+                break;
+            it++;
+        } while (it != et);
+        blockEntry = stol(*it, nullptr, 16);
+        JF->setExitPoint(blockEntry);
+
+        // Partition - Construct new Function
+        erase_it = it;
+        while (it != et) {
+            std::stringstream ss;
+            ss << std::hex << blockEntry;
+            std::string Name("\"0x" + ss.str() + "\"");
+            uint64_t FuncEntry = blockEntry;
+            uint64_t FuncExit = exitPoint;
+            std::vector<std::string> Blocks;
+            Blocks.push_back("0x" + ss.str());
+
+            pc = blockEntry;
+            pageBoundary = (pc & X86_PAGE_MASK) + X86_PAGE_SIZE * 2;
+            it++;
+
+            while (it != et) {
+                blockEntry = stol(*it, nullptr, 16);
+                if (blockEntry < pageBoundary) {
+                    ss.str("");
+                    ss << std::hex << blockEntry;
+                    Blocks.push_back("0x" + ss.str());
+                    it++;
+                } else if (blockEntry == pageBoundary) {    // next Function
+                    FuncExit = blockEntry;
+                    break;
+                } else {
+                    // the last block GPA range overlap two pages, so it--.
+                    it--;
+                    blockEntry = stol(*it, nullptr, 16);
+                    FuncExit = blockEntry;
+                    Blocks.pop_back();
+                    break;
+                }
+            }
+
+            if (it == et && exitPoint > pageBoundary) {
+                // the last block GPA range overlap two pages, so it--.
+                it--;
+                blockEntry = stol(*it, nullptr, 16);
+                FuncExit = blockEntry;
+                Blocks.pop_back();
+            }
+
+            std::unique_ptr<JsonFunc> NewJF(new JsonFunc(Name, FuncEntry, Blocks));
+            NewJF->setExitPoint(FuncExit);
+            NewFuncs.push_back(std::move(*NewJF));
+        }
+        JF->name_erase(erase_it, et);
+    }
+}
+
 // parse all function entry and contained basic block entries.
 void func_tu_json_parse(const char *pf) {
     // 1. mmap json file first.
@@ -361,103 +517,28 @@ void func_tu_json_parse(const char *pf) {
 
     std::sort(JsonFuncs.begin(), JsonFuncs.end());
 
-    // 3. repartition function. Instructions that are considered as function
-    // ExitPoint are as follows: call, syscall, jmp %rax、ret.
-    std::vector<JsonFunc> NewFuns;
+    // 3. Repartition function.
+    vector<JsonFunc> NewFuncs;
     for(int i = 0; i < (int)JsonFuncs.size(); i++) {
+        // Calculate the Function ExitPoint
         uint64_t FuncBoundary = -1;
-#if 0
         if (i+1 < (int)JsonFuncs.size())
             FuncBoundary = JsonFuncs[i+1].getEntryPoint();
-        else {  // Calculate the last Function ExitPoint
-            uint64_t Exit = stol(*JsonFuncs[i].name_rbegin(), nullptr, 16);
-            cs_insn *pins = nullptr;
-            do {
-                if (pins)
-                    cs_free(pins, 1);
-                int res = cs_disasm(handle, (uint8_t *)Exit, 15, Exit, 1, &pins);
-                assert(res && "cs_disasm error");
-                Exit = pins->address + pins->size;
-            } while (!func_tu_inst_is_cfi(pins) && Exit < FuncBoundary);
-            FuncBoundary = Exit;
-        }
-#else
-        {  // Calculate the Function ExitPoint
-            if (i+1 < (int)JsonFuncs.size())
-                FuncBoundary = JsonFuncs[i+1].getEntryPoint();
-            uint64_t Exit = stol(*JsonFuncs[i].name_rbegin(), nullptr, 16);
-            cs_insn *pins = nullptr;
-            do {
-                if (pins)
-                    cs_free(pins, 1);
-                int res = cs_disasm(handle, (uint8_t *)Exit, 15, Exit, 1, &pins);
-                assert(res && "cs_disasm error");
-                Exit = pins->address + pins->size;
-            } while (!func_tu_inst_is_cfi(pins) && Exit < FuncBoundary);
-            FuncBoundary = Exit;
-        }
-#endif
-
-        uint64_t pc = JsonFuncs[i].getEntryPoint();
-        auto it = JsonFuncs[i].name_begin();
-        auto et = JsonFuncs[i].name_end();
-        uint64_t blockEntry = stol(*it, nullptr, 16);
+        uint64_t Exit = stol(*JsonFuncs[i].name_rbegin(), nullptr, 16);
         cs_insn *pins = nullptr;
         do {
             if (pins)
                 cs_free(pins, 1);
-            int res = cs_disasm(handle, (uint8_t *)pc, 15, pc, 1, &pins);
+            int res = cs_disasm(handle, (uint8_t *)Exit, 15, Exit, 1, &pins);
             assert(res && "cs_disasm error");
-            while (pc >= blockEntry && it != et) {
-                it++;
-                if (it != et)
-                    blockEntry = stol(*it, nullptr, 16);
-            }
-            pc = pins->address + pins->size;
-        } while (!func_tu_inst_is_funcexit(pins) && pc < FuncBoundary);
-        // Calculate function ExitPoint. if the loop exits due to
-        // pc >= FuncBoundary, then pc is not accurate as ExitPoint.
-        // An example:
-        //      functionA:
-        //          0x501:   jmp 851
-        //          0x506:   nop
-        //      functionB:
-        //          0x50d:
-        // In this case, functionA's ExitPoint is 0x506 rather than 0x50d.
-        /* if (pc < FuncBoundary) */
-            JsonFuncs[i].setExitPoint(pc);
+            Exit = pins->address + pins->size;
+        } while (!func_tu_inst_is_cfi(pins) && Exit < FuncBoundary);
+        JsonFuncs[i].setExitPoint(Exit);
 
-        auto erase_it = it;
-        while (pc < FuncBoundary) {    // need to partition
-            std::stringstream ss;
-            ss << std::hex << pc;
-            std::string Name("\"0x" + ss.str() + "\"");
-            uint64_t FuncEntry = pc;
-            std::vector<std::string> Blocks;
-            if (FuncEntry != blockEntry)
-                Blocks.push_back(ss.str());
-            do {
-                if (pins)
-                    cs_free(pins, 1);
-                int res = cs_disasm(handle, (uint8_t *)pc, 15, pc, 1, &pins);
-                assert(res && "cs_disasm error");
-                while (pc >= blockEntry && it != et) {
-                    Blocks.push_back(std::move(*it));   // add to new Func
-                    it++;
-                    if (it != et)
-                        blockEntry = stol(*it, nullptr, 16);
-                }
-                pc = pins->address + pins->size;
-            } while (!func_tu_inst_is_funcexit(pins) && pc < FuncBoundary);
-
-            JsonFunc JF(Name, FuncEntry, Blocks);
-            /* if (pc < FuncBoundary) */
-                JF.setExitPoint(pc);
-            NewFuns.push_back(std::move(JF));
-        }
-        JsonFuncs[i].name_erase(erase_it, et);
+        // Repartition
+        repartitionFunction(JsonFuncs[i], NewFuncs);
     }
-    JsonFuncs.insert(JsonFuncs.end(), NewFuns.begin(), NewFuns.end());
+    JsonFuncs.insert(JsonFuncs.end(), NewFuncs.begin(), NewFuncs.end());
     std::sort(JsonFuncs.begin(), JsonFuncs.end());
 
 #ifdef CONFIG_COGBT_DEBUG

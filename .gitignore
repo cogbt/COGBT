@@ -22,4 +22,5 @@ capstone
 meson.build
 accel/cogbt/meson.build
 buildqemu
+buildqemu-debug
 build-debug

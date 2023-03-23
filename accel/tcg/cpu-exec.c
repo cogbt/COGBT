@@ -961,6 +961,9 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 
 /* main execution loop */
 
+#ifdef CONFIG_COGBT
+extern int aotmode;
+#endif
 #ifdef CONFIG_COGBT_DEBUG
 extern uint64_t debug_pc;
 void debug_breakpoint(uint64_t pc);
@@ -975,7 +978,15 @@ void dump_path (uint64_t pc) {
         char *dump_file = malloc(sizeof(char) * (strlen(exec_path) + 6));
         strcpy(dump_file, exec_path);
         strcat(dump_file, ".path");
-        pf = fopen(dump_file, "w+");
+#ifdef CONFIG_COGBT
+        if (aotmode != 2)
+#endif
+            pf = fopen(dump_file, "w+");
+#ifdef CONFIG_COGBT
+        else {
+            pf = fopen(dump_file, "a");
+        }
+#endif
     }
     assert(pf);
     fprintf(pf, "0x%lx\n", pc);
@@ -1088,7 +1099,7 @@ int cpu_exec(CPUState *cpu)
                 mmap_lock();
 #ifdef CONFIG_COGBT_DEBUG
                 tb_not_find++;
-                /* dump_path(pc); */
+                dump_path(pc);
 #endif
                 tb = tb_gen_code(cpu, pc, cs_base, flags, cflags);
                 mmap_unlock();

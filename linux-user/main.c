@@ -1034,8 +1034,8 @@ int main(int argc, char **argv, char **envp)
             tb->trace_vcpu_dstate = 0;
 
             /* Registe this BasicBlock into lookup hash table. */
-            aot_tb_register(tb);
             /* fprintf(stderr, "register tb pc 0x%lx cs_base 0x%lx flags 0x%x cflags 0x%x\n", tb->pc,tb->cs_base,tb->flags,tb->cflags); //debug */
+            aot_tb_register(tb);
             if (!tb_htable_lookup(cpu, tb->pc, 0, tb->flags, tb->cflags)) {
                 fprintf(stderr, "aot: tb_htable_lookup error!\n");
                 exit(-1);

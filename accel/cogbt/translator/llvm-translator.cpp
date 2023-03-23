@@ -197,8 +197,8 @@ void LLVMTranslator::TranslateFinalize() {
         MPM.run(*Mod.get());
 #else
 #endif
+        Mod->print(dbgs(), nullptr);
         EmitObjectCode();
-        /* Mod->print(dbgs(), nullptr); */
     }
 }
 
