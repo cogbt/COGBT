@@ -151,7 +151,13 @@ private: /// Currently translated instruction.
     ///   NEEDED TO FLASH GMR
     void FP64CompareEFLAG(Value *LHS, Value *RHS);
 
+    /// getPrecisonCtrl - Get the PC value
+    /// 00B float, 10B double, 11B double Ext
+    Value *getPrecisonCtrl(void);
+
     Value *GetFpusPtr(void);
+
+    Value *GetFpucPtr(void);
 
     /// StoreToFPR - Store value V into FPStack[fpi].
     void StoreToFPR(Value *V, Value *fpi);

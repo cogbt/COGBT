@@ -117,6 +117,8 @@ int GuestFpregsOffset(void) { return offsetof(CPUX86State, fpregs); }
 
 int GuestFpusOffset(void) { return offsetof(CPUX86State, fpus); }
 
+int GuestFpucOffset(void) { return offsetof(CPUX86State, fpuc); }
+
 int GuestFpusSize(void) { return sizeof(uint16_t); };
 
 int GuestST0Offset(void *p) {
