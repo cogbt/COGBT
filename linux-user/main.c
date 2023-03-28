@@ -976,11 +976,12 @@ int main(int argc, char **argv, char **envp)
         return 0;
     } else if (aotmode == 2) {
         cogbt_function_init();
-        char json_path[255];
-        strcpy(json_path, exec_path);
-        strcat(json_path, ".json");
-        func_tu_json_parse(json_path);
-        aot_gen(json_path);
+        /* char json_path[255]; */
+        /* strcpy(json_path, exec_path); */
+        /* strcat(json_path, ".json"); */
+        /* func_tu_json_parse(json_path); */
+        func_tu_parse(exec_path);
+        func_aot_gen();
         return 0;
     }
     cogbt_block_init();
