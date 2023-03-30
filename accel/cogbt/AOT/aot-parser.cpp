@@ -165,7 +165,19 @@ void AOTParser::RegisterLinkSlot(uint64_t HostAddr, int ExitID, int Type) {
     int idx = FindFunctionInfo(HostAddr);
     FunctionInfo &FI = FuncInfos[idx];
     int offset = HostAddr - FI.getBeginAddr();
-    assert(FI.getLinkOffset(ExitID) == -1);
+    /* assert(FI.getLinkOffset(ExitID) == -1); */
+    // TODO: make it more graceful
+    if (FI.getLinkOffset(ExitID) != -1) {
+        if (FI.getLinkOffset(0) == -1) {
+            ExitID = 0;
+        } else {
+#ifdef CONFIG_COGBT_DEBUG
+            fprintf(stderr, "ExitID %d conflit in function %s, "
+                    "try to solving...\n", ExitID, FI.getName());
+#endif
+            ExitID = FI.getLinkSlotNumber();
+        }
+    }
     FI.getLinkOffset(ExitID) = offset;
 }
 
@@ -244,8 +256,8 @@ void AOTParser::DoLink() {
             FunctionInfo &TargetFI = FuncInfos[idx];
             int32_t FixUpOffset = (TargetFI.getLoadAddr() - LinkAddr) >> 2;
 #ifdef CONFIG_COGBT_DEBUG
-            dbgs() << format("PC 0x%lx TargetPC 0x%lx FixUpOffset 0x%lx\n",
-                             CurrPC, TargetPC, FixUpOffset);
+            /* dbgs() << format("PC 0x%lx TargetPC 0x%lx FixUpOffset 0x%lx\n", */
+            /*                  CurrPC, TargetPC, FixUpOffset); */
 #endif
             EncodeLinkSlot((uint32_t *)LinkAddr, FixUpOffset);
         }

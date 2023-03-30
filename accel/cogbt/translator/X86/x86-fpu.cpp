@@ -426,7 +426,7 @@ void X86Translator::translate_fnstenv(GuestInst *Inst) {
 
 void X86Translator::translate_fxam(GuestInst *Inst) {
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fxam", CPUEnv);
+    CallFunc(FTy, "helper_fxam_ST0", CPUEnv);
 }
 
 void X86Translator::translate_fxtract(GuestInst *Inst) {

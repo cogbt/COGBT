@@ -210,8 +210,10 @@ static void partition_helper(JsonFunc &func, vector<JsonFunc> &NewFuncs) {
         int position = partitionFuncs.back();
         JsonFunc *JF = (position == -1) ? &func : &NewFuncs[position - 1];
         partitionFuncs.pop_back();
+#ifdef CONFIG_COGBT_DEBUG
         /* JF->dump(stdout); */
-
+        fprintf(stderr, "TranslationUnit: 0x%lx cross page.\n", JF->getEntryPoint());
+#endif
         pc = JF->getEntryPoint();
         pageBoundary = (pc & X86_PAGE_MASK) + X86_PAGE_SIZE * 2;
         uint64_t exitPoint = JF->getExitPoint();
@@ -237,7 +239,8 @@ static void partition_helper(JsonFunc &func, vector<JsonFunc> &NewFuncs) {
         JF->setExitPoint(blockEntry);
 
         // Partition - Construct new Function
-        auto erase_it = it;
+        /* auto erase_it = it; */
+        uint64_t erase_pc = *it;
         while (it != et) {
             std::stringstream ss;
             ss << std::hex << blockEntry;
@@ -280,7 +283,9 @@ static void partition_helper(JsonFunc &func, vector<JsonFunc> &NewFuncs) {
             NewFuncs.emplace_back(Name, FuncEntry, Blocks);
             NewFuncs.back().setExitPoint(FuncExit);
         }
-        JF->name_erase(erase_it, et);
+        JF = (position == -1) ? &func : &NewFuncs[position - 1];
+        assert(JF->getBlockStrs().find(erase_pc) != JF->name_end());
+        JF->name_erase(JF->getBlockStrs().find(erase_pc), JF->name_end());
     }
 }
 
@@ -293,6 +298,7 @@ static void partition_funcs(vector<JsonFunc> &JsonFuncs) {
         if (i+1 < (int)JsonFuncs.size())
             FuncBoundary = JsonFuncs[i+1].getEntryPoint();
         uint64_t Exit = *JsonFuncs[i].name_rbegin();
+        assert(Exit <= FuncBoundary);
         cs_insn *pins = nullptr;
         do {
             if (pins)
@@ -357,6 +363,8 @@ void func_tu_parse(const char *pf) {
         func_txt_exist = true;
     }
 
+    /* func_txt_exist = false; */
+    // TODO: JsonFunc should use unique_ptr
     vector<JsonFunc> JsonFuncs;
     if (func_txt_exist) {
         // 2 parser .json.txt file

@@ -313,16 +313,22 @@ void X86Translator::translate_ljmp(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_fxrstor(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fxrstor\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false);
+    Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
+    CallFunc(FTy, "helper_fxrstor", {CPUEnv, Addr});
 }
 void X86Translator::translate_fxrstor64(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fxrstor64\n";
     exit(-1);
 }
 void X86Translator::translate_fxsave(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fxsave\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false);
+    Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
+    CallFunc(FTy, "helper_fxsave", {CPUEnv, Addr});
 }
 void X86Translator::translate_fxsave64(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fxsave64\n";
@@ -721,8 +727,9 @@ void X86Translator::translate_lar(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_lddqu(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction lddqu\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    StoreOperand(Src, InstHdl.getOpnd(1));
 }
 
 void X86Translator::translate_ldmxcsr(GuestInst *Inst) {
@@ -755,10 +762,7 @@ void X86Translator::translate_les(GuestInst *Inst) {
     dbgs() << "Untranslated instruction les\n";
     exit(-1);
 }
-void X86Translator::translate_lfence(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction lfence\n";
-    exit(-1);
-}
+void X86Translator::translate_lfence(GuestInst *Inst) {}
 void X86Translator::translate_lfs(GuestInst *Inst) {
     dbgs() << "Untranslated instruction lfs\n";
     exit(-1);
@@ -920,8 +924,55 @@ void X86Translator::translate_packuswb(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_palignr(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction palignr\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler ImmOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+    Value *MemVal = nullptr;
+    // helper_Name_xxx function type.
+    FunctionType *FuncTy = FunctionType::get(
+            VoidTy, {Int8PtrTy, Int8PtrTy, Int8PtrTy, Int32Ty},false);
+
+    Value *SrcOff = nullptr, *SrcAddr = nullptr;
+    Value *DestOff = nullptr, *DestAddr = nullptr;
+    Value *ImmValue = nullptr;
+    if (SrcOpnd.isMem())
+        MemVal = LoadOperand(InstHdl.getOpnd(1));
+    if (DestOpnd.isXMM()) { // XMM
+        if (MemVal) {
+            FlushXMMT0(MemVal);
+            SrcOff = ConstInt(Int64Ty, GuestXMMT0Offset());
+        } else {
+            SrcOff = ConstInt(Int64Ty, GuestXMMOffset(SrcOpnd.GetXMMID()));
+        }
+
+        SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcOff);
+
+        DestOff = ConstInt(Int64Ty, GuestXMMOffset(DestOpnd.GetXMMID()));
+        DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestOff);
+
+        ImmValue = ConstInt(Int32Ty, ImmOpnd.getIMM());
+
+        CallFunc(FuncTy, "helper_palignr_xmm",
+                {CPUEnv, DestAddr, SrcAddr, ImmValue});
+    } else { // MMX
+        if (MemVal) {
+            FlushMMXT0(MemVal);
+            SrcOff = ConstInt(Int64Ty, GuestMMXT0Offset());
+        } else {
+            SrcOff = ConstInt(Int64Ty, GuestMMXOffset(SrcOpnd.GetMMXID()));
+        }
+        SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcOff);
+
+        DestOff = ConstInt(Int64Ty, GuestMMXOffset(DestOpnd.GetMMXID()));
+        DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestOff);
+
+        ImmValue = ConstInt(Int32Ty, ImmOpnd.getIMM());
+
+        CallFunc(FuncTy, "helper_palignr_mmx",
+                {CPUEnv, DestAddr, SrcAddr, ImmValue});
+    }
 }
 void X86Translator::translate_pextrw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pextrw\n";
@@ -1065,8 +1116,42 @@ void X86Translator::translate_pcmpgtq(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_pcmpistri(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pcmpistri\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler ImmOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+    Value *MemVal = nullptr;
+    // helper_Name_xxx function type.
+    FunctionType *FuncTy = FunctionType::get(
+            VoidTy, {Int8PtrTy, Int8PtrTy, Int8PtrTy, Int32Ty},false);
+
+    // Sync eflags to env
+    FlushGMRValue(X86Config::EFLAG);
+
+    Value *SrcOff = nullptr, *SrcAddr = nullptr;
+    Value *DestOff = nullptr, *DestAddr = nullptr;
+    Value *ImmValue = nullptr;
+    if (SrcOpnd.isMem())
+        MemVal = LoadOperand(InstHdl.getOpnd(1));
+    if (MemVal) {
+        FlushXMMT0(MemVal);
+        SrcOff = ConstInt(Int64Ty, GuestXMMT0Offset());
+    } else {
+        SrcOff = ConstInt(Int64Ty, GuestXMMOffset(SrcOpnd.GetXMMID()));
+    }
+
+    SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcOff);
+
+    DestOff = ConstInt(Int64Ty, GuestXMMOffset(DestOpnd.GetXMMID()));
+    DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestOff);
+
+    ImmValue = ConstInt(Int32Ty, ImmOpnd.getIMM());
+
+    CallFunc(FuncTy, "helper_pcmpistri_xmm",
+            {CPUEnv, DestAddr, SrcAddr, ImmValue});
+    ReloadGMRValue(X86Config::RCX);
+    ReloadGMRValue(X86Config::EFLAG);
 }
 void X86Translator::translate_pcmpistrm(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pcmpistrm\n";
@@ -1339,41 +1424,68 @@ void X86Translator::translate_prefetch(GuestInst *Inst) {
     dbgs() << "Untranslated instruction prefetch\n";
     exit(-1);
 }
-void X86Translator::translate_prefetchnta(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction prefetchnta\n";
-    exit(-1);
-}
-void X86Translator::translate_prefetcht0(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction prefetcht0\n";
-    exit(-1);
-}
-void X86Translator::translate_prefetcht1(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction prefetcht1\n";
-    exit(-1);
-}
-void X86Translator::translate_prefetcht2(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction prefetcht2\n";
-    exit(-1);
-}
-void X86Translator::translate_prefetchw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction prefetchw\n";
-    exit(-1);
-}
+void X86Translator::translate_prefetchnta(GuestInst *Inst) {}
+void X86Translator::translate_prefetcht0(GuestInst *Inst) {}
+void X86Translator::translate_prefetcht1(GuestInst *Inst) {}
+void X86Translator::translate_prefetcht2(GuestInst *Inst) {}
+void X86Translator::translate_prefetchw(GuestInst *Inst) {}
 void X86Translator::translate_pswapd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pswapd\n";
     exit(-1);
 }
 void X86Translator::translate_ptest(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction ptest\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler Opnd0(InstHdl.getOpnd(0));
+    X86OperandHandler Opnd1(InstHdl.getOpnd(1));
+
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int8PtrTy, Int8PtrTy}, false);
+
+    // Sync eflags to env
+    FlushGMRValue(X86Config::EFLAG);
+
+    // Get Src operand zmmreg offset in CPUX86State
+    Value *SrcXMMOff = nullptr;
+    if (Opnd0.isMem()) {
+        Value *Src = LoadOperand(InstHdl.getOpnd(0));
+        FlushXMMT0(Src);
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMT0Offset());
+    } else
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd0.GetXMMID()));
+
+    Value *DestXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd1.GetXMMID()));
+    Value *SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcXMMOff);
+    Value *DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestXMMOff);
+    CallFunc(FTy, "helper_ptest_xmm", {CPUEnv, DestAddr, SrcAddr});
+
+    // Reload eflags from env
+    ReloadGMRValue(X86Config::EFLAG);
 }
 void X86Translator::translate_punpckhqdq(GuestInst *Inst) {
     dbgs() << "Untranslated instruction punpckhqdq\n";
     exit(-1);
 }
 void X86Translator::translate_punpcklqdq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction punpcklqdq\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler Opnd0(InstHdl.getOpnd(0));
+    X86OperandHandler Opnd1(InstHdl.getOpnd(1));
+
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int8PtrTy, Int8PtrTy}, false);
+
+    // Get Src operand zmmreg offset in CPUX86State
+    Value *SrcXMMOff = nullptr;
+    if (Opnd0.isMem()) {
+        Value *Src = LoadOperand(InstHdl.getOpnd(0));
+        FlushXMMT0(Src);
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMT0Offset());
+    } else
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd0.GetXMMID()));
+
+    Value *DestXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd1.GetXMMID()));
+    Value *SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcXMMOff);
+    Value *DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestXMMOff);
+    CallFunc(FTy, "helper_punpcklqdq_xmm", {CPUEnv, DestAddr, SrcAddr});
 }
 void X86Translator::translate_push(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
@@ -1540,10 +1652,7 @@ void X86Translator::translate_sarx(GuestInst *Inst) {
     dbgs() << "Untranslated instruction sarx\n";
     exit(-1);
 }
-void X86Translator::translate_sfence(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction sfence\n";
-    exit(-1);
-}
+void X86Translator::translate_sfence(GuestInst *Inst) {}
 void X86Translator::translate_sgdt(GuestInst *Inst) {
     dbgs() << "Untranslated instruction sgdt\n";
     exit(-1);
@@ -1812,8 +1921,8 @@ void X86Translator::translate_vbroadcastsd(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vbroadcastss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vbroadcastss\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vbroadcastss\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vcompresspd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vcompresspd\n";
@@ -2428,8 +2537,8 @@ void X86Translator::translate_vinsertf64x4(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vinserti128(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vinserti128\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vinserti128\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vinserti32x4(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vinserti32x4\n";
@@ -2528,28 +2637,28 @@ void X86Translator::translate_vmmcall(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vmovq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovq\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vmovq\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vmovddup(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmovddup\n";
     exit(-1);
 }
 void X86Translator::translate_vmovd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovd\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vmovd\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vmovdqa32(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovdqa32\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vmovdqa32\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vmovdqa64(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovdqa64\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vmovdqa64\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vmovdqa(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovdqa\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vmovdqa\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vmovdqu16(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmovdqu16\n";
@@ -2568,8 +2677,8 @@ void X86Translator::translate_vmovdqu8(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vmovdqu(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovdqu\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vmovdqu\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vmovhlps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmovhlps\n";
@@ -2608,8 +2717,8 @@ void X86Translator::translate_vmovntdqa(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vmovntdq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovntdq\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vmovntdq\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vmovntpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmovntpd\n";
@@ -2640,8 +2749,8 @@ void X86Translator::translate_vmovupd(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vmovups(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovups\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vmovups\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vmpsadbw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmpsadbw\n";
@@ -2764,32 +2873,32 @@ void X86Translator::translate_vpaddw(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpalignr(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpalignr\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vpalignr\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vpandd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpandd\n";
     exit(-1);
 }
 void X86Translator::translate_vpandnd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpandnd\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vpandnd\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vpandnq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpandnq\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vpandnq\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vpandn(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpandn\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vpandn\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vpandq(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpandq\n";
     exit(-1);
 }
 void X86Translator::translate_vpand(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpand\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vpand\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vpavgb(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpavgb\n";
@@ -2868,16 +2977,16 @@ void X86Translator::translate_vpcmpd(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpcmpeqb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpcmpeqb\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vpcmpeqb\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vpcmpeqd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpcmpeqd\n";
     exit(-1);
 }
 void X86Translator::translate_vpcmpeqq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpcmpeqq\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vpcmpeqq\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vpcmpeqw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpcmpeqw\n";
@@ -2892,8 +3001,8 @@ void X86Translator::translate_vpcmpestrm(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpcmpgtb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpcmpgtb\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vpcmpgtb\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vpcmpgtd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpcmpgtd\n";
@@ -2908,8 +3017,8 @@ void X86Translator::translate_vpcmpgtw(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpcmpistri(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpcmpistri\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vpcmpistri\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vpcmpistrm(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpcmpistrm\n";
@@ -3364,8 +3473,8 @@ void X86Translator::translate_vpmovm2w(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpmovmskb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpmovmskb\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vpmovmskb\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vpmovqb(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpmovqb\n";
@@ -3508,8 +3617,8 @@ void X86Translator::translate_vporq(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpor(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpor\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vpor\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vpperm(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpperm\n";
@@ -3584,8 +3693,8 @@ void X86Translator::translate_vpshlw(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpshufb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpshufb\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vpshufb\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vpshufd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpshufd\n";
@@ -3612,8 +3721,8 @@ void X86Translator::translate_vpsignw(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpslldq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpslldq\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vpslldq\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vpslld(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpslld\n";
@@ -3656,8 +3765,8 @@ void X86Translator::translate_vpsraw(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpsrldq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpsrldq\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vpsrldq\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vpsrld(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpsrld\n";
@@ -3680,8 +3789,8 @@ void X86Translator::translate_vpsrlw(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpsubb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpsubb\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vpsubb\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vpsubd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpsubd\n";
@@ -3772,8 +3881,8 @@ void X86Translator::translate_vpxorq(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpxor(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpxor\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vpxor\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vrcp14pd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vrcp14pd\n";
@@ -4008,8 +4117,8 @@ void X86Translator::translate_vzeroall(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vzeroupper(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vzeroupper\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vzeroupper\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_wbinvd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction wbinvd\n";
@@ -4064,8 +4173,7 @@ void X86Translator::translate_xend(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_xgetbv(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction xgetbv\n";
-    exit(-1);
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_xlatb(GuestInst *Inst) {
     dbgs() << "Untranslated instruction xlatb\n";
@@ -4076,8 +4184,7 @@ void X86Translator::translate_xrelease(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_xrstor(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction xrstor\n";
-    exit(-1);
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_xrstor64(GuestInst *Inst) {
     dbgs() << "Untranslated instruction xrstor64\n";
@@ -4092,16 +4199,14 @@ void X86Translator::translate_xrstors64(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_xsave(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction xsave\n";
-    exit(-1);
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_xsave64(GuestInst *Inst) {
     dbgs() << "Untranslated instruction xsave64\n";
     exit(-1);
 }
 void X86Translator::translate_xsavec(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction xsavec\n";
-    exit(-1);
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_xsavec64(GuestInst *Inst) {
     dbgs() << "Untranslated instruction xsavec64\n";

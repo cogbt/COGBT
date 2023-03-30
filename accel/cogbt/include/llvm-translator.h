@@ -202,6 +202,11 @@ protected:
 
     void SetPhysicalRegValue(const char *RegName, Value *RegValue);
 
+    /// CreateIllegalInstruction - Gen an illegal instruction.
+    /// It is used when some instruction is not translated,
+    /// but must not be executed.
+    void CreateIllegalInstruction();
+
     /// @name IR optimization submodule
     /// Optimize - Add all standard or custom passes into function pass manager
     /// and run them.

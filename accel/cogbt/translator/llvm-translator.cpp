@@ -179,6 +179,12 @@ void LLVMTranslator::SetPhysicalRegValue(const char *RegName, Value *RegValue) {
     Builder.CreateCall(InlineAsmTy, IA, {RegValue});
 }
 
+void LLVMTranslator::CreateIllegalInstruction() {
+    FunctionType *InlineAsmTy = FunctionType::get(VoidTy, false);
+    InlineAsm *IA = InlineAsm::get(InlineAsmTy, ".word 0", "", true);
+    Builder.CreateCall(InlineAsmTy, IA);
+}
+
 void LLVMTranslator::TranslateFinalize() {
     // Finalize DIBuilder to make debug info correct.
     DIB->finalize();

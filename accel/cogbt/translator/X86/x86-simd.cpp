@@ -261,16 +261,13 @@ void X86Translator::translate_pmovmskb(GuestInst *Inst) {
 }
 
 void X86Translator::translate_punpckhbw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction punpckhbw\n";
-    exit(-1);
+    GenMMXSSEHelper("helper_punpckhbw", Inst);
 }
 void X86Translator::translate_punpckhdq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction punpckhdq\n";
-    exit(-1);
+    GenMMXSSEHelper("helper_punpckhdq", Inst);
 }
 void X86Translator::translate_punpckhwd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction punpckhwd\n";
-    exit(-1);
+    GenMMXSSEHelper("helper_punpckhwd", Inst);
 }
 void X86Translator::translate_punpcklbw(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
@@ -292,7 +289,7 @@ void X86Translator::translate_punpcklbw(GuestInst *Inst) {
             FlushXMMT0(MemV);
             Value *XMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
             CallFunc(FuncTy, "helper_punpcklbw_xmm",
-                     {XMMID, ConstInt(Int64Ty, -1)});
+                     {CPUEnv, XMMID, ConstInt(Int64Ty, -1)});
         }
     } else { // both xmm or mmx.
         if (SrcOpnd.isMMX()) {
@@ -311,8 +308,7 @@ void X86Translator::translate_punpcklbw(GuestInst *Inst) {
 }
 
 void X86Translator::translate_punpckldq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction punpckldq\n";
-    exit(-1);
+    GenMMXSSEHelper("helper_punpckldq", Inst);
 }
 void X86Translator::translate_punpcklwd(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
@@ -334,7 +330,7 @@ void X86Translator::translate_punpcklwd(GuestInst *Inst) {
             FlushXMMT0(MemV);
             Value *XMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
             CallFunc(FuncTy, "helper_punpcklwd_xmm",
-                     {XMMID, ConstInt(Int64Ty, -1)});
+                     {CPUEnv, XMMID, ConstInt(Int64Ty, -1)});
         }
     } else { // both xmm or mmx.
         if (SrcOpnd.isMMX()) {

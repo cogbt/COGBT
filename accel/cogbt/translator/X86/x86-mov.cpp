@@ -1,3 +1,4 @@
+#include "emulator.h"
 #include "x86-translator.h"
 
 void X86Translator::translate_lea(GuestInst *Inst) {
@@ -344,8 +345,9 @@ void X86Translator::translate_movhlps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_movhps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movhps\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    StoreOperand(Src, InstHdl.getOpnd(1));
 }
 void X86Translator::translate_movlhps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movlhps\n";
@@ -356,8 +358,20 @@ void X86Translator::translate_movlps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_movmskpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movmskpd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler Opnd0(InstHdl.getOpnd(0));
+
+    FunctionType *FTy =
+        FunctionType::get(Int32Ty, {Int8PtrTy, Int8PtrTy}, false);
+
+    // Get Src operand zmmreg offset in CPUX86State
+    assert(Opnd0.isXMM());
+    Value *SrcXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd0.GetXMMID()));
+
+    Value *SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcXMMOff);
+    Value *Src = CallFunc(FTy, "helper_movmskpd", {CPUEnv, SrcAddr});
+    Src = Builder.CreateZExt(Src, Int64Ty);
+    StoreOperand(Src, InstHdl.getOpnd(1));
 }
 void X86Translator::translate_movmskps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movmskps\n";
@@ -368,12 +382,14 @@ void X86Translator::translate_movntdqa(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_movntdq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movntdq\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    StoreOperand(Src, InstHdl.getOpnd(1));
 }
 void X86Translator::translate_movnti(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movnti\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    StoreOperand(Src, InstHdl.getOpnd(1));
 }
 void X86Translator::translate_movntpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movntpd\n";
