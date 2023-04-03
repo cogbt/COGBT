@@ -1,6 +1,13 @@
 #include "emulator.h"
 #include "x86-translator.h"
 
+Value *X86Translator::getFT0Ptr() {
+    Value *FT0Ptr =
+        Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int32Ty, GuestFT0Offset()));
+    FT0Ptr = Builder.CreateBitCast(FT0Ptr, FP64PtrTy);
+    return FT0Ptr;
+}
+
 void X86Translator::FP64CompareSW(Value *LHS, Value *RHS) {
     Value *FpusPtr = GetFpusPtr();
     Value *old_flag = Builder.CreateLoad(Int16Ty, FpusPtr);
@@ -184,12 +191,12 @@ void X86Translator::GenFPUHelper(GuestInst *Inst, std::string Name, int Flags) {
         } else {
             if (DestOrFirstSrcIsST0) {
                 // DestOpnd is st(0) e.g fsub st(1) means st(0) - st(1) -> st(0)
-                Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+                Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
                 CallFunc(FTy2, "helper_fmov_FT0_STN", {CPUEnv, SrcFPRID});
                 CallFunc(FTy, "helper_" + Name + "_ST0_FT0", CPUEnv);
             } else {
                 // DestOpnd is SrcOpnd and another SrcOpnd is st(0) like faddp
-                Value *DestFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+                Value *DestFPRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
                 CallFunc(FTy2, "helper_" + Name + "_STN_ST0",
                          {CPUEnv, DestFPRID});
             }
@@ -205,7 +212,7 @@ void X86Translator::GenFPUHelper(GuestInst *Inst, std::string Name, int Flags) {
         FunctionType *FTy2 =
             FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
         X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
-        Value *DestFPRID = ConstInt(Int32Ty, DestOpnd.GetFPRID());
+        Value *DestFPRID = ConstInt(Int32Ty, DestOpnd.GetSTRID());
         assert(DestFPRID);
         CallFunc(FTy2, "helper_" + Name + "_STN_ST0", {CPUEnv, DestFPRID});
     }
@@ -265,7 +272,7 @@ void X86Translator::translate_fadd(GuestInst *Inst) {
                 llvm_unreachable("fadd: unhandled Mem Bytes\n");
             }
         } else if (SrcOpnd.isSTR()) {
-            DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+            DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
             Value *DestFPRID = Builder.CreateAdd(St0, DestSTRID);
             DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty, 7));
             RHS = LoadFromFPR(DestFPRID, FP64Ty);
@@ -277,7 +284,7 @@ void X86Translator::translate_fadd(GuestInst *Inst) {
         X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
         Value *St0 = GetFPUTop();
         Value *RHS = nullptr;
-        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
         Value *DestFPRID = Builder.CreateAdd(St0, DestSTRID);
         DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty, 7));
         RHS = LoadFromFPR(DestFPRID, FP64Ty);
@@ -335,7 +342,7 @@ void X86Translator::translate_faddp(GuestInst *Inst) {
         if (!SrcOpnd.isSTR()) {
             llvm_unreachable("faddp:Opnd err\n");
         }
-        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
         FPi = Builder.CreateAdd(St0, DestSTRID);
         FPi = Builder.CreateAnd(FPi, ConstInt(Int32Ty, 7));
     }
@@ -443,7 +450,7 @@ void X86Translator::translate_fcompp(GuestInst *Inst) {
 //     FunctionType *FPOPTy = FunctionType::get(VoidTy, Int8PtrTy, false);
 
 //     FlushGMRValue(X86Config::EFLAG);
-//     Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+//     Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
 //     CallFunc(FMOVTy, "helper_fmov_FT0_STN", {CPUEnv, SrcFPRID});
 //     CallFunc(FCOMITy, "helper_fcomi_ST0_FT0_cogbt", CPUEnv);
 //     CallFunc(FPOPTy, "helper_fpop", CPUEnv);
@@ -482,7 +489,7 @@ void X86Translator::translate_fcomip(GuestInst *Inst) {
 //     FunctionType *FCOMITy = FunctionType::get(VoidTy, Int8PtrTy, false);
 
 //     FlushGMRValue(X86Config::EFLAG);
-//     Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+//     Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
 //     CallFunc(FMOVTy, "helper_fmov_FT0_STN", {CPUEnv, SrcFPRID});
 //     CallFunc(FCOMITy, "helper_fcomi_ST0_FT0_cogbt", CPUEnv);
 //     ReloadGMRValue(X86Config::EFLAG);
@@ -537,16 +544,92 @@ void X86Translator::translate_fcom(GuestInst *Inst) {
     FP64CompareSW(LHS, RHS);
 }
 
+// void X86Translator::translate_fcos(GuestInst *Inst) {
+//     // dbgs() << "ENTRY translate_fcos\n";
+//     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+//     CallFunc(UnaryFunTy, "helper_fcos", CPUEnv);
+// }
+
 void X86Translator::translate_fcos(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_fcos\n";
-    FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(UnaryFunTy, "helper_fcos", CPUEnv);
+    Value *top = GetFPUTop();
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+
+    Value *ABS = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::fabs,
+            MemVal->getType()),
+        MemVal);
+
+    BasicBlock *LessBB = BasicBlock::Create(Context, "Less", TransFunc, ExitBB);
+    BasicBlock *LargBB = BasicBlock::Create(Context, "Larg", TransFunc, ExitBB);
+    BasicBlock *EndBB = BasicBlock::Create(Context, "End", TransFunc, ExitBB);
+    Value *Cond = Builder.CreateFCmpOLT(
+        ABS, ConstantFP::get(FP64Ty, APFloat(9223372036854775808.0)));
+
+    Builder.CreateCondBr(Cond, LessBB, LargBB);
+
+    /*---------------------------------------------*/
+    Builder.SetInsertPoint(LessBB);
+
+    Value *TOP = GetFPUTop();
+    Value *V = LoadFromFPR(TOP, FP64Ty);
+
+    Value *FpusPtr_1 = GetFpusPtr();
+    Value *old_flag_1 = Builder.CreateLoad(Int16Ty, FpusPtr_1);
+    Value *C_2_1 = nullptr;
+
+    V = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::cos,
+            V->getType()),
+        V);
+
+    // set C2 to 0
+
+    C_2_1 = ConstInt(Int16Ty, 0xfbff);
+    old_flag_1 = Builder.CreateAnd(old_flag_1, C_2_1);
+    Builder.CreateStore(old_flag_1, FpusPtr_1);
+
+    StoreToFPR(V, TOP);
+
+    Builder.CreateBr(EndBB);
+    /*---------------------------------------------*/
+    Builder.SetInsertPoint(LargBB);
+
+    // set C2 to 1
+    Value *FpusPtr = GetFpusPtr();
+    Value *old_flag = Builder.CreateLoad(Int16Ty, FpusPtr);
+    Value *C_2 = nullptr;
+    C_2 = ConstInt(Int16Ty, 0x0400);
+    old_flag = Builder.CreateOr(old_flag, C_2);
+    Builder.CreateStore(old_flag, FpusPtr);
+
+    Builder.CreateBr(EndBB);
+
+    /*---------------------------------------------*/
+
+    Builder.SetInsertPoint(EndBB);
 }
+
+// void X86Translator::translate_f2xm1(GuestInst *Inst) {
+//     // dbgs() << "ENTRY translate_f2xm1\n";
+//     FunctionType *FuncTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+//     CallFunc(FuncTy, "helper_f2xm1", {CPUEnv});
+// }
 
 void X86Translator::translate_f2xm1(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_f2xm1\n";
-    FunctionType *FuncTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FuncTy, "helper_f2xm1", {CPUEnv});
+    Value *top = GetFPUTop();
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+    MemVal = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::exp2,
+            MemVal->getType()),
+        MemVal);
+    MemVal = Builder.CreateFSub(MemVal, ConstantFP::get(FP64Ty, APFloat(1.0)));
+
+    StoreToFPR(MemVal, top);
 }
 
 void X86Translator::translate_fbld(GuestInst *Inst) {
@@ -600,7 +683,7 @@ void X86Translator::translate_femms(GuestInst *Inst) {
 //     X86InstHandler InstHdl(Inst);
 //     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
 //     FunctionType *FTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty},
-//     false); Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+//     false); Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
 //     CallFunc(FTy, "helper_ffree_STN", {CPUEnv, SrcFPRID});
 // }
 
@@ -608,7 +691,7 @@ void X86Translator::translate_ffree(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_ffree\n";
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-    Value *SrcFPRID = ConstInt(Int8Ty, SrcOpnd.GetFPRID());
+    Value *SrcFPRID = ConstInt(Int8Ty, SrcOpnd.GetSTRID());
     SetFPTag(SrcFPRID, 1);
 }
 
@@ -701,8 +784,8 @@ void X86Translator::translate_fldcw(GuestInst *Inst) {
     Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
     Builder.CreateStore(MemVal, GetFpucPtr());
     // TODO
-    // FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    // CallFunc(FTy, "helper_update_Roundingmode", CPUEnv);
+    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+    CallFunc(FTy, "helper_round_mode", CPUEnv);
 }
 
 void X86Translator::translate_fldenv(GuestInst *Inst) {
@@ -865,16 +948,39 @@ void X86Translator::translate_fnstsw(GuestInst *Inst) {
     }
 }
 
+// void X86Translator::translate_fpatan(GuestInst *Inst) {
+//     // dbgs() << "ENTRY translate_fpatan\n";
+//     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+//     CallFunc(FTy, "helper_fpatan", CPUEnv);
+// }
+
 void X86Translator::translate_fpatan(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_fpatan\n";
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fpatan", CPUEnv);
+    CallFunc(FTy, "helper_fpatan_math", CPUEnv);
+    Value *newtop = GetFPUTop();
+    SetFPTag(newtop, 1);
+    newtop = Builder.CreateAdd(newtop, ConstInt(Int32Ty, 1));
+    newtop = Builder.CreateAnd(newtop, ConstInt(Int32Ty, 7));
+    SetFPUTop(newtop);
 }
+
+// void X86Translator::translate_fprem(GuestInst *Inst) {
+//     // dbgs() << "ENTRY translate_fprem\n";
+//     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+//     CallFunc(FTy, "helper_fprem", CPUEnv);
+// }
 
 void X86Translator::translate_fprem(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_fprem\n";
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fprem", CPUEnv);
+
+    Value *top = GetFPUTop();
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+    Value *st1 = Builder.CreateAdd(top, ConstInt(Int32Ty, 1));
+    st1 = Builder.CreateAnd(st1, ConstInt(Int32Ty, 7));
+    Value *res = LoadFromFPR(st1, FP64Ty);
+    res = Builder.CreateFRem(MemVal, res);
+    StoreToFPR(res, top);
 }
 
 void X86Translator::translate_fprem1(GuestInst *Inst) {
@@ -883,10 +989,76 @@ void X86Translator::translate_fprem1(GuestInst *Inst) {
     CallFunc(FTy, "helper_fprem1", CPUEnv);
 }
 
+// void X86Translator::translate_fptan(GuestInst *Inst) {
+//     // dbgs() << "ENTRY translate_fptan\n";
+//     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+//     CallFunc(FTy, "helper_fptan", CPUEnv);
+// }
+
 void X86Translator::translate_fptan(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_fptan\n";
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fptan", CPUEnv);
+
+    Value *Top = GetFPUTop();
+    Value *Val = LoadFromFPR(Top, FP64Ty);
+
+    BasicBlock *LessBB = BasicBlock::Create(Context, "Less", TransFunc, ExitBB);
+    BasicBlock *LargBB = BasicBlock::Create(Context, "Larg", TransFunc, ExitBB);
+    BasicBlock *EndBB = BasicBlock::Create(Context, "End", TransFunc, ExitBB);
+    Value *Cond = Builder.CreateFCmpOLT(
+        Val, ConstantFP::get(FP64Ty, APFloat(9223372036854775808.0)));
+
+    Builder.CreateCondBr(Cond, LessBB, LargBB);
+
+    /*---------------------------------------------*/
+    Builder.SetInsertPoint(LessBB);
+
+    Value *top = GetFPUTop();
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+    Value *Vcos = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::cos,
+            MemVal->getType()),
+        MemVal);
+
+    MemVal = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::sin,
+            MemVal->getType()),
+        MemVal);
+
+    MemVal = Builder.CreateFDiv(MemVal, Vcos);
+    StoreToFPR(MemVal, top);
+
+    top = Builder.CreateSub(top, ConstInt(Int32Ty, 1));
+    top = Builder.CreateAnd(top, ConstInt(Int32Ty, 7));
+    StoreToFPR(ConstantFP::get(FP64Ty, APFloat(1.0)), top);
+    SetFPUTop(top);
+    SetFPTag(top, 0);
+
+    // set C2 to 0
+    Value *FpusPtr_1 = GetFpusPtr();
+    Value *old_flag_1 = Builder.CreateLoad(Int16Ty, FpusPtr_1);
+    Value *C_2_1 = ConstInt(Int16Ty, 0xfbff);
+    old_flag_1 = Builder.CreateAnd(old_flag_1, C_2_1);
+    Builder.CreateStore(old_flag_1, FpusPtr_1);
+
+    Builder.CreateBr(EndBB);
+    /*---------------------------------------------*/
+    Builder.SetInsertPoint(LargBB);
+
+    // set C2 to 1
+    Value *FpusPtr = GetFpusPtr();
+    Value *old_flag = Builder.CreateLoad(Int16Ty, FpusPtr);
+    Value *C_2 = nullptr;
+    C_2 = ConstInt(Int16Ty, 0x0400);
+    old_flag = Builder.CreateOr(old_flag, C_2);
+    Builder.CreateStore(old_flag, FpusPtr);
+
+    Builder.CreateBr(EndBB);
+
+    /*---------------------------------------------*/
+
+    Builder.SetInsertPoint(EndBB);
 }
 
 void X86Translator::translate_ffreep(GuestInst *Inst) {
@@ -894,10 +1066,25 @@ void X86Translator::translate_ffreep(GuestInst *Inst) {
     exit(-1);
 }
 
+// void X86Translator::translate_frndint(GuestInst *Inst) {
+//     // dbgs() << "ENTRY translate_frndint\n";
+//     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+//     CallFunc(FTy, "helper_frndint", CPUEnv);
+// }
+
 void X86Translator::translate_frndint(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_frndint\n";
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_frndint", CPUEnv);
+    Value *top = GetFPUTop();
+
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+
+    MemVal = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(),
+            Intrinsic::round, MemVal->getType()),
+        MemVal);
+    MemVal = Builder.CreateFPToSI(MemVal, Int64Ty);
+    StoreToFPR(MemVal, top);
 }
 
 void X86Translator::translate_frstor(GuestInst *Inst) {
@@ -918,10 +1105,31 @@ void X86Translator::translate_fnsave(GuestInst *Inst) {
     CallFunc(Ty, "helper_fsave", {CPUEnv, Addr, ConstInt(Int32Ty, 1)});
 }
 
+// void X86Translator::translate_fscale(GuestInst *Inst) {
+//     // dbgs() << "ENTRY translate_fscale\n";
+//     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+//     CallFunc(FTy, "helper_fscale", CPUEnv);
+// }
+
 void X86Translator::translate_fscale(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_fscale\n";
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fscale", CPUEnv);
+    Value *top = GetFPUTop();
+    Value *STi = Builder.CreateAdd(top, ConstInt(Int32Ty, 1));
+    STi = Builder.CreateAnd(STi, ConstInt(Int32Ty, 7));
+    Value *ST1 = LoadFromFPR(STi, FP64Ty);
+    ST1 = Builder.CreateFPToSI(ST1, Int64Ty);
+
+    ST1 = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::exp2,
+            ST1->getType()),
+        ST1);
+
+    ST1 = Builder.CreateSIToFP(ST1, FP64Ty);
+
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+
+    StoreToFPR(MemVal, top);
 }
 
 void X86Translator::translate_fsetpm(GuestInst *Inst) {
@@ -929,10 +1137,79 @@ void X86Translator::translate_fsetpm(GuestInst *Inst) {
     exit(-1);
 }
 
+// void X86Translator::translate_fsincos(GuestInst *Inst) {
+//     // dbgs() << "ENTRY translate_fsincos\n";
+//     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+//     CallFunc(FTy, "helper_fsincos", CPUEnv);
+// }
+
 void X86Translator::translate_fsincos(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_fsincos\n";
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fsincos", CPUEnv);
+
+    Value *top = GetFPUTop();
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+
+    BasicBlock *LessBB = BasicBlock::Create(Context, "Less", TransFunc, ExitBB);
+    BasicBlock *LargBB = BasicBlock::Create(Context, "Larg", TransFunc, ExitBB);
+    BasicBlock *EndBB = BasicBlock::Create(Context, "End", TransFunc, ExitBB);
+
+    Value *Cond = Builder.CreateFCmpOLT(
+        MemVal, ConstantFP::get(FP64Ty, APFloat(9223372036854775808.0)));
+    Builder.CreateCondBr(Cond, LessBB, LargBB);
+
+    /*---------------------------------------------*/
+    Builder.SetInsertPoint(LessBB);
+
+    Value *TOP = GetFPUTop();
+    Value *V = LoadFromFPR(TOP, FP64Ty);
+
+    Value *FpusPtr_1 = GetFpusPtr();
+    Value *old_flag_1 = Builder.CreateLoad(Int16Ty, FpusPtr_1);
+    Value *C_2_1 = nullptr;
+
+    Value *Vsin = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::sin,
+            V->getType()),
+        V);
+
+    StoreToFPR(Vsin, TOP);
+
+    V = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::cos,
+            V->getType()),
+        V);
+
+    TOP = Builder.CreateSub(TOP, ConstInt(Int32Ty, 1));
+    TOP = Builder.CreateAnd(TOP, ConstInt(Int32Ty, 7));
+    SetFPUTop(TOP);
+    SetFPTag(TOP, 0);
+    StoreToFPR(V, TOP);
+
+    // set C2 to 0
+
+    C_2_1 = ConstInt(Int16Ty, 0xfbff);
+    old_flag_1 = Builder.CreateAnd(old_flag_1, C_2_1);
+    Builder.CreateStore(old_flag_1, FpusPtr_1);
+
+    Builder.CreateBr(EndBB);
+    /*---------------------------------------------*/
+    Builder.SetInsertPoint(LargBB);
+
+    // set C2 to 1
+    Value *FpusPtr = GetFpusPtr();
+    Value *old_flag = Builder.CreateLoad(Int16Ty, FpusPtr);
+    Value *C_2 = nullptr;
+    C_2 = ConstInt(Int16Ty, 0x0400);
+    old_flag = Builder.CreateOr(old_flag, C_2);
+    Builder.CreateStore(old_flag, FpusPtr);
+
+    Builder.CreateBr(EndBB);
+
+    /*---------------------------------------------*/
+
+    Builder.SetInsertPoint(EndBB);
 }
 
 void X86Translator::translate_fnstenv(GuestInst *Inst) {
@@ -956,16 +1233,53 @@ void X86Translator::translate_fxtract(GuestInst *Inst) {
     CallFunc(FTy, "helper_fxtract", CPUEnv);
 }
 
+// void X86Translator::translate_fyl2x(GuestInst *Inst) {
+//     // dbgs() << "ENTRY translate_fyl2x\n";
+//     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+//     CallFunc(FTy, "helper_fyl2x", CPUEnv);
+// }
+
 void X86Translator::translate_fyl2x(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_fyl2x\n";
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fyl2x", CPUEnv);
+    Value *top = GetFPUTop();
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+    MemVal = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::log2,
+            MemVal->getType()),
+        MemVal);
+    Value *sti = Builder.CreateAdd(top, ConstInt(Int32Ty, 1));
+    sti = Builder.CreateAnd(sti, ConstInt(Int32Ty, 7));
+    Value *ST1 = LoadFromFPR(sti, FP64Ty);
+    MemVal = Builder.CreateFMul(ST1, MemVal);
+    StoreToFPR(MemVal, sti);
+    SetFPTag(top, 1);
+    SetFPUTop(sti);
 }
+
+// void X86Translator::translate_fyl2xp1(GuestInst *Inst) {
+//     // dbgs() << "ENTRY translate_fyl2xp1\n";
+//     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+//     CallFunc(FTy, "helper_fyl2xp1", CPUEnv);
+// }
 
 void X86Translator::translate_fyl2xp1(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_fyl2xp1\n";
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fyl2xp1", CPUEnv);
+    Value *top = GetFPUTop();
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+    MemVal = Builder.CreateFAdd(MemVal, ConstantFP::get(Context, APFloat(1.0)));
+    MemVal = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::log2,
+            MemVal->getType()),
+        MemVal);
+    Value *sti = Builder.CreateAdd(top, ConstInt(Int32Ty, 1));
+    sti = Builder.CreateAnd(sti, ConstInt(Int32Ty, 7));
+    Value *ST1 = LoadFromFPR(sti, FP64Ty);
+    MemVal = Builder.CreateFMul(ST1, MemVal);
+    StoreToFPR(MemVal, sti);
+    SetFPTag(top, 1);
+    SetFPUTop(sti);
 }
 
 // void X86Translator::translate_fild(GuestInst *Inst) {
@@ -1085,8 +1399,6 @@ void X86Translator::translate_fist(GuestInst *Inst) {
             Builder.GetInsertBlock()->getParent()->getParent(),
             Intrinsic::round, MemVal->getType()),
         MemVal);
-    // FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    // CallFunc(FTy, "helper_update_Roundingmode", CPUEnv);
 
     MemVal = Builder.CreateFPToSI(MemVal, Int64Ty);
 
@@ -1145,8 +1457,6 @@ void X86Translator::translate_fistp(GuestInst *Inst) {
             Builder.GetInsertBlock()->getParent()->getParent(),
             Intrinsic::round, MemVal->getType()),
         MemVal);
-    // FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    // CallFunc(FTy, "helper_update_Roundingmode", CPUEnv);
 
     MemVal = Builder.CreateFPToSI(MemVal, Int64Ty);
     switch (SrcOpnd.getOpndSize()) {
@@ -1222,7 +1532,7 @@ void X86Translator::translate_fld1(GuestInst *Inst) {
 //             FlushFPRValue("ST0", MemVal, false);
 //         }
 //     } else {
-//         Value *DestFPRID = ConstInt(Int32Ty, (SrcOpnd.GetFPRID() + 1) & 7);
+//         Value *DestFPRID = ConstInt(Int32Ty, (SrcOpnd.GetSTRID() + 1) & 7);
 
 //         CallFunc(FPUSHTy, "helper_fpush", {CPUEnv});
 //         CallFunc(FMOVTy, "helper_fmov_ST0_STN", {CPUEnv, DestFPRID});
@@ -1252,9 +1562,9 @@ void X86Translator::translate_fld(GuestInst *Inst) {
         SetFPUTop(NewSt0);
         SetFPTag(NewSt0, 0);
         // TODO: merge_exception_flags(env, old_flags)
-    } else if (SrcOpnd.isFPR() || SrcOpnd.isSTR()) { // fld from STR
+    } else if (SrcOpnd.isSTR()) { // fld from STR
         Value *NewSt0 = GetFPUTop();
-        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
         Value *DestFPRID = Builder.CreateAdd(NewSt0, DestSTRID);
         DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty, 7));
         Value *Src = LoadFromFPR(DestFPRID, Int64Ty);
@@ -1269,16 +1579,91 @@ void X86Translator::translate_fld(GuestInst *Inst) {
     }
 }
 
+// void X86Translator::translate_fsin(GuestInst *Inst) {
+//     // dbgs() << "ENTRY translate_fsin\n";
+//     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+//     CallFunc(UnaryFunTy, "helper_fsin", CPUEnv);
+// }
+
 void X86Translator::translate_fsin(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_fsin\n";
-    FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(UnaryFunTy, "helper_fsin", CPUEnv);
+    Value *top = GetFPUTop();
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+
+    Value *ABS = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::fabs,
+            MemVal->getType()),
+        MemVal);
+
+    BasicBlock *LessBB = BasicBlock::Create(Context, "Less", TransFunc, ExitBB);
+    BasicBlock *LargBB = BasicBlock::Create(Context, "Larg", TransFunc, ExitBB);
+    BasicBlock *EndBB = BasicBlock::Create(Context, "End", TransFunc, ExitBB);
+    Value *Cond = Builder.CreateFCmpOLT(
+        ABS, ConstantFP::get(FP64Ty, APFloat(9223372036854775808.0)));
+
+    Builder.CreateCondBr(Cond, LessBB, LargBB);
+
+    /*---------------------------------------------*/
+    Builder.SetInsertPoint(LessBB);
+
+    Value *TOP = GetFPUTop();
+    Value *V = LoadFromFPR(TOP, FP64Ty);
+
+    Value *FpusPtr_1 = GetFpusPtr();
+    Value *old_flag_1 = Builder.CreateLoad(Int16Ty, FpusPtr_1);
+    Value *C_2_1 = nullptr;
+
+    V = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::sin,
+            V->getType()),
+        V);
+
+    // set C2 to 0
+
+    C_2_1 = ConstInt(Int16Ty, 0xfbff);
+    old_flag_1 = Builder.CreateAnd(old_flag_1, C_2_1);
+    Builder.CreateStore(old_flag_1, FpusPtr_1);
+
+    StoreToFPR(V, TOP);
+
+    Builder.CreateBr(EndBB);
+    /*---------------------------------------------*/
+    Builder.SetInsertPoint(LargBB);
+
+    // set C2 to 1
+    Value *FpusPtr = GetFpusPtr();
+    Value *old_flag = Builder.CreateLoad(Int16Ty, FpusPtr);
+    Value *C_2 = nullptr;
+    C_2 = ConstInt(Int16Ty, 0x0400);
+    old_flag = Builder.CreateOr(old_flag, C_2);
+    Builder.CreateStore(old_flag, FpusPtr);
+
+    Builder.CreateBr(EndBB);
+
+    /*---------------------------------------------*/
+
+    Builder.SetInsertPoint(EndBB);
 }
+
+// void X86Translator::translate_fsqrt(GuestInst *Inst) {
+//     // dbgs() << "ENTRY translate_fsqrt\n";
+//     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+//     CallFunc(UnaryFunTy, "helper_fsqrt", CPUEnv);
+// }
 
 void X86Translator::translate_fsqrt(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_fsqrt\n";
-    FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(UnaryFunTy, "helper_fsqrt", CPUEnv);
+    Value *top = GetFPUTop();
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+    MemVal = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::sqrt,
+            MemVal->getType()),
+        MemVal);
+
+    StoreToFPR(MemVal, top);
 }
 
 // void X86Translator::translate_fst(GuestInst *Inst) {
@@ -1293,7 +1678,7 @@ void X86Translator::translate_fsqrt(GuestInst *Inst) {
 //         Value *MemVal = ReloadFPRValue("ST0", SrcOpnd.getOpndSize(), false);
 //         StoreOperand(MemVal, InstHdl.getOpnd(0));
 //     } else {
-//         Value *DestFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+//         Value *DestFPRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
 //         CallFunc(FTy, "helper_fmov_STN_ST0", {CPUEnv, DestFPRID});
 //     }
 // }
@@ -1317,9 +1702,9 @@ void X86Translator::translate_fst(GuestInst *Inst) {
             V = Builder.CreateBitCast(V, Int32Ty);
         }
         StoreOperand(V, SrcOpnd.getOpnd());
-    } else if (SrcOpnd.isFPR() || SrcOpnd.isSTR()) {
+    } else if (SrcOpnd.isSTR()) {
         V = LoadFromFPR(ST0, FP64Ty);
-        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
         Value *DestFPRID = Builder.CreateAdd(ST0, DestSTRID);
         DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty, 7));
         StoreToFPR(V, DestFPRID);
@@ -1347,7 +1732,7 @@ void X86Translator::translate_fst(GuestInst *Inst) {
 //             false); StoreOperand(MemVal, InstHdl.getOpnd(0));
 //         }
 //     } else {
-//         Value *DestFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+//         Value *DestFPRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
 //         CallFunc(FMOVTy, "helper_fmov_STN_ST0", {CPUEnv, DestFPRID});
 //     }
 //     CallFunc(FPOPTy, "helper_fpop", CPUEnv);
@@ -1372,14 +1757,14 @@ void X86Translator::translate_fstp(GuestInst *Inst) {
             V = Builder.CreateBitCast(V, Int32Ty);
         }
         StoreOperand(V, SrcOpnd.getOpnd());
-    } else if (SrcOpnd.isFPR() || SrcOpnd.isSTR()) {
+    } else if (SrcOpnd.isSTR()) {
         V = LoadFromFPR(ST0, FP64Ty);
-        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
         Value *DestFPRID = Builder.CreateAdd(ST0, DestSTRID);
         DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty, 7));
         StoreToFPR(V, DestFPRID);
     } else {
-        llvm_unreachable("fst: unhandled Opnd\n");
+        llvm_unreachable("fstp: unhandled Opnd\n");
         return;
     }
     Value *NewST0 = Builder.CreateAdd(ST0, ConstInt(Int32Ty, 1));
@@ -1399,7 +1784,7 @@ void X86Translator::translate_fstpnce(GuestInst *Inst) {
 //     FunctionType *FTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty},
 //     false);
 
-//     Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+//     Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
 //     CallFunc(FTy, "helper_fxchg_ST0_STN", {CPUEnv, SrcFPRID});
 // }
 
@@ -1415,8 +1800,8 @@ void X86Translator::translate_fxch(GuestInst *Inst) {
         llvm_unreachable("fxch: Opnd should be 0 or 1");
     } else if (InstHdl.getOpndNum() == 0) {
         DestSTRID = ConstInt(Int32Ty, 1);
-    } else if (SrcOpnd.isFPR() || SrcOpnd.isSTR()) {
-        DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+    } else if (SrcOpnd.isSTR()) {
+        DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
     } else {
         llvm_unreachable("\nfxch:is not FPR\n");
     }
@@ -1428,7 +1813,7 @@ void X86Translator::translate_fxch(GuestInst *Inst) {
 }
 
 // void X86Translator::translate_fsubr(GuestInst *Inst) {
-//     //dbgs() << "ENTRY translate_fsubr\n";
+//     // dbgs() << "ENTRY translate_fsubr\n";
 //     X86InstHandler InstHdl(Inst);
 //     GenFPUHelper(Inst, "fsubr", DEST_IS_ST0);
 // }
@@ -1459,7 +1844,7 @@ void X86Translator::translate_fsubr(GuestInst *Inst) {
                 llvm_unreachable("fsubr: unhandled Mem Bytes\n");
             }
         } else if (SrcOpnd.isSTR()) {
-            DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+            DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
             Value *DestFPRID = Builder.CreateAdd(St0, DestSTRID);
             DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty, 7));
             RHS = LoadFromFPR(DestFPRID, FP64Ty);
@@ -1471,7 +1856,7 @@ void X86Translator::translate_fsubr(GuestInst *Inst) {
         X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
         Value *St0 = GetFPUTop();
         Value *RHS = nullptr;
-        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
         Value *DestFPRID = Builder.CreateAdd(St0, DestSTRID);
         DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty, 7));
         Value *LHS = LoadFromFPR(DestFPRID, FP64Ty);
@@ -1484,7 +1869,7 @@ void X86Translator::translate_fsubr(GuestInst *Inst) {
 }
 
 // void X86Translator::translate_fisubr(GuestInst *Inst) {
-//     //dbgs() << "ENTRY translate_fisubr\n";
+//     // dbgs() << "ENTRY translate_fisubr\n";
 //     GenFPUHelper(Inst, "fsubr", DEST_IS_ST0 | MEM_VAL_IS_INT);
 // }
 
@@ -1521,7 +1906,7 @@ void X86Translator::translate_fsubrp(GuestInst *Inst) {
         if (!SrcOpnd.isSTR()) {
             llvm_unreachable("fsubrp: Opnd err\n");
         }
-        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
         FPi = Builder.CreateAdd(St0, DestSTRID);
         FPi = Builder.CreateAnd(FPi, ConstInt(Int32Ty, 7));
     }
@@ -1563,7 +1948,7 @@ void X86Translator::translate_fsub(GuestInst *Inst) {
                 llvm_unreachable("fsub: unhandled Mem Bytes\n");
             }
         } else if (SrcOpnd.isSTR()) {
-            DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+            DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
             Value *DestFPRID = Builder.CreateAdd(St0, DestSTRID);
             DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty, 7));
             RHS = LoadFromFPR(DestFPRID, FP64Ty);
@@ -1575,7 +1960,7 @@ void X86Translator::translate_fsub(GuestInst *Inst) {
         X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
         Value *St0 = GetFPUTop();
         Value *RHS = nullptr;
-        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
         Value *DestFPRID = Builder.CreateAdd(St0, DestSTRID);
         DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty, 7));
         Value *LHS = LoadFromFPR(DestFPRID, FP64Ty);
@@ -1589,7 +1974,7 @@ void X86Translator::translate_fsub(GuestInst *Inst) {
 }
 
 // void X86Translator::translate_fisub(GuestInst *Inst) {
-//     //dbgs() << "ENTRY translate_fisub\n";
+//     // dbgs() << "ENTRY translate_fisub\n";
 //     GenFPUHelper(Inst, "fsub", DEST_IS_ST0 | MEM_VAL_IS_INT);
 // }
 
@@ -1626,7 +2011,7 @@ void X86Translator::translate_fsubp(GuestInst *Inst) {
         if (!SrcOpnd.isSTR()) {
             llvm_unreachable("fsubp:Opnd err\n");
         }
-        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
         FPi = Builder.CreateAdd(St0, DestSTRID);
         FPi = Builder.CreateAnd(FPi, ConstInt(Int32Ty, 7));
     }
@@ -1639,11 +2024,17 @@ void X86Translator::translate_fsubp(GuestInst *Inst) {
     SetFPUTop(St0);
 }
 
+// void X86Translator::translate_ftst(GuestInst *Inst) {
+//     // dbgs() << "ENTRY translate_ftst\n";
+//     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+//     CallFunc(UnaryFunTy, "helper_fldz_FT0", CPUEnv);
+//     CallFunc(UnaryFunTy, "helper_fcom_ST0_FT0", CPUEnv);
+// }
+
 void X86Translator::translate_ftst(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_ftst\n";
     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(UnaryFunTy, "helper_fldz_FT0", CPUEnv);
-    CallFunc(UnaryFunTy, "helper_fcom_ST0_FT0", CPUEnv);
+    CallFunc(UnaryFunTy, "helper_fcom_ST0_zero_64", CPUEnv);
 }
 
 // void X86Translator::translate_fucomip(GuestInst *Inst) {
@@ -1659,7 +2050,7 @@ void X86Translator::translate_ftst(GuestInst *Inst) {
 //     FunctionType *FUCOMITy = FunctionType::get(VoidTy, Int8PtrTy, false);
 
 //     FlushGMRValue(X86Config::EFLAG);
-//     Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+//     Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
 //     CallFunc(FMOVTy, "helper_fmov_FT0_STN", {CPUEnv, SrcFPRID});
 //     CallFunc(FUCOMITy, "helper_fucomi_ST0_FT0_cogbt", CPUEnv);
 //     CallFunc(FPOPTy, "helper_fpop", CPUEnv);
@@ -1699,7 +2090,7 @@ void X86Translator::translate_fucomip(GuestInst *Inst) {
 //     FunctionType *FUCOMITy = FunctionType::get(VoidTy, Int8PtrTy, false);
 
 //     FlushGMRValue(X86Config::EFLAG);
-//     Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+//     Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
 //     CallFunc(FMOVTy, "helper_fmov_FT0_STN", {CPUEnv, SrcFPRID});
 //     CallFunc(FUCOMITy, "helper_fucomi_ST0_FT0_cogbt", CPUEnv);
 //     ReloadGMRValue(X86Config::EFLAG);
@@ -1820,21 +2211,122 @@ void X86Translator::translate_wait(GuestInst *Inst) {
     CallFunc(FTy, "helper_fwait", CPUEnv);
 }
 
+// void X86Translator::translate_fdiv(GuestInst *Inst) {
+//     // dbgs() << "ENTRY translate_fdiv\n";
+//     X86InstHandler InstHdl(Inst);
+//     GenFPUHelper(Inst, "fdiv", DEST_IS_ST0);
+// }
+
 void X86Translator::translate_fdiv(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_fdiv\n";
     X86InstHandler InstHdl(Inst);
-    GenFPUHelper(Inst, "fdiv", DEST_IS_ST0);
+    Value *RHS = nullptr;
+    Value *ST0 = nullptr;
+    Value *top = GetFPUTop();
+    ST0 = LoadFromFPR(top, FP64Ty);
+    if (InstHdl.getOpndNum() == 1) {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        if (SrcOpnd.isMem()) {
+            Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+            if (SrcOpnd.getOpndSize() == 4) {
+                MemVal = Builder.CreateBitCast(MemVal, FP32Ty);
+                MemVal = Builder.CreateFPExt(MemVal, FP64Ty);
+            } else {
+                MemVal = Builder.CreateBitCast(MemVal, FP64Ty);
+            }
+            RHS = MemVal;
+        } else if (SrcOpnd.isSTR()) {
+            Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
+            Value *DestFPRID = Builder.CreateAdd(GetFPUTop(), DestSTRID);
+            DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty, 7));
+            RHS = LoadFromFPR(DestFPRID, FP64Ty);
+        }
+        ST0 = Builder.CreateFDiv(ST0, RHS);
+        StoreToFPR(ST0, top);
+    } else {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
+        Value *stri = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
+        top = Builder.CreateAdd(top, stri);
+        top = Builder.CreateAnd(top, ConstInt(Int32Ty, 7));
+        RHS = LoadFromFPR(top, FP64Ty);
+        RHS = Builder.CreateFDiv(RHS, ST0);
+        StoreToFPR(RHS, top);
+    }
 }
+
+// void X86Translator::translate_fidiv(GuestInst *Inst) {
+//     // dbgs() << "ENTRY translate_fidiv\n";
+//     GenFPUHelper(Inst, "fdiv", DEST_IS_ST0 | MEM_VAL_IS_INT);
+// }
 
 void X86Translator::translate_fidiv(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_fidiv\n";
-    GenFPUHelper(Inst, "fdiv", DEST_IS_ST0 | MEM_VAL_IS_INT);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+    MemVal = Builder.CreateSIToFP(MemVal, FP64Ty);
+    Value *top = GetFPUTop();
+    Value *ST0 = LoadFromFPR(top, FP64Ty);
+    ST0 = Builder.CreateFDiv(ST0, MemVal);
+    StoreToFPR(ST0, top);
 }
+
+// void X86Translator::translate_fdivp(GuestInst *Inst) {
+//     // dbgs() << "ENTRY translate_fdivp\n";
+//     GenFPUHelper(Inst, "fdiv", SHOULD_POP_ONCE);
+// }
 
 void X86Translator::translate_fdivp(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_fdivp\n";
-    GenFPUHelper(Inst, "fdiv", SHOULD_POP_ONCE);
+    X86InstHandler InstHdl(Inst);
+    Value *stri = nullptr;
+
+    if (InstHdl.getOpndNum() == 0) {
+        stri = ConstInt(Int32Ty, 1);
+    } else {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        stri = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
+    }
+
+    Value *St0 = GetFPUTop();
+    Value *ST0 = LoadFromFPR(St0, FP64Ty);
+
+    stri = Builder.CreateAdd(St0, stri);
+    stri = Builder.CreateAnd(stri, ConstInt(Int32Ty, 7));
+    Value *RHS = LoadFromFPR(stri, FP64Ty);
+    RHS = Builder.CreateFDiv(RHS, ST0);
+    StoreToFPR(RHS, stri);
+
+    SetFPTag(St0, 1);
+    St0 = Builder.CreateAdd(St0, ConstInt(Int32Ty, 1));
+    St0 = Builder.CreateAnd(St0, ConstInt(Int32Ty, 7));
+    SetFPUTop(St0);
 }
+
+// void X86Translator::GenFCMOVHelper(GuestInst *Inst, std::string LBTIntrinic)
+// {
+//     X86InstHandler InstHdl(Inst);
+//     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
+//     Value *Func = Mod->getOrInsertFunction(LBTIntrinic, FTy);
+//     Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+
+//     BasicBlock *MovBB = BasicBlock::Create(Context, "MovBB", TransFunc,
+//     ExitBB); BasicBlock *NotMovBB =
+//         BasicBlock::Create(Context, "NotMovBB", TransFunc, ExitBB);
+
+//     SyncAllGMRValue();
+//     Builder.CreateCondBr(Cond, MovBB, NotMovBB);
+
+//     Builder.SetInsertPoint(MovBB);
+//     FTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
+//     X86OperandHandler STIOpnd(InstHdl.getOpnd(0));
+//     Value *SrcFPRID = ConstInt(Int32Ty, STIOpnd.GetSTRID());
+//     CallFunc(FTy, "helper_fmov_ST0_STN", {CPUEnv, SrcFPRID});
+//     SyncAllGMRValue();
+//     Builder.CreateBr(NotMovBB);
+
+//     Builder.SetInsertPoint(NotMovBB);
+// }
 
 void X86Translator::GenFCMOVHelper(GuestInst *Inst, std::string LBTIntrinic) {
     X86InstHandler InstHdl(Inst);
@@ -1850,10 +2342,15 @@ void X86Translator::GenFCMOVHelper(GuestInst *Inst, std::string LBTIntrinic) {
     Builder.CreateCondBr(Cond, MovBB, NotMovBB);
 
     Builder.SetInsertPoint(MovBB);
-    FTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
     X86OperandHandler STIOpnd(InstHdl.getOpnd(0));
-    Value *SrcFPRID = ConstInt(Int32Ty, STIOpnd.GetFPRID());
-    CallFunc(FTy, "helper_fmov_ST0_STN", {CPUEnv, SrcFPRID});
+    Value *SrcSTRID = ConstInt(Int32Ty, STIOpnd.GetSTRID());
+    // CallFunc(FTy, "helper_fmov_ST0_STN", {CPUEnv, SrcFPRID});
+    Value *top = GetFPUTop();
+    Value *sti = Builder.CreateAdd(top, SrcSTRID);
+    sti = Builder.CreateAnd(sti, ConstInt(Int32Ty, 7));
+    Value *Stn = LoadFromFPR(sti, FP64Ty);
+    StoreToFPR(Stn, top);
+
     SyncAllGMRValue();
     Builder.CreateBr(NotMovBB);
 
@@ -1922,7 +2419,7 @@ void X86Translator::translate_fmul(GuestInst *Inst) {
                 llvm_unreachable("fmul: unhandled Mem Bytes\n");
             }
         } else if (SrcOpnd.isSTR()) {
-            DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+            DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
             Value *DestFPRID = Builder.CreateAdd(St0, DestSTRID);
             DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty, 7));
             RHS = LoadFromFPR(DestFPRID, FP64Ty);
@@ -1934,7 +2431,7 @@ void X86Translator::translate_fmul(GuestInst *Inst) {
         X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
         Value *St0 = GetFPUTop();
         Value *RHS = nullptr;
-        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
         Value *DestFPRID = Builder.CreateAdd(St0, DestSTRID);
         DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty, 7));
         RHS = LoadFromFPR(DestFPRID, FP64Ty);
@@ -1949,7 +2446,7 @@ void X86Translator::translate_fmul(GuestInst *Inst) {
 }
 
 // void X86Translator::translate_fimul(GuestInst *Inst) {
-//     //dbgs() << "ENTRY translate_fimul\n";
+//     // dbgs() << "ENTRY translate_fimul\n";
 //     GenFPUHelper(Inst, "fmul", DEST_IS_ST0 | MEM_VAL_IS_INT);
 // }
 
@@ -1986,7 +2483,7 @@ void X86Translator::translate_fmulp(GuestInst *Inst) {
         if (!SrcOpnd.isSTR()) {
             llvm_unreachable("fmulp:Opnd err\n");
         }
-        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+        Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
         FPi = Builder.CreateAdd(St0, DestSTRID);
         FPi = Builder.CreateAnd(FPi, ConstInt(Int32Ty, 7));
     }
@@ -1999,17 +2496,93 @@ void X86Translator::translate_fmulp(GuestInst *Inst) {
     SetFPUTop(St0);
 }
 
+// void X86Translator::translate_fdivr(GuestInst *Inst) {
+//     // dbgs() << "ENTRY translate_fdivr\n";
+//     GenFPUHelper(Inst, "fdivr", DEST_IS_ST0);
+// }
+
 void X86Translator::translate_fdivr(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_fdivr\n";
-    GenFPUHelper(Inst, "fdivr", DEST_IS_ST0);
+    X86InstHandler InstHdl(Inst);
+    Value *RHS = nullptr;
+    Value *ST0 = nullptr;
+    Value *top = GetFPUTop();
+    ST0 = LoadFromFPR(top, FP64Ty);
+    if (InstHdl.getOpndNum() == 1) {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        if (SrcOpnd.isMem()) {
+            Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+            if (SrcOpnd.getOpndSize() == 4) {
+                MemVal = Builder.CreateBitCast(MemVal, FP32Ty);
+                MemVal = Builder.CreateFPExt(MemVal, FP64Ty);
+            } else {
+                MemVal = Builder.CreateBitCast(MemVal, FP64Ty);
+            }
+            RHS = MemVal;
+        } else if (SrcOpnd.isSTR()) {
+            Value *DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
+            Value *DestFPRID = Builder.CreateAdd(GetFPUTop(), DestSTRID);
+            DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty, 7));
+            RHS = LoadFromFPR(DestFPRID, FP64Ty);
+        }
+        ST0 = Builder.CreateFDiv(RHS, ST0);
+        StoreToFPR(ST0, top);
+    } else {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
+        Value *stri = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
+        top = Builder.CreateAdd(top, stri);
+        top = Builder.CreateAnd(top, ConstInt(Int32Ty, 7));
+        RHS = LoadFromFPR(top, FP64Ty);
+        RHS = Builder.CreateFDiv(ST0, RHS);
+        StoreToFPR(RHS, top);
+    }
 }
+
+// void X86Translator::translate_fidivr(GuestInst *Inst) {
+//     // dbgs() << "ENTRY translate_fidivr\n";
+//     GenFPUHelper(Inst, "fdivr", DEST_IS_ST0 | MEM_VAL_IS_INT);
+// }
 
 void X86Translator::translate_fidivr(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_fidivr\n";
-    GenFPUHelper(Inst, "fdivr", DEST_IS_ST0 | MEM_VAL_IS_INT);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+    MemVal = Builder.CreateSIToFP(MemVal, FP64Ty);
+    Value *top = GetFPUTop();
+    Value *ST0 = LoadFromFPR(top, FP64Ty);
+    ST0 = Builder.CreateFDiv(MemVal, ST0);
+    StoreToFPR(ST0, top);
 }
+
+// void X86Translator::translate_fdivrp(GuestInst *Inst) {
+//     // dbgs() << "ENTRY translate_fdivrp\n";
+//     GenFPUHelper(Inst, "fdivr", SHOULD_POP_ONCE);
+// }
 
 void X86Translator::translate_fdivrp(GuestInst *Inst) {
     // dbgs() << "ENTRY translate_fdivrp\n";
-    GenFPUHelper(Inst, "fdivr", SHOULD_POP_ONCE);
+    X86InstHandler InstHdl(Inst);
+    Value *stri = nullptr;
+
+    if (InstHdl.getOpndNum() == 0) {
+        stri = ConstInt(Int32Ty, 1);
+    } else {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        stri = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
+    }
+
+    Value *St0 = GetFPUTop();
+    Value *ST0 = LoadFromFPR(St0, FP64Ty);
+
+    stri = Builder.CreateAdd(St0, stri);
+    stri = Builder.CreateAnd(stri, ConstInt(Int32Ty, 7));
+    Value *RHS = LoadFromFPR(stri, FP64Ty);
+    RHS = Builder.CreateFDiv(ST0, RHS);
+    StoreToFPR(RHS, stri);
+
+    SetFPTag(St0, 1);
+    St0 = Builder.CreateAdd(St0, ConstInt(Int32Ty, 1));
+    St0 = Builder.CreateAnd(St0, ConstInt(Int32Ty, 7));
+    SetFPUTop(St0);
 }

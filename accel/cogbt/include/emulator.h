@@ -24,7 +24,7 @@ int GuestXMMOffset(int idx);
 int GuestMMXOffset(int idx);
 int GuestZMMRegOffset(int reg_idx, int reg_start_byte);
 int GuestMMXRegOffset(int reg_idx, int reg_start_byte);
-
+int GuestFT0Offset(void);
 int GuestFPUOffset(int idx);
 int GuestST0Offset(void *p);
 
@@ -40,6 +40,9 @@ int GuestFpusSize(void);
 int GuestFpucSize(void);
 int GuestFpucOffset(void);
 
+void helper_fpatan_math_wrapper(void *p);
+void helper_fcom_ST0_zero_64_wrapper(void *p);
+// void helper_f2xm1_64_wrapper(void *p);
 void helper_raise_syscall(void *p, uint64_t next_eip);
 void helper_divb_AL_wrapper(void *p, uint64_t divisor);
 void helper_divw_AX_wrapper(void *p, uint64_t divisor);
@@ -79,6 +82,7 @@ int32_t helper_cvttsd2si_wrapper(void *p, int src);
 int64_t helper_cvttsd2sq_wrapper(void *p, int src);
 int32_t helper_cvttss2si_wrapper(void *p, int src);
 int64_t helper_cvttss2sq_wrapper(void *p, int src);
+void helper_round_mode_wrapper(void *p);
 void helper_mulsd_wrapper(void *p, int dest, int src);
 void helper_mulss_wrapper(void *p, int dest, int src);
 void helper_divsd_wrapper(void *p, int dest, int src);

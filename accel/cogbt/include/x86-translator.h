@@ -140,8 +140,11 @@ private: /// Currently translated instruction.
 
     /// @name X87 FPU translator helper functions.
 
+
+    Value * getFT0Ptr();
+
     ///   FP64CompareSW - f64 compares with f64 , result show in FPU State Words
-    ///   Note: if LHS > RHS ZF:CF = 00 , LHS = RHS 10 , LHS < RHS 01
+    ///   Note: if LHS > RHS C3:C0 = 00 , LHS = RHS 10 , LHS < RHS 01
     ///   Usually ST0 is RHS
     void FP64CompareSW(Value *LHS, Value *RHS);
 

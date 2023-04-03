@@ -9,6 +9,10 @@
 #include "emulator.h"
 
 struct KeyVal SymTable[] = {
+    {"helper_fpatan_math", helper_fpatan_math_wrapper},
+    {"helper_fcom_ST0_zero_64", helper_fcom_ST0_zero_64_wrapper},
+    // {"helper_f2xm1_64", helper_f2xm1_64_wrapper},
+    {"helper_round_mode", helper_round_mode_wrapper},
     {"helper_divb_AL", helper_divb_AL_wrapper},
     {"helper_divw_AX", helper_divw_AX_wrapper},
     {"helper_divl_EAX", helper_divl_EAX_wrapper},
@@ -119,6 +123,8 @@ int GuestFpusOffset(void) { return offsetof(CPUX86State, fpus); }
 
 int GuestFpucOffset(void) { return offsetof(CPUX86State, fpuc); }
 
+int GuestFT0Offset(void) { return offsetof(CPUX86State, ft0); }
+
 int GuestFpusSize(void) { return sizeof(uint16_t); };
 
 int GuestST0Offset(void *p) {
@@ -173,6 +179,18 @@ void helper_raise_syscall(void *p, uint64_t next_eip) {
 /* extern void helper_divw_AX(CPUX86State *env, target_ulong t0); */
 /* extern void helper_divl_EAX(CPUX86State *env, target_ulong t0); */
 /* extern void helper_divq_EAX(CPUX86State *env, target_ulong t0); */
+
+void helper_fpatan_math_wrapper(void *p) {
+    helper_fpatan_math((CPUX86State *)p);
+}
+
+void helper_fcom_ST0_zero_64_wrapper(void *p) {
+    helper_fcom_ST0_zero_64((CPUX86State *)p);
+}
+
+// void helper_f2xm1_64_wrapper(void *p){
+//     helper_f2xm1_64((CPUX86State *)p);
+// }
 
 void helper_divb_AL_wrapper(void *p, uint64_t divisor) {
     helper_divb_AL((CPUX86State *)p, divisor);
@@ -380,6 +398,11 @@ void helper_mulsd_wrapper(void *p, int dest, int src) {
         s = &env->xmm_regs[src];
     }
     helper_mulsd(env, d, s);
+}
+
+void helper_round_mode_wrapper(void *p){
+    CPUX86State *env = (CPUX86State *)p;
+    helper_round_mode(env);
 }
 
 void helper_mulss_wrapper(void *p, int dest, int src) {

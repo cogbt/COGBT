@@ -172,6 +172,29 @@ static void fpu_raise_exception(CPUX86State *env, uintptr_t retaddr)
 #endif
 }
 
+void helper_round_mode(CPUX86State *env)
+{
+    uint16_t fpucw = env->fpuc;
+    uint16_t RC = (fpucw & 0x0c00) >> 10;
+    uint32_t fsr3 = 0;
+    uint64_t tmp = 0;
+    switch (RC) {
+        case 0:
+            fsr3 = 0;
+            break;
+        case 1:
+            fsr3 = 0x300;
+            break;
+        case 2:
+            fsr3 = 0x200;
+            break;
+        case 3:
+            fsr3 = 0x100;
+            break;
+    }
+    __asm__("st.d $r20, %0; ld.w $r20, %1; movgr2fcsr $r3, $r20; ld.d $r20, %0;":"=m"(tmp):"m"(fsr3));
+}
+
 void helper_flds_FT0(CPUX86State *env, uint32_t val)
 {
     uint8_t old_flags = save_exception_flags(env);
@@ -459,6 +482,15 @@ void helper_fcom_ST0_FT0(CPUX86State *env)
     FloatRelation ret;
 
     ret = floatx80_compare(ST0, FT0, &env->fp_status);
+    env->fpus = (env->fpus & ~0x4500) | fcom_ccval[ret + 1];
+    merge_exception_flags(env, old_flags);
+}
+
+void helper_fcom_ST0_zero_64(CPUX86State *env) {
+    uint8_t old_flags = save_exception_flags(env);
+    FloatRelation ret;
+    double st0 = ST0.low, ft0 = 0.0;
+    ret = float64_compare(st0, ft0, &env->fp_status);
     env->fpus = (env->fpus & ~0x4500) | fcom_ccval[ret + 1];
     merge_exception_flags(env, old_flags);
 }
@@ -1089,6 +1121,12 @@ static const struct f2xm1_data f2xm1_table[65] = {
       make_floatx80_init(0x3fff, 0x8000000000000000ULL) },
 };
 
+// void helper_f2xm1_64(CPUX86State *env){
+//     double st0=ST0.low;
+//     st0 = exp2(st0) - 1.0;
+//     ST0.low = st0;
+// }
+
 void helper_f2xm1(CPUX86State *env)
 {
     uint8_t old_flags = save_exception_flags(env);
@@ -1321,6 +1359,13 @@ static const struct fpatan_data fpatan_table[9] = {
     { make_floatx80_init(0x3ffe, 0xc90fdaa22168c235ULL),
       make_floatx80_init(0xbfbc, 0xece675d1fc8f8cbcULL) },
 };
+
+void helper_fpatan_math(CPUX86State *env)
+{
+    void *p_st0 = &(ST0.low);
+    void *p_st1 = &(ST1.low);
+    (*(double *)p_st1) = atan2((*(double *)p_st1), (*(double *)p_st0));
+}
 
 void helper_fpatan(CPUX86State *env)
 {

@@ -170,21 +170,21 @@ int X86OperandHandler::GetFPRID() {
     if (Opnd->type != X86_OP_REG)
         return -1;
     switch (Opnd->reg) {
-    case X86_REG_ST0:
+    case X86_REG_FP0:
         return 0;
-    case X86_REG_ST1:
+    case X86_REG_FP1:
         return 1;
-    case X86_REG_ST2:
+    case X86_REG_FP2:
         return 2;
-    case X86_REG_ST3:
+    case X86_REG_FP3:
         return 3;
-    case X86_REG_ST4:
+    case X86_REG_FP4:
         return 4;
-    case X86_REG_ST5:
+    case X86_REG_FP5:
         return 5;
-    case X86_REG_ST6:
+    case X86_REG_FP6:
         return 6;
-    case X86_REG_ST7:
+    case X86_REG_FP7:
         return 7;
     default:
         return -1;

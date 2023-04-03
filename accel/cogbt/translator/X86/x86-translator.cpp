@@ -529,7 +529,7 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd, Type *LoadTy) {
             Res = Builder.CreateLoad(LLVMTy, Addr);
         } else if (OpndHdl.isFPR() || OpndHdl.isSTR()) {
             Value *St0 = GetFPUTop();
-            Value *SrcSTRID = ConstInt(Int32Ty, OpndHdl.GetFPRID());
+            Value *SrcSTRID = ConstInt(Int32Ty, OpndHdl.GetSTRID());
             Value *SrcFPRID = Builder.CreateAdd(St0, SrcSTRID);
             SrcFPRID = Builder.CreateAnd(SrcFPRID, ConstInt(Int32Ty, 7));
             Res = LoadFromFPR(SrcFPRID, Int64Ty);
@@ -602,7 +602,7 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
             llvm_unreachable("unhandled bitwidth!");
         }
         Value *St0 = GetFPUTop();
-        Value *DestSTRID = ConstInt(Int32Ty, OpndHdl.GetFPRID());
+        Value *DestSTRID = ConstInt(Int32Ty, OpndHdl.GetSTRID());
         Value *DestFPRID = Builder.CreateAdd(St0, DestSTRID);
         DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty, 7));
         StoreToFPR(ResVal, DestFPRID);
@@ -649,6 +649,10 @@ void X86Translator::AddExternalSyms() {
     /* EE->addGlobalMapping("PFTable", X86InstHandler::getPFTable()); */
     EE->addGlobalMapping("helper_raise_syscall",
                          (uint64_t)helper_raise_syscall);
+    EE->addGlobalMapping("helper_round_mode", (uint64_t)helper_round_mode_wrapper);
+    EE->addGlobalMapping("helper_fcom_ST0_zero_64", (uint64_t)helper_fcom_ST0_zero_64_wrapper);
+    // EE->addGlobalMapping("helper_f2xm1_64", (uint64_t)helper_f2xm1_64_wrapper);
+    EE->addGlobalMapping("helper_fpatan_math", (uint64_t)helper_fpatan_math_wrapper);
     EE->addGlobalMapping("helper_divb_AL", (uint64_t)helper_divb_AL_wrapper);
     EE->addGlobalMapping("helper_divw_AX", (uint64_t)helper_divw_AX_wrapper);
     EE->addGlobalMapping("helper_divl_EAX", (uint64_t)helper_divl_EAX_wrapper);
