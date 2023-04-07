@@ -496,8 +496,8 @@ void X86Translator::translate_mulx(GuestInst *Inst) {
 }
 
 void X86Translator::translate_addpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction addpd\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction addpd\n"; */
+    CreateIllegalInstruction();
 }
 
 void X86Translator::translate_addps(GuestInst *Inst) {

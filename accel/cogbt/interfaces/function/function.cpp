@@ -298,7 +298,7 @@ static void partition_funcs(vector<JsonFunc> &JsonFuncs) {
         if (i+1 < (int)JsonFuncs.size())
             FuncBoundary = JsonFuncs[i+1].getEntryPoint();
         uint64_t Exit = *JsonFuncs[i].name_rbegin();
-        assert(Exit <= FuncBoundary);
+        /* assert(Exit <= FuncBoundary); */
         cs_insn *pins = nullptr;
         do {
             if (pins)

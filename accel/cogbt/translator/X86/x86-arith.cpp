@@ -285,8 +285,8 @@ void X86Translator::translate_xadd(GuestInst *Inst) {
 }
 
 void X86Translator::translate_mulpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction mulpd\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction mulpd\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_mulps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction mulps\n";

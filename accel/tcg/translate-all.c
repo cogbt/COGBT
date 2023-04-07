@@ -1704,8 +1704,8 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
 }
 
 #ifdef CONFIG_COGBT
-void aot_tb_register(TranslationBlock *tb);
-void aot_tb_register(TranslationBlock *tb)
+void aot_tb_register(TranslationBlock *tb, CPUState *cpu);
+void aot_tb_register(TranslationBlock *tb, CPUState *cpu)
 {
     TranslationBlock *existing_tb;
     tb_page_addr_t phys_pc, phys_page2;
@@ -1727,10 +1727,13 @@ void aot_tb_register(TranslationBlock *tb)
     existing_tb = tb_link_page(tb, phys_pc, phys_page2);
     /* if the TB already exists, discard what we just translated */
     if (existing_tb != tb) {
-        fprintf(stderr, "aot_register_tb failed due to tb_link page\n");
+        fprintf(stderr, "aot_register_tb failed due to tb_link page. "
+                "pc = 0x%lx\n", tb->pc);
         exit(-1);
     }
     tcg_tb_insert(tb);
+    uint32_t hash = tb_jmp_cache_hash_func(pc);
+    qatomic_set(&cpu->tb_jmp_cache[hash], tb);
 }
 #endif
 

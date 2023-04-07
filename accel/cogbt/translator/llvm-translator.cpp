@@ -218,7 +218,7 @@ void LLVMTranslator::Optimize() {
     Builder.LoopVectorize = true;
     Builder.SLPVectorize = true;
     Builder.populateFunctionPassManager(FPM);
-    /* FPM.add(createFlagReductionPass()); */
+    FPM.add(createFlagReductionPass());
     /* Builder.populateModulePassManager(MPM); */
     FPM.doInitialization();
     FPM.run(*TransFunc);

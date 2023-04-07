@@ -40,8 +40,8 @@ void X86Translator::translate_cvtpd2dq(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_cvtpd2ps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvtpd2ps\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction cvtpd2ps\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_cvtps2dq(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cvtps2dq\n";

@@ -45,6 +45,7 @@
 #include "tb-hash.h"
 #include "tb-context.h"
 #include "internal.h"
+#include <time.h>
 
 /* -icount align implementation. */
 
@@ -313,9 +314,9 @@ static bool check_for_breakpoints(CPUState *cpu, target_ulong pc,
  */
 const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
 {
-#ifdef CONFIG_COGBT_DEBUG
-    return tcg_code_gen_epilogue;
-#else
+/* #ifdef CONFIG_COGBT_DEBUG */
+/*     return tcg_code_gen_epilogue; */
+/* #else */
     CPUState *cpu = env_cpu(env);
     TranslationBlock *tb;
     target_ulong cs_base, pc;
@@ -342,15 +343,37 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
     log_cpu_exec(pc, cpu, tb);
 
     return tb->tc.ptr;
-#endif
+/* #endif */
 }
 #ifdef CONFIG_COGBT
+#ifdef CONFIG_COGBT_DEBUG
+long indirect_times = 0;
+/* uint64_t cogbt_indirect_time = 0; */
+static inline uint64_t drdtime(void)
+{
+ uint64_t val = 0;
+
+ __asm__ __volatile__(
+  "rdtime.d %0, $r0 \n\t"
+  : "=r"(val)
+  :
+  );
+ return val;
+}
+#endif
+
 const void *HELPER(cogbt_lookup_tb_ptr)(CPUArchState *env)
 {
-    /* return cogbt_code_gen_epilogue; */
 /* #ifdef CONFIG_COGBT_DEBUG */
 /*     return cogbt_code_gen_epilogue; */
 /* #else */
+
+#ifdef CONFIG_COGBT_DEBUG
+    /* uint64_t start, end; */
+    indirect_times++;
+    /* start = drdtime(); */
+#endif
+
     CPUState *cpu = env_cpu(env);
     TranslationBlock *tb;
     target_ulong cs_base, pc;
@@ -365,6 +388,10 @@ const void *HELPER(cogbt_lookup_tb_ptr)(CPUArchState *env)
     if (tb == NULL || (void *)tb->tc.ptr >= tb_cache_begin) {
         return cogbt_code_gen_epilogue;
     }
+#ifdef CONFIG_COGBT_DEBUG
+    /* end = drdtime(); */
+    /* cogbt_indirect_time += (end - start); */
+#endif
 
     return tb->tc.ptr;
 /* #endif */
