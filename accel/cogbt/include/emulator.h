@@ -40,7 +40,9 @@ int GuestFpusSize(void);
 int GuestFpucSize(void);
 int GuestFpucOffset(void);
 
-void helper_fpatan_math_wrapper(void *p);
+void helper_fstt_ST0_From64_wrapper(void *p, uint64_t ptr);
+void helper_fldt_ST0_To64_wrapper(void *p, uint64_t ptr);
+void helper_fpatan_math_64_wrapper(void *p);
 void helper_fcom_ST0_zero_64_wrapper(void *p);
 // void helper_f2xm1_64_wrapper(void *p);
 void helper_raise_syscall(void *p, uint64_t next_eip);

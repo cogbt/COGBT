@@ -409,9 +409,21 @@ void helper_fldt_ST0(CPUX86State *env, target_ulong ptr)
     env->fptags[new_fpstt] = 0; /* validate stack entry */
 }
 
+void helper_fldt_ST0_To64(CPUX86State *env, target_ulong ptr) {
+    int new_fpstt;
+    new_fpstt = (env->fpstt - 1) & 7;
+    env->fpregs[new_fpstt].d.low = floatx80_to_float64(do_fldt(env, ptr, GETPC()), &env->fp_status);
+    env->fpstt = new_fpstt;
+    env->fptags[new_fpstt] = 0; /* validate stack entry */
+}
+
 void helper_fstt_ST0(CPUX86State *env, target_ulong ptr)
 {
     do_fstt(env, ST0, ptr, GETPC());
+}
+
+void helper_fstt_ST0_From64(CPUX86State *env, target_ulong ptr) {
+    do_fstt(env, float64_to_floatx80(env->fpregs[env->fpstt].d.low, &env->fp_status), ptr, GETPC());
 }
 
 void helper_fpush(CPUX86State *env)
@@ -1360,7 +1372,7 @@ static const struct fpatan_data fpatan_table[9] = {
       make_floatx80_init(0xbfbc, 0xece675d1fc8f8cbcULL) },
 };
 
-void helper_fpatan_math(CPUX86State *env)
+void helper_fpatan_math_64(CPUX86State *env)
 {
     void *p_st0 = &(ST0.low);
     void *p_st1 = &(ST1.low);

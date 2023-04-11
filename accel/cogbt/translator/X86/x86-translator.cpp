@@ -631,8 +631,8 @@ void X86Translator::FlushMMXT0(Value *MMXV, Type *FlushTy) {
 
 Value *X86Translator::CallFunc(FunctionType *FuncTy, std::string Name,
                                ArrayRef<Value *> Args) {
-    if (Name.substr(0, 8) == "helper_f") {
-        dbgs() << "call fp helper: " << Name << "\n";
+    if (Name.substr(0, 7) == "helper_") {
+        // dbgs() << "call fp helper: " << Name << "\n";
         // exit(1);
     }
 #if (LLVM_VERSION_MAJOR > 8)
@@ -649,10 +649,18 @@ void X86Translator::AddExternalSyms() {
     /* EE->addGlobalMapping("PFTable", X86InstHandler::getPFTable()); */
     EE->addGlobalMapping("helper_raise_syscall",
                          (uint64_t)helper_raise_syscall);
-    EE->addGlobalMapping("helper_round_mode", (uint64_t)helper_round_mode_wrapper);
-    EE->addGlobalMapping("helper_fcom_ST0_zero_64", (uint64_t)helper_fcom_ST0_zero_64_wrapper);
-    // EE->addGlobalMapping("helper_f2xm1_64", (uint64_t)helper_f2xm1_64_wrapper);
-    EE->addGlobalMapping("helper_fpatan_math", (uint64_t)helper_fpatan_math_wrapper);
+    EE->addGlobalMapping("helper_round_mode",
+                         (uint64_t)helper_round_mode_wrapper);
+    EE->addGlobalMapping("helper_fstt_ST0_From64",
+                         (uint64_t)helper_fstt_ST0_From64_wrapper);
+    EE->addGlobalMapping("helper_fldt_ST0_To64",
+                         (uint64_t)helper_fldt_ST0_To64_wrapper);
+    EE->addGlobalMapping("helper_fcom_ST0_zero_64",
+                         (uint64_t)helper_fcom_ST0_zero_64_wrapper);
+    // EE->addGlobalMapping("helper_f2xm1_64",
+    // (uint64_t)helper_f2xm1_64_wrapper);
+    EE->addGlobalMapping("helper_fpatan_math_64",
+                         (uint64_t)helper_fpatan_math_64_wrapper);
     EE->addGlobalMapping("helper_divb_AL", (uint64_t)helper_divb_AL_wrapper);
     EE->addGlobalMapping("helper_divw_AX", (uint64_t)helper_divw_AX_wrapper);
     EE->addGlobalMapping("helper_divl_EAX", (uint64_t)helper_divl_EAX_wrapper);

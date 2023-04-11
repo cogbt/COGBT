@@ -9,7 +9,9 @@
 #include "emulator.h"
 
 struct KeyVal SymTable[] = {
-    {"helper_fpatan_math", helper_fpatan_math_wrapper},
+    {"helper_fstt_ST0_From64", helper_fstt_ST0_From64_wrapper},
+    {"helper_fldt_ST0_To64", helper_fldt_ST0_To64_wrapper},
+    {"helper_fpatan_math_64", helper_fpatan_math_64_wrapper},
     {"helper_fcom_ST0_zero_64", helper_fcom_ST0_zero_64_wrapper},
     // {"helper_f2xm1_64", helper_f2xm1_64_wrapper},
     {"helper_round_mode", helper_round_mode_wrapper},
@@ -180,20 +182,29 @@ void helper_raise_syscall(void *p, uint64_t next_eip) {
 /* extern void helper_divl_EAX(CPUX86State *env, target_ulong t0); */
 /* extern void helper_divq_EAX(CPUX86State *env, target_ulong t0); */
 
-void helper_fpatan_math_wrapper(void *p) {
-    helper_fpatan_math((CPUX86State *)p);
+void helper_fpatan_math_64_wrapper(void *p) {
+    helper_fpatan_math_64((CPUX86State *)p);
 }
 
 void helper_fcom_ST0_zero_64_wrapper(void *p) {
     helper_fcom_ST0_zero_64((CPUX86State *)p);
 }
 
-// void helper_f2xm1_64_wrapper(void *p){
-//     helper_f2xm1_64((CPUX86State *)p);
-// }
+void helper_fstt_ST0_From64_wrapper(void *p, uint64_t ptr){
 
-void helper_divb_AL_wrapper(void *p, uint64_t divisor) {
-    helper_divb_AL((CPUX86State *)p, divisor);
+    helper_fstt_ST0_From64((CPUX86State *)p, ptr);
+}
+void helper_fldt_ST0_To64_wrapper(void *p, uint64_t ptr){
+
+    helper_fldt_ST0_To64((CPUX86State *)p, ptr);
+}
+
+    // void helper_f2xm1_64_wrapper(void *p){
+    //     helper_f2xm1_64((CPUX86State *)p);
+    // }
+
+    void helper_divb_AL_wrapper(void *p, uint64_t divisor) {
+        helper_divb_AL((CPUX86State *)p, divisor);
 }
 void helper_divw_AX_wrapper(void *p, uint64_t divisor) {
     helper_divw_AX((CPUX86State *)p, divisor);
