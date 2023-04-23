@@ -304,6 +304,9 @@ static bool check_for_breakpoints(CPUState *cpu, target_ulong pc,
     return false;
 }
 
+#ifdef CONFIG_COGBT_DEBUG
+long qemu_indirect_times = 0;
+#endif
 /**
  * helper_lookup_tb_ptr: quick check for next tb
  * @env: current cpu state
@@ -317,6 +320,9 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
 /* #ifdef CONFIG_COGBT_DEBUG */
 /*     return tcg_code_gen_epilogue; */
 /* #else */
+#ifdef CONFIG_COGBT_DEBUG
+    qemu_indirect_times++;
+#endif
     CPUState *cpu = env_cpu(env);
     TranslationBlock *tb;
     target_ulong cs_base, pc;
@@ -347,7 +353,7 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
 }
 #ifdef CONFIG_COGBT
 #ifdef CONFIG_COGBT_DEBUG
-long indirect_times = 0;
+long cogbt_indirect_times = 0;
 /* uint64_t cogbt_indirect_time = 0; */
 static inline uint64_t drdtime(void)
 {
@@ -370,7 +376,7 @@ const void *HELPER(cogbt_lookup_tb_ptr)(CPUArchState *env)
 
 #ifdef CONFIG_COGBT_DEBUG
     /* uint64_t start, end; */
-    indirect_times++;
+    cogbt_indirect_times++;
     /* start = drdtime(); */
 #endif
 

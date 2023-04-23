@@ -966,6 +966,9 @@ int main(int argc, char **argv, char **envp)
     syscall_init();
     signal_init();
 #ifdef CONFIG_COGBT
+#ifdef CONFIG_COGBT_JMP_CACHE
+    cogbt_jmp_cache_init(info->start_code, info->end_code);
+#endif
     if (aotmode == 1) {
         cogbt_block_init();
         char block_path[255];

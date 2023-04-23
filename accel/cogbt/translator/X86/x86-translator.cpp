@@ -1,3 +1,4 @@
+#include "qemu/osdep.h"
 #include "x86-translator.h"
 #include "emulator.h"
 #include "host-info.h"
@@ -6,6 +7,9 @@
 
 void X86Translator::DeclareExternalSymbols() {
     /* Mod->getOrInsertGlobal("PFTable", ArrayType::get(Int8Ty, 256)); */
+#ifdef CONFIG_COGBT_JMP_CACHE
+    JMPCacheAddr = Mod->getOrInsertGlobal("cogbt_jmp_cache", Int64PtrTy);
+#endif
 
     // Declare epilogue.
     FunctionType *FuncTy = FunctionType::get(VoidTy, false);
@@ -867,7 +871,7 @@ void X86Translator::Translate() {
     ss << std::hex << TU->GetTUEntry();
     std::string Entry(ss.str());
     /* InitializeFunction(std::to_string(TU->GetTUEntry())); */
-    if (aotmode == 1) { // JIT
+    if (aotmode == 0) { // JIT
         InitializeFunction(Entry);
     }
     if (aotmode == 2) { // Function AOT mode

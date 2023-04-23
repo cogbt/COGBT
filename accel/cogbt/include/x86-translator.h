@@ -17,6 +17,7 @@ public:
 
 private: /// Currently translated instruction.
     GuestInst *CurrInst;
+    Value *JMPCacheAddr;
 
     /// InitializeFunction - Initialize the basic framework of the translation
     /// function, such as `entry` block(binding physical register to IR value),
@@ -131,8 +132,9 @@ private: /// Currently translated instruction.
     /// \p Inst is the x86 jcc instruction and \p Cond is the jump condition.
     void GenJCCExit(GuestInst *Inst, Value *Cond);
 
-    /// FIXME: should be replace with firend class(Only to make the coding
-    /// style more canonical)
+    /// GenIndirectJmp - Generate llvm IRs to do indirect jmp.
+    void GenIndirectJmp(Value *GuestTarget);
+
     /// GenFPUHelper - Gen a call to tcg helper.
     void GenFPUHelper(GuestInst *Inst, std::string Name, int Flags);
 

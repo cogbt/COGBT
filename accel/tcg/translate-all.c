@@ -1731,9 +1731,14 @@ void aot_tb_register(TranslationBlock *tb, CPUState *cpu)
                 "pc = 0x%lx\n", tb->pc);
         exit(-1);
     }
+
+    /* insert tb into tables */
     tcg_tb_insert(tb);
     uint32_t hash = tb_jmp_cache_hash_func(pc);
     qatomic_set(&cpu->tb_jmp_cache[hash], tb);
+#ifdef CONFIG_COGBT_JMP_CACHE
+    cogbt_jmp_cache_add(tb->pc, (uint64_t) tb->tc.ptr);
+#endif
 }
 #endif
 

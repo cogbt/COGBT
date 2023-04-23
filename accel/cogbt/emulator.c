@@ -8,7 +8,13 @@
 #include "x86.h"
 #include "emulator.h"
 
+#ifdef CONFIG_COGBT_JMP_CACHE
+extern uint64_t *cogbt_jmp_cache;
+#endif
 struct KeyVal SymTable[] = {
+#ifdef CONFIG_COGBT_JMP_CACHE
+    {"cogbt_jmp_cache", &cogbt_jmp_cache},
+#endif
     {"helper_divb_AL", helper_divb_AL_wrapper},
     {"helper_divw_AX", helper_divw_AX_wrapper},
     {"helper_divl_EAX", helper_divl_EAX_wrapper},

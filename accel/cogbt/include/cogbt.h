@@ -1,6 +1,7 @@
 #ifndef COGBT_H
 #define COGBT_H
 
+#include "qemu/osdep.h"
 #include "translation-unit.h"
 
 #ifdef __cplusplus
@@ -40,6 +41,12 @@ void *parse_next_function(AOTParser *parser, uint64_t *pc, size_t *tu_size,
 void do_link(AOTParser *parser);
 void *get_current_code_cache_ptr(AOTParser *parser);
 void resolve_all_symbols(AOTParser *parser);
+
+#ifdef CONFIG_COGBT_JMP_CACHE
+void cogbt_jmp_cache_init(uint64_t start_code, uint64_t end_code);
+void cogbt_jmp_cache_add(uint64_t target_pc, uint64_t host_pc);
+void cogbt_jmp_cache_free(void);
+#endif
 
 #ifdef __cplusplus
 }

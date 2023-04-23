@@ -213,12 +213,13 @@ void LLVMTranslator::Optimize() {
     legacy::FunctionPassManager FPM(Mod.get());
     /* legacy::PassManager MPM; */
 
+    FPM.add(createFlagReductionPass());
+    FPM.add(createSextReductionPass());
     PassManagerBuilder Builder;
     Builder.OptLevel = 2;
     Builder.LoopVectorize = true;
     Builder.SLPVectorize = true;
     Builder.populateFunctionPassManager(FPM);
-    FPM.add(createFlagReductionPass());
     /* Builder.populateModulePassManager(MPM); */
     FPM.doInitialization();
     FPM.run(*TransFunc);

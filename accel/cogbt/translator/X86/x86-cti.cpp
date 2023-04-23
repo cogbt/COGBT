@@ -1,6 +1,50 @@
+#include "qemu/osdep.h"
 #include "x86-translator.h"
 #include "emulator.h"
 #include <sstream>
+#include <iostream>
+
+void X86Translator::GenIndirectJmp(Value *GuestTarget) {
+    FunctionType *FTy = nullptr;
+    Value *Target = nullptr;
+#ifdef CONFIG_COGBT_JMP_CACHE
+    /* find target_pc from cogbt_jmp_cache first */
+    Value *JMPCache = Builder.CreateLoad(Int64PtrTy, JMPCacheAddr);
+    Value *HostEntry = Builder.CreateGEP(Int64Ty, JMPCache, GuestTarget);
+    HostEntry = Builder.CreateBitCast(HostEntry, Int64PtrTy);
+    Value *HostTarget = Builder.CreateLoad(Int64Ty, HostEntry);
+    /* Value *HostTarget = ConstInt(Int64Ty, 0x400); */
+    Value *Cond = Builder.CreateICmpNE(HostTarget, ConstInt(Int64Ty, 0));
+
+    BasicBlock *TargetBB =
+        BasicBlock::Create(Context, "target", TransFunc, ExitBB);
+    BasicBlock *FallThroughBB =
+        BasicBlock::Create(Context, "fallthrough", TransFunc, TargetBB);
+    Builder.CreateCondBr(Cond, TargetBB, FallThroughBB);
+
+    // Create target block due to target_pc is in cogbt_jmp_cache
+    Builder.SetInsertPoint(TargetBB);
+    FTy = FunctionType::get(VoidTy, false);
+    Target = Builder.CreateIntToPtr(HostTarget, Int8PtrTy);
+    Target = Builder.CreateBitCast(Target, FTy->getPointerTo());
+    BindPhysicalReg();
+    Builder.CreateCall(FTy, Target);
+    Builder.CreateUnreachable();
+
+    // Create fallthrough block due to target_pc is not in cogbt_jmp_cache
+    Builder.SetInsertPoint(FallThroughBB);
+#endif
+
+    FTy = FunctionType::get(Int8PtrTy, Int8PtrTy, false);
+    Target = CallFunc(FTy, "helper_cogbt_lookup_tb_ptr", CPUEnv);
+    FTy = FunctionType::get(VoidTy, false);
+    Target = Builder.CreateBitCast(Target, FTy->getPointerTo());
+    BindPhysicalReg();
+    Builder.CreateCall(FTy, Target);
+    Builder.CreateUnreachable();
+
+    ExitBB->eraseFromParent();
+}
 
 void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
     X86InstHandler InstHdl(Inst);
@@ -41,6 +85,7 @@ void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
             /* BindPhysicalReg(); */
             Builder.CreateCondBr(Cond, TargetPCBB, NextPCBB);
             if (flag & TARGETPCBB_FLAG) {
+                /* std::cout << "jcc " << TargetPCStr << std::endl; */
                 Builder.SetInsertPoint(TargetPCBB);
                 BindPhysicalReg();
                 Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
@@ -285,6 +330,7 @@ void X86Translator::translate_jmp(GuestInst *Inst) {
             if (TargetBB) {
                 Builder.CreateBr(TargetBB);
             } else {    // this label does not in this function, go to epilogue
+                /* std::cout << "jmp " << TargetPCStr << std::endl; */
                 FunctionType *FTy =
                     FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
                 Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
@@ -322,16 +368,18 @@ void X86Translator::translate_jmp(GuestInst *Inst) {
         Builder.CreateStore(Target, EIPAddr);
         /* Builder.CreateBr(ExitBB); */
 
-        // call helper_cogbt_lookup_tb_ptr to find target block
-        FunctionType *FTy =
-            FunctionType::get(Int8PtrTy, Int8PtrTy, false);
-        Target = CallFunc(FTy, "helper_cogbt_lookup_tb_ptr", CPUEnv);
-        FTy = FunctionType::get(VoidTy, false);
-        Target = Builder.CreateBitCast(Target, FTy->getPointerTo());
-        BindPhysicalReg();
-        Builder.CreateCall(FTy, Target);
-        Builder.CreateUnreachable();
-        ExitBB->eraseFromParent();
+        GenIndirectJmp(Target);
+
+        /* // call helper_cogbt_lookup_tb_ptr to find target block */
+        /* FunctionType *FTy = */
+        /*     FunctionType::get(Int8PtrTy, Int8PtrTy, false); */
+        /* Target = CallFunc(FTy, "helper_cogbt_lookup_tb_ptr", CPUEnv); */
+        /* FTy = FunctionType::get(VoidTy, false); */
+        /* Target = Builder.CreateBitCast(Target, FTy->getPointerTo()); */
+        /* BindPhysicalReg(); */
+        /* Builder.CreateCall(FTy, Target); */
+        /* Builder.CreateUnreachable(); */
+        /* ExitBB->eraseFromParent(); */
     }
 }
 
@@ -379,16 +427,17 @@ void X86Translator::translate_call(GuestInst *Inst) {
         Builder.CreateStore(Target, EIPAddr);
         /* Builder.CreateBr(ExitBB); */
 
-        // call helper_cogbt_lookup_tb_ptr to find target block
-        FunctionType *FTy =
-            FunctionType::get(Int8PtrTy, Int8PtrTy, false);
-        Target = CallFunc(FTy, "helper_cogbt_lookup_tb_ptr", CPUEnv);
-        FTy = FunctionType::get(VoidTy, false);
-        Target = Builder.CreateBitCast(Target, FTy->getPointerTo());
-        BindPhysicalReg();
-        Builder.CreateCall(FTy, Target);
-        Builder.CreateUnreachable();
-        ExitBB->eraseFromParent();
+        GenIndirectJmp(Target);
+        /* // call helper_cogbt_lookup_tb_ptr to find target block */
+        /* FunctionType *FTy = */
+        /*     FunctionType::get(Int8PtrTy, Int8PtrTy, false); */
+        /* Target = CallFunc(FTy, "helper_cogbt_lookup_tb_ptr", CPUEnv); */
+        /* FTy = FunctionType::get(VoidTy, false); */
+        /* Target = Builder.CreateBitCast(Target, FTy->getPointerTo()); */
+        /* BindPhysicalReg(); */
+        /* Builder.CreateCall(FTy, Target); */
+        /* Builder.CreateUnreachable(); */
+        /* ExitBB->eraseFromParent(); */
     }
 }
 
@@ -413,15 +462,17 @@ void X86Translator::translate_ret(GuestInst *Inst) {
     // sync GMRVals into stack.
     SyncAllGMRValue();
     // Value *Target = call helper_lookup_tb_ptr
-    FunctionType *FTy =
-        FunctionType::get(Int8PtrTy, Int8PtrTy, false);
-    Value *Target = CallFunc(FTy, "helper_cogbt_lookup_tb_ptr", CPUEnv);
-    FTy = FunctionType::get(VoidTy, false);
-    Target = Builder.CreateBitCast(Target, FTy->getPointerTo());
-    BindPhysicalReg();
-    Builder.CreateCall(FTy, Target);
-    Builder.CreateUnreachable();
-    ExitBB->eraseFromParent();
+
+    GenIndirectJmp(RA);
+    /* FunctionType *FTy = */
+    /*     FunctionType::get(Int8PtrTy, Int8PtrTy, false); */
+    /* Value *Target = CallFunc(FTy, "helper_cogbt_lookup_tb_ptr", CPUEnv); */
+    /* FTy = FunctionType::get(VoidTy, false); */
+    /* Target = Builder.CreateBitCast(Target, FTy->getPointerTo()); */
+    /* BindPhysicalReg(); */
+    /* Builder.CreateCall(FTy, Target); */
+    /* Builder.CreateUnreachable(); */
+    /* ExitBB->eraseFromParent(); */
 
     /* SyncAllGMRValue(); */
     /* Builder.CreateBr(ExitBB); */

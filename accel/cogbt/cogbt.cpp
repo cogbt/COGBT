@@ -100,3 +100,45 @@ void *get_current_code_cache_ptr(AOTParser *parser) {
 void do_link(AOTParser *parser) {
     parser->DoLink();
 }
+
+#ifdef CONFIG_COGBT_JMP_CACHE
+// cogbt_jmp_cache - An one-to-one jmp table from target pc to host pc.
+// All threads share the same table, due to their shared data segment.
+uint64_t *cogbt_jmp_cache = nullptr;
+static uint64_t cogbt_jmp_cache_start_code = 0;
+static uint64_t cogbt_jmp_cache_end_code = 0;
+
+void cogbt_jmp_cache_init(uint64_t start_code, uint64_t end_code) {
+    size_t malloc_size = (end_code - start_code) * 8;
+    void* p = malloc(malloc_size);
+    if (!p) {
+        fprintf(stderr, "cogbt_jmp_cache malloc error!\n");
+        exit(-1);
+    }
+    cogbt_jmp_cache_start_code = start_code;
+    cogbt_jmp_cache_end_code = end_code;
+    memset(p, 0, malloc_size);
+    cogbt_jmp_cache = (uint64_t *) ((char *)p - (start_code * 8));
+}
+
+void cogbt_jmp_cache_add(uint64_t target_pc, uint64_t host_pc) {
+    if (target_pc < cogbt_jmp_cache_start_code ||
+            target_pc >= cogbt_jmp_cache_end_code) {
+        fprintf(stderr, "error pc, %lx, %lx, %lx\n", target_pc,
+                cogbt_jmp_cache_start_code, cogbt_jmp_cache_end_code);
+        exit(-1);
+    }
+    cogbt_jmp_cache[target_pc] = host_pc;
+}
+
+void cogbt_jmp_cache_free() {
+    if (cogbt_jmp_cache) {
+        void *p = (void *) ((char*) cogbt_jmp_cache +
+                (cogbt_jmp_cache_start_code * 8));
+        free(p);
+        cogbt_jmp_cache_start_code = 0;
+        cogbt_jmp_cache_end_code = 0;
+        cogbt_jmp_cache = nullptr;
+    }
+}
+#endif
