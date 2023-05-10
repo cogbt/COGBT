@@ -1,6 +1,5 @@
 #include "qemu/osdep.h"
-#include "function.h"
-#include "json-handle.h"
+#include "frontend.h"
 #include "capstone.h"
 #include "translation-unit.h"
 #include <assert.h>
@@ -11,7 +10,9 @@
 #include <deque>
 #include <algorithm>
 #include <sstream>
-#include <memory>
+
+using std::unique_ptr;
+using std::shared_ptr;
 
 // capsthone handler, will be used in some cs API.
 static csh handle;
@@ -20,6 +21,34 @@ static vector<TranslationUnit *> TUs;
 static bool func_tu_inst_is_cfi(cs_insn *insn) {
     return cs_insn_group(handle, insn, CS_GRP_JUMP) ||
            cs_insn_group(handle, insn, CS_GRP_RET);
+}
+
+static bool inst_is_conditional_jmp(cs_insn *insn) {
+    if (cs_insn_group(handle, insn, CS_GRP_JUMP)) {
+        switch (insn->id) {
+            case X86_INS_JAE:
+            case X86_INS_JA:
+            case X86_INS_JBE:
+            case X86_INS_JB:
+            case X86_INS_JE:
+            case X86_INS_JGE:
+            case X86_INS_JG:
+            case X86_INS_JLE:
+            case X86_INS_JL:
+            case X86_INS_JNE:
+            case X86_INS_JNO:
+            case X86_INS_JNP:
+            case X86_INS_JNS:
+            case X86_INS_JO:
+            case X86_INS_JP:
+            case X86_INS_JS:
+            case X86_INS_JCXZ:
+            case X86_INS_JECXZ:
+            case X86_INS_JRCXZ:
+                return true;
+        }
+    }
+    return false;
 }
 
 bool func_tu_inst_is_terminator(cs_insn *insn) {
@@ -48,8 +77,8 @@ void JsonFunc::formalize(uint64_t Boundary) {
     assert(Blocks.empty());
     for (auto it = BlockStrs.begin(); it != BlockStrs.end(); ) {
         uint64_t Entry = *it;
-        uint64_t NextEntry = ++it != BlockStrs.end() ? *it :
-            std::min(ExitPoint, Boundary);
+        uint64_t NextEntry = ++it != BlockStrs.end() ? *it : Boundary;
+            /* std::min(ExitPoint, Boundary); */
         uint64_t Exit = Entry;
         uint64_t InsNum = 0;
         cs_insn *pins = nullptr;
@@ -61,18 +90,19 @@ void JsonFunc::formalize(uint64_t Boundary) {
             ++InsNum;
             Exit = pins->address + pins->size;
         } while (!func_tu_inst_is_terminator(pins) && Exit < NextEntry);
+        /* } while (!func_tu_inst_is_terminator(pins)); */
         if (pins)
             cs_free(pins, 1);
         Blocks.insert(JsonBlock(Entry, Exit, InsNum));
     }
 }
 
-static void GenTU(JsonFunc &JF, TranslationUnit *TU) {
+static void GenTU(shared_ptr<JsonFunc> JF, TranslationUnit *TU) {
     tu_init(TU);
-    for (auto it = JF.begin(); it != JF.end(); ++it) {
+    for (auto it = JF->begin(); it != JF->end(); ++it) {
         uint64_t Entry = it->getEntry();
         uint64_t InsNum = it->getInsNum();
-        /* fprintf(stderr, "InsNum is %ld\n", InsNum); //debug */
+
         cs_insn **insns = (cs_insn **)calloc(InsNum, sizeof(cs_insn *));
 
         for (int i = 0; i < (int)InsNum; i++) {
@@ -92,240 +122,25 @@ static void GenTU(JsonFunc &JF, TranslationUnit *TU) {
     }
 }
 
-// partition_helper - Partition Function.
-// There are two scenarios that need to repartition.
-//
-// - Instructions that are considered as function ExitPoint are
-//   as follows: call, syscall, jmp %rax、ret.
-// - One Func's guest physical address range can overlap at most two pages.
-static void partition_helper(JsonFunc &func, vector<JsonFunc> &NewFuncs) {
-#define X86_PAGE_BITS   12
-#define X86_PAGE_SIZE   (1 << X86_PAGE_BITS)
-#define X86_PAGE_MASK   ((int64_t)-1 << X86_PAGE_BITS)
-    uint64_t pc = func.getEntryPoint();
-    uint64_t FuncBoundary = func.getExitPoint();
-    // two pages boundary that current function can reach
-    uint64_t pageBoundary = (pc & X86_PAGE_MASK) + X86_PAGE_SIZE * 2;
-    // functions in partitionFuncs need to be partition again
-    vector<int> partitionFuncs;
-    // direct jmp target address
-    set<uint64_t> targets;
-
-    // 1. Partition by exit instrcutions
-    func.getBlockStrs().clear();
-    func.addBlockStrs(pc);
-    cs_insn *pins = nullptr;
-    do {
-        if (pins)
-            cs_free(pins, 1);
-        int res = cs_disasm(handle, (uint8_t *)pc, 15, pc, 1, &pins);
-        assert(res && "cs_disasm error");
-        pc = pins->address + pins->size;
-
-        // add blockEntry
-        if (func_tu_inst_is_terminator(pins) &&
-                !func_tu_inst_is_funcexit(pins)) {
-           func.addBlockStrs(pc);
-        }
-        // add target address
-        if (cs_insn_group(handle, pins, CS_GRP_JUMP) &&
-            pins->detail->x86.operands[0].type == X86_OP_IMM) {
-            targets.insert(pins->detail->x86.operands[0].imm);
-        }
-    } while (!func_tu_inst_is_funcexit(pins) && pc < FuncBoundary);
-
-    func.setExitPoint(pc);
-    if (pc > pageBoundary) {
-        // current func is numbered -1 in partitionFuncs
-        partitionFuncs.push_back(-1);
-    }
-
-    // Partition - Construct new Function
-    while (pc < FuncBoundary) {
-        std::stringstream ss;
-        ss << std::hex << pc;
-        std::string Name("0x" + ss.str());
-        uint64_t FuncEntry = pc;
-        pageBoundary = (pc & X86_PAGE_MASK) + X86_PAGE_SIZE * 2;
-
-        set<uint64_t> Blocks;
-        Blocks.insert(FuncEntry);
-
-        do {
-            if (pins)
-                cs_free(pins, 1);
-            int res = cs_disasm(handle, (uint8_t *)pc, 15, pc, 1, &pins);
-            assert(res && "cs_disasm error");
-            pc = pins->address + pins->size;
-
-            // add blockEntry
-            if (func_tu_inst_is_terminator(pins) &&
-                    !func_tu_inst_is_funcexit(pins)) {
-                Blocks.insert(pc);
-            }
-            // add target address
-            if (cs_insn_group(handle, pins, CS_GRP_JUMP) &&
-                pins->detail->x86.operands[0].type == X86_OP_IMM) {
-                targets.insert(pins->detail->x86.operands[0].imm);
-            }
-        } while (!func_tu_inst_is_funcexit(pins) && pc < FuncBoundary);
-
-        NewFuncs.emplace_back(Name, FuncEntry, Blocks);
-        NewFuncs.back().setExitPoint(pc);
-        if (pc > pageBoundary) {
-            partitionFuncs.push_back(NewFuncs.size());
-        }
-    }
-
-    // add jmp target into funcs blockStrs
-    for (set<uint64_t>::iterator sit = targets.begin(); sit != targets.end();) {
-        while (sit != targets.end() && *sit < func.getEntryPoint()) {
-            sit++;
-        }
-        while (sit != targets.end() && *sit < func.getExitPoint()) {
-            if (func.getBlockStrs().count(*sit) == 0) {
-                /* fprintf(stderr, "0x%lx in func 0x%lx\n", */
-                /*         *sit, func.getEntryPoint()); */
-                func.getBlockStrs().insert(*sit);
-            }
-            sit++;
-        }
-        for (int i = 0; i < (int) NewFuncs.size(); i++) {
-            while (sit != targets.end() && *sit < NewFuncs[i].getExitPoint()) {
-                if (NewFuncs[i].getBlockStrs().count(*sit) == 0) {
-                    /* fprintf(stderr, "0x%lx in func 0x%lx\n", */
-                    /*         *sit, NewFuncs[i].getEntryPoint()); */
-                    NewFuncs[i].getBlockStrs().insert(*sit);
-
-                }
-                sit++;
-            }
-        }
-        break;
-    }
-
-    // 2. Partition by GPA range
-    while (!partitionFuncs.empty()) {
-        // pop the last from the container
-        int position = partitionFuncs.back();
-        JsonFunc *JF = (position == -1) ? &func : &NewFuncs[position - 1];
-        partitionFuncs.pop_back();
-#ifdef CONFIG_COGBT_DEBUG
-        /* JF->dump(stdout); */
-        fprintf(stderr, "TranslationUnit: 0x%lx cross page.\n", JF->getEntryPoint());
-#endif
-        pc = JF->getEntryPoint();
-        pageBoundary = (pc & X86_PAGE_MASK) + X86_PAGE_SIZE * 2;
-        uint64_t exitPoint = JF->getExitPoint();
-        assert(exitPoint > pageBoundary);
-
-        assert(JF->getBlockStrs().size() > 0);
-        auto it = JF->name_begin();
-        auto et = JF->name_end();
-        uint64_t blockEntry = 0;
-        do {
-            blockEntry = *it;
-            if (blockEntry > pageBoundary) {
-                // the last block GPA range overlap two pages, so it--.
-                it--;
-                break;
-            } else if (blockEntry == pageBoundary) {
-                break;
-            } else {
-                it++;
-            }
-        } while (it != et);
-        blockEntry = *it;
-        JF->setExitPoint(blockEntry);
-
-        // Partition - Construct new Function
-        /* auto erase_it = it; */
-        uint64_t erase_pc = *it;
-        while (it != et) {
-            std::stringstream ss;
-            ss << std::hex << blockEntry;
-            std::string Name("0x" + ss.str());
-            uint64_t FuncEntry = blockEntry;
-            uint64_t FuncExit = exitPoint;
-            set<uint64_t> Blocks;
-            Blocks.insert(blockEntry);
-
-            pc = blockEntry;
-            pageBoundary = (pc & X86_PAGE_MASK) + X86_PAGE_SIZE * 2;
-            it++;
-
-            while (it != et) {
-                blockEntry = *it;
-                if (blockEntry < pageBoundary) {
-                    Blocks.insert(blockEntry);
-                    it++;
-                } else if (blockEntry == pageBoundary) {    // next Function
-                    FuncExit = blockEntry;
-                    break;
-                } else {
-                    // the last block GPA range overlap two pages, so it--.
-                    it--;
-                    blockEntry = *it;
-                    FuncExit = blockEntry;
-                    Blocks.erase(std::next(Blocks.rbegin()).base());
-                    break;
-                }
-            }
-
-            if (it == et && exitPoint > pageBoundary) {
-                // the last block GPA range overlap two pages, so it--.
-                it--;
-                blockEntry = *it;
-                FuncExit = blockEntry;
-                Blocks.erase(std::next(Blocks.rbegin()).base());
-            }
-
-            NewFuncs.emplace_back(Name, FuncEntry, Blocks);
-            NewFuncs.back().setExitPoint(FuncExit);
-        }
-        JF = (position == -1) ? &func : &NewFuncs[position - 1];
-        assert(JF->getBlockStrs().find(erase_pc) != JF->name_end());
-        JF->name_erase(JF->getBlockStrs().find(erase_pc), JF->name_end());
-    }
-}
-
-static void partition_funcs(vector<JsonFunc> &JsonFuncs) {
-    vector<JsonFunc> Funcs;
-    for(int i = 0; i < (int)JsonFuncs.size(); i++) {
-        vector<JsonFunc> NewFuncs;
-        // Calculate the Function ExitPoint
-        uint64_t FuncBoundary = -1;
-        if (i+1 < (int)JsonFuncs.size())
-            FuncBoundary = JsonFuncs[i+1].getEntryPoint();
-        uint64_t Exit = *JsonFuncs[i].name_rbegin();
-        /* assert(Exit <= FuncBoundary); */
-        cs_insn *pins = nullptr;
-        do {
-            if (pins)
-                cs_free(pins, 1);
-            int res = cs_disasm(handle, (uint8_t *)Exit, 15, Exit, 1, &pins);
-            assert(res && "cs_disasm error");
-            Exit = pins->address + pins->size;
-        } while (!func_tu_inst_is_cfi(pins) && Exit < FuncBoundary);
-        JsonFuncs[i].setExitPoint(Exit);
-
-        // Repartition function.
-        partition_helper(JsonFuncs[i], NewFuncs);
-        Funcs.insert(Funcs.end(), NewFuncs.begin(), NewFuncs.end());
-    }
-    JsonFuncs.insert(JsonFuncs.end(), Funcs.begin(), Funcs.end());
-}
-
 // block_parse - Parse path file.
-static void block_parse(const char *pf, vector<JsonFunc> &JsonFuncs) {
+static void block_parse(const char *pf, vector<shared_ptr<JsonFunc>> &JsonFuncs) {
 #define MAX_INSN 200
     FILE *path = fopen(pf, "r");
     // The file is not exist
-    if (path == nullptr)
+    if (path == nullptr) {
+        fprintf(stderr, "path file is not existed.\n");
         return;
+    }
 
     uint64_t pc;
     while (fscanf(path, "%lx", &pc) != EOF) {
+#ifdef CONFIG_COGBT_DEBUG
+        if (json_funcs_search(JsonFuncs, pc) != -1) {
+            fprintf(stderr, "0x%lx has existed in JsonFuncs.\n", pc);
+            continue;
+        }
+#endif
+
         std::stringstream ss;
         ss << std::hex << pc;
         std::string Name("0x" + ss.str());
@@ -344,17 +159,261 @@ static void block_parse(const char *pf, vector<JsonFunc> &JsonFuncs) {
             pc = pins->address + pins->size;
         } while(!func_tu_inst_is_terminator(pins) && InsNum < MAX_INSN);
 
-        JsonFuncs.emplace_back(Name, FuncEntry, BlockStrs);
-        JsonFuncs.back().setExitPoint(pc);
-        JsonFuncs.back().addJsonBlock(JsonBlock(FuncEntry, pc, InsNum));
+        shared_ptr<JsonFunc> JF(new JsonFunc(Name, FuncEntry, BlockStrs));
+        JF->setExitPoint(pc);
+        JF->setFuncBoundary(pc);
+        JF->addJsonBlock(JsonBlock(FuncEntry, pc, InsNum));
+        JsonFuncs.push_back(JF);
     }
     fclose(path);
 #undef MAX_INSN
 }
 
+// partition_helper - Partition Function.
+// There are two scenarios that need to repartition.
+//
+// - Instructions that are considered as function ExitPoint are
+//   as follows: call, syscall, jmp %rax、ret.
+// - One Func's guest physical address range can overlap at most two pages.
+static void partition_helper(shared_ptr<JsonFunc> func,
+        vector<shared_ptr<JsonFunc>> &NewFuncs) {
+#define X86_PAGE_BITS   12
+#define X86_PAGE_SIZE   (1 << X86_PAGE_BITS)
+#define X86_PAGE_MASK   ((int64_t)-1 << X86_PAGE_BITS)
+    uint64_t pc = func->getEntryPoint();
+    uint64_t FuncBoundary = func->getFuncBoundary();
+    // two pages boundary that current function can reach
+    uint64_t pageBoundary = (pc & X86_PAGE_MASK) + X86_PAGE_SIZE * 2;
+    // direct/conditional jmp target address
+    std::deque<uint64_t> targets;
+
+    // 1. Partition by exit instrcutions and GPA range
+    func->getBlockStrs().clear();
+    func->addBlockStrs(pc);
+
+    cs_insn *pins = nullptr;
+    do {
+        if (pins)
+            cs_free(pins, 1);
+        int res = cs_disasm(handle, (uint8_t *)pc, 15, pc, 1, &pins);
+        assert(res && "cs_disasm error");
+        pc = pins->address + pins->size;
+
+        // over GPA range
+        if (pc > pageBoundary) {
+            uint64_t ExitPoint = *func->name_rbegin();
+            func->getBlockStrs().erase(--func->name_end());
+            func->setExitPoint(ExitPoint);
+            /* func->setFuncBoundary(ExitPoint); */
+            pc = ExitPoint;
+#ifdef CONFIG_COGBT_DEBUG
+            fprintf(stderr, "TranslationUnit: [0x%lx ~ 0x%lx) over pageBoundary(0x%lx). "
+                "It will be fix to [0x%lx ~ 0x%lx). \n",
+                func->getEntryPoint(), FuncBoundary, pageBoundary,
+                func->getEntryPoint(), func->getExitPoint());
+#endif
+            break;
+        }
+        // meet function exit instruction
+        if (func_tu_inst_is_funcexit(pins)) {
+            // During a conditional jmp insert, pins->address may be inserted
+            // into targets. We should remove it.
+            if (!targets.empty() && targets.back() == pins->address) {
+                targets.pop_back();
+            }
+            func->setExitPoint(pc);
+            break;
+        } else if (func_tu_inst_is_terminator(pins)) {
+            // insert into BlockStrs
+            func->addBlockStrs(pc);
+        }
+        // add target address
+        if (cs_insn_group(handle, pins, CS_GRP_JUMP) &&
+            pins->detail->x86.operands[0].type == X86_OP_IMM) {
+            targets.push_back(pins->detail->x86.operands[0].imm);
+            if (inst_is_conditional_jmp(pins)) {
+                targets.push_back(pc);
+            }
+        }
+    } while (pc < FuncBoundary);
+
+    if (pc < FuncBoundary) {
+        std::stringstream ss;
+        ss << std::hex << pc;
+        std::string Name("0x" + ss.str());
+        shared_ptr<JsonFunc> JF(new JsonFunc(Name, pc, FuncBoundary));
+        NewFuncs.push_back(JF);
+    } else {
+        func->setExitPoint(FuncBoundary);
+    }
+
+    // 2. insert jmp target into funcs blockStrs
+    uint64_t Boundary = std::min(FuncBoundary, pageBoundary);
+    set<uint64_t> Visited;
+    while (!targets.empty()) {
+        uint64_t target = targets.front();
+        targets.pop_front();
+        Visited.insert(target);
+        if (target < func->getEntryPoint())
+            continue;
+        if (target >= Boundary)
+            continue;
+
+        func->getBlockStrs().insert(target);
+
+        uint64_t ExitPoint = func->getExitPoint();
+        if (target >= ExitPoint) {
+            uint64_t entry = target;
+            cs_insn *pins = nullptr;
+            do {
+                if (pins)
+                    cs_free(pins, 1);
+                int res = cs_disasm(handle, (uint8_t *)entry, 15, entry, 1, &pins);
+                assert(res && "cs_disasm error");
+                entry = pins->address + pins->size;
+                // add target address
+                if (cs_insn_group(handle, pins, CS_GRP_JUMP) &&
+                    pins->detail->x86.operands[0].type == X86_OP_IMM) {
+                    if (Visited.count(pins->detail->x86.operands[0].imm) == 0)
+                        targets.push_back(pins->detail->x86.operands[0].imm);
+                    if (inst_is_conditional_jmp(pins)) {
+                        if (Visited.count(entry) == 0)
+                            targets.push_back(entry);
+                    }
+                }
+            } while (!func_tu_inst_is_terminator(pins) && entry < Boundary);
+        }
+    }
+    /* func->dump(stderr); */
+}
+
+static void partition_funcs(vector<shared_ptr<JsonFunc>> &JsonFuncs) {
+    std::deque<shared_ptr<JsonFunc>> WorkList;
+    for(size_t i = 0; i < JsonFuncs.size(); i++) {
+        WorkList.push_back(JsonFuncs[i]);
+    }
+    JsonFuncs.clear();
+
+    while (!WorkList.empty()) {
+        vector<shared_ptr<JsonFunc>> NewFuncs;
+
+        shared_ptr<JsonFunc> JF = WorkList.front();
+        WorkList.pop_front();
+        partition_helper(JF, NewFuncs);
+        // insert NewFuncs into WorkList
+        for(size_t i = 0; i < NewFuncs.size(); i++) {
+            WorkList.push_back(NewFuncs[i]);
+        }
+        // insert funcs partitioned into JsonFuncs
+        JsonFuncs.push_back(JF);
+    }
+}
+
+static void json_funcs_sort(vector<shared_ptr<JsonFunc>> &JsonFuncs) {
+    std::sort(JsonFuncs.begin(), JsonFuncs.end(),
+            [](const shared_ptr<JsonFunc>& x, const shared_ptr<JsonFunc>& y) {
+            return x->getEntryPoint() < y->getEntryPoint();
+        });
+}
+
+int json_funcs_search(vector<shared_ptr<JsonFunc>> &JsonFuncs, uint64_t target) {
+    int right = JsonFuncs.size() - 1;
+    int left = 0, middle = 0;
+
+    while (left <= right) {
+        middle = (left + right) / 2;
+        if (JsonFuncs[middle]->getEntryPoint() < target)
+            left = middle + 1;
+        else if (JsonFuncs[middle]->getEntryPoint() > target)
+            right = middle - 1;
+        else
+            return middle;
+    }
+    return -1;
+}
+
+// Calculate the Function ExitPoint
+static void calculate_func_boundary(vector<shared_ptr<JsonFunc>> &JsonFuncs) {
+    for(size_t i = 0; i < JsonFuncs.size(); i++) {
+        if (JsonFuncs[i]->getFuncBoundary() != (uint64_t) -1)
+            continue;
+        uint64_t FuncBoundary = -1;
+        if (i+1 < JsonFuncs.size())
+            FuncBoundary = JsonFuncs[i+1]->getEntryPoint();
+        uint64_t Exit = *JsonFuncs[i]->name_rbegin();
+        assert(Exit <= FuncBoundary);
+        cs_insn *pins = nullptr;
+        do {
+            if (pins)
+                cs_free(pins, 1);
+            int res = cs_disasm(handle, (uint8_t *)Exit, 15, Exit, 1, &pins);
+            assert(res && "cs_disasm error");
+            Exit = pins->address + pins->size;
+        } while (!func_tu_inst_is_cfi(pins) && Exit < FuncBoundary);
+        JsonFuncs[i]->setFuncBoundary(Exit);
+    }
+}
+
+#ifdef CONFIG_COGBT_DEBUG
+static void check_json_funcs(vector<shared_ptr<JsonFunc>> &JsonFuncs,
+        const char* message) {
+    // 1. Function to check if there are duplicate addresses in vector.
+    set<uint64_t> Visited;
+    for (auto JF: JsonFuncs) {
+        if (Visited.count(JF->getEntryPoint())) {
+            fprintf(stderr, "%s: address = 0x%lx appears multiple times.\n",
+                    message, JF->getEntryPoint());
+            exit(-1);
+        }
+        Visited.insert(JF->getEntryPoint());
+    }
+}
+#endif
+
+static void first_parse(const char* exec_path, vector<shared_ptr<JsonFunc>> &JsonFuncs) {
+    // 1. parse entries in .symtab which TYPE is FUNC
+    parse_elf_format(exec_path, JsonFuncs);
+    json_funcs_sort(JsonFuncs);
+#ifdef CONFIG_COGBT_DEBUG
+    check_json_funcs(JsonFuncs, "elf parse");
+#endif
+
+    // 2. parse .json file
+    char json_path[255];
+    strcpy(json_path, exec_path);
+    strcat(json_path, ".json");
+    json_parse(json_path, JsonFuncs, JSON_ORIGIN);
+    json_funcs_sort(JsonFuncs);
+#ifdef CONFIG_COGBT_DEBUG
+    check_json_funcs(JsonFuncs, "json parse");
+#endif
+
+    // 3. Calculate the Function Boundary
+    calculate_func_boundary(JsonFuncs);
+
+    // 4. Partition JsonFuncs
+    partition_funcs(JsonFuncs);
+    json_funcs_sort(JsonFuncs);
+#ifdef CONFIG_COGBT_DEBUG
+    check_json_funcs(JsonFuncs, "partition funcs");
+#endif
+
+    // 5. parse .trace
+
+    // 6. Formalize JsonFunc: calculate Blocks in JsonFunc
+    for (size_t i = 0; i < JsonFuncs.size(); i++) {
+        uint64_t FuncBoundary = JsonFuncs[i]->getFuncBoundary();
+        JsonFuncs[i]->formalize(FuncBoundary);
+    }
+
+    // 7. Dump JsonFuncs
+    strcat(json_path, ".txt");
+    json_dump(json_path, JsonFuncs);
+}
+
 void func_tu_parse(const char *pf) {
-    // 1. Determine whether .json.txt file exists.
-    //    Existence indicates that it is not the first execution.
+    // Lookup whether .json.txt file exists.
+    // Existence indicates that it is not the first execution.
     int func_txt_exist = false;
     char json_txt_path[255];
     strcpy(json_txt_path, pf);
@@ -363,31 +422,13 @@ void func_tu_parse(const char *pf) {
         func_txt_exist = true;
     }
 
-    /* func_txt_exist = false; */
-    // TODO: JsonFunc should use unique_ptr
-    vector<JsonFunc> JsonFuncs;
+    vector<shared_ptr<JsonFunc>> JsonFuncs;
     if (func_txt_exist) {
         // 2 parser .json.txt file
-        json_parse(json_txt_path, JsonFuncs);
-        std::sort(JsonFuncs.begin(), JsonFuncs.end());
+        json_parse(json_txt_path, JsonFuncs, JSON_FUNC_TXT);
+        json_funcs_sort(JsonFuncs);
     } else {
-        // 2.1 parse .json file
-        char json_path[255];
-        strcpy(json_path, pf);
-        strcat(json_path, ".json");
-        json_parse(json_path, JsonFuncs);
-        std::sort(JsonFuncs.begin(), JsonFuncs.end());
-        // 2.2 Partition JsonFuncs
-        partition_funcs(JsonFuncs);
-        std::sort(JsonFuncs.begin(), JsonFuncs.end());
-        // 2.3. Formalize JsonFunc: calculate Blocks in JsonFunc
-        for (int i = 0; i < (int)JsonFuncs.size(); i++) {
-            uint64_t FuncBoundary = JsonFuncs[i].getExitPoint();
-            JsonFuncs[i].formalize(FuncBoundary);
-        }
-        // 2.4. Dump JsonFuncs
-        strcat(json_path, ".txt");
-        json_dump(json_path, JsonFuncs);
+        first_parse(pf, JsonFuncs);
     }
 
     // 3. Determine whether .path file exists.
@@ -395,11 +436,11 @@ void func_tu_parse(const char *pf) {
     strcpy(block_path, pf);
     strcat(block_path, ".path");
     block_parse(block_path, JsonFuncs);
-    std::sort(JsonFuncs.begin(), JsonFuncs.end());
+    json_funcs_sort(JsonFuncs);
 
     // 4. generate TU
-    for (int i = 0; i < (int)JsonFuncs.size(); i++) {
-        /* JsonFuncs[i].dump(stdout); */
+    for (size_t i = 0; i < JsonFuncs.size(); i++) {
+        /* JsonFuncs[i]->dump(stdout); */
         TranslationUnit *TU = new TranslationUnit();
         GenTU(JsonFuncs[i], TU);
         TUs.push_back(TU);
@@ -424,6 +465,7 @@ void func_aot_gen(void) {
         llvm_set_tu(Translator, TU);
         llvm_translate(Translator);
         llvm_compile(Translator, true);
+        delete TU;
     }
     llvm_finalize(Translator);
 }

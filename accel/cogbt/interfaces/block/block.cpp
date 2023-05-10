@@ -5,17 +5,22 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+#include <iostream>
+#include <vector>
 
 #define DISASSEMBLE_DEBUG
+using std::vector;
 
 /* capsthone handler, will be used in some cs API. */
 static csh handle;
 static TranslationUnit *global_tu;
+static vector<TranslationUnit *> TUs;
 
 void cogbt_block_init(void) {
     cs_open(CS_ARCH_X86, CS_MODE_64, &handle);
     cs_option(handle, CS_OPT_SYNTAX, CS_OPT_SYNTAX_ATT);
     cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON);
+    TUs.clear();
     global_tu = tu_get();
     tu_init(global_tu);
 }
@@ -32,7 +37,7 @@ void block_tu_file_parse(const char *pf) {
     FILE *path = fopen(pf, "r");
     uint64_t pc;
     while (fscanf(path, "%lx", &pc) != EOF) {
-        cs_insn **insns = calloc(MAX_INSN, sizeof(cs_insn *));
+        cs_insn **insns = (cs_insn **)calloc(MAX_INSN, sizeof(cs_insn *));
         int insn_cnt = 0;
         /* fprintf(stderr, "0x%lx\n", pc); */
         for (int i = 0; i < MAX_INSN; i++) {
@@ -53,28 +58,36 @@ void block_tu_file_parse(const char *pf) {
             // Update pc of next instruction
             pc = insns[i]->address + insns[i]->size;
         }
-        insns = realloc(insns, sizeof(cs_insn *) * insn_cnt);
+        insns = (cs_insn **)realloc(insns, sizeof(cs_insn *) * insn_cnt);
 
         // Register block in TU
-        TranslationUnit *tu = tu_get();
-        GuestBlock *block = guest_tu_create_block(tu);
+        /* TranslationUnit *tu = tu_get(); */
+        TranslationUnit *TU = new TranslationUnit();
+        tu_init(TU);
+        GuestBlock *block = guest_tu_create_block(TU);
         for (int i = 0; i < insn_cnt; i++) {
             guest_block_add_inst(block, insns[i]);
         }
+        TUs.push_back(TU);
     }
 }
 
 void tb_aot_gen(const char *pf) {
     LLVMTranslator *Translator = create_llvm_translator(0, 0);
     llvm_initialize(Translator);
-    llvm_set_tu(Translator, tu_get());
-    llvm_translate(Translator);
-    llvm_compile(Translator, true);
+    for (TranslationUnit *TU: TUs) {
+        llvm_set_tu(Translator, TU);
+        llvm_translate(Translator);
+        llvm_compile(Translator, true);
+        delete TU;
+    }
+    llvm_finalize(Translator);
 }
 
+// JIT mode
 int block_gen_code(uint64_t pc, int max_insns, LLVMTranslator *translator,
                    void **code_cache, int *insn_cnt) {
-    cs_insn **insns = calloc(max_insns + 1, sizeof(cs_insn *));
+    cs_insn **insns = (cs_insn **)calloc(max_insns + 1, sizeof(cs_insn *));
     *insn_cnt = 0;
 
     if (debug_guest_inst(translator)) {
@@ -117,6 +130,7 @@ int block_gen_code(uint64_t pc, int max_insns, LLVMTranslator *translator,
     llvm_initialize(translator);
     llvm_set_tu(translator, tu);
     llvm_translate(translator);
+    /* llvm_finalize(translator); */
     *(uint32_t **)code_cache = (uint32_t *)llvm_compile(translator, true);
     size_t llvm_code_size_after = llvm_get_code_size(translator);
 

@@ -318,6 +318,7 @@ skip_meson=no
 vfio_user_server="disabled"
 cogbt="no"
 cogbt_debug="no"
+cogbt_jmp_cache="no"
 
 # The following Meson options are handled manually (still they
 # are included in the automatically generated help message)
@@ -937,6 +938,8 @@ for opt do
   --enable-jemalloc) meson_option_parse --enable-malloc=jemalloc jemalloc
   ;;
   --enable-cogbt) cogbt="yes"
+  ;;
+  --enable-cogbt-jmp-cache) cogbt_jmp_cache="yes"
   ;;
   --enable-cogbt-debug) cogbt_debug="yes"
   ;;
@@ -2446,6 +2449,9 @@ if test "$cogbt" = "yes" ; then
 fi
 if test "$cogbt_debug" = "yes" ; then
   echo "CONFIG_COGBT_DEBUG=y" >> $config_host_mak
+fi
+if test "$cogbt_jmp_cache" = "yes" ; then
+  echo "CONFIG_COGBT_JMP_CACHE=y" >> $config_host_mak
 fi
 if test "$mingw32" = "yes" ; then
   echo "CONFIG_WIN32=y" >> $config_host_mak

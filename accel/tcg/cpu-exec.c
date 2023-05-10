@@ -351,6 +351,7 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
     return tb->tc.ptr;
 /* #endif */
 }
+
 #ifdef CONFIG_COGBT
 #ifdef CONFIG_COGBT_DEBUG
 long cogbt_indirect_times = 0;
@@ -996,34 +997,11 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 
 #ifdef CONFIG_COGBT
 extern int aotmode;
-#endif
 #ifdef CONFIG_COGBT_DEBUG
 extern uint64_t debug_pc;
 void debug_breakpoint(uint64_t pc);
 void debug_breakpoint(uint64_t pc) {
     fprintf(stderr, "Debug Breakpoint At 0x%lx\n", pc);
-}
-extern char *exec_path;
-void dump_path(uint64_t pc);
-void dump_path (uint64_t pc) {
-    static FILE *pf = NULL;
-    if (!pf) {
-        char *dump_file = malloc(sizeof(char) * (strlen(exec_path) + 6));
-        strcpy(dump_file, exec_path);
-        strcat(dump_file, ".path");
-#ifdef CONFIG_COGBT
-        if (aotmode != 2)
-#endif
-            pf = fopen(dump_file, "w+");
-#ifdef CONFIG_COGBT
-        else {
-            pf = fopen(dump_file, "a");
-        }
-#endif
-    }
-    assert(pf);
-    fprintf(pf, "0x%lx\n", pc);
-    fflush(NULL);
 }
 uint64_t qemu_to_llvm = 0;
 uint64_t llvm_to_qemu = 0;
@@ -1031,6 +1009,27 @@ uint64_t switch_context = 0;
 uint64_t tb_not_find = 0;
 uint64_t syscall_number = 0;
 #endif
+#endif
+
+void dump_path(uint64_t pc);
+extern char *exec_path;
+FILE *dump_path_file = NULL;
+void dump_path (uint64_t pc) {
+    if (!dump_path_file) {
+        char *dump_file = malloc(sizeof(char) * (strlen(exec_path) + 6));
+        strcpy(dump_file, exec_path);
+        strcat(dump_file, ".path");
+#if defined(CONFIG_COGBT_DEBUG)
+        dump_path_file = fopen(dump_file, "a");
+#else
+        dump_path_file = fopen(dump_file, "w+");
+#endif
+    }
+    assert(dump_path_file);
+    fprintf(dump_path_file, "0x%lx\n", pc);
+    fflush(NULL);
+}
+
 int cpu_exec(CPUState *cpu)
 {
     int ret;
@@ -1132,8 +1131,9 @@ int cpu_exec(CPUState *cpu)
                 mmap_lock();
 #ifdef CONFIG_COGBT_DEBUG
                 tb_not_find++;
-                dump_path(pc);
 #endif
+                dump_path(pc);
+
                 tb = tb_gen_code(cpu, pc, cs_base, flags, cflags);
                 mmap_unlock();
                 /*

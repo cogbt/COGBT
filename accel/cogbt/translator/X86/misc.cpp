@@ -1791,7 +1791,10 @@ void X86Translator::translate_syscall(GuestInst *Inst) {
              {CPUEnv, ConstInt(Int64Ty, InstHdl.getNextPC())});
 
     Builder.CreateUnreachable();
-    ExitBB->eraseFromParent();
+
+    if (IsExitPC(InstHdl.getPC())) {
+        ExitBB->eraseFromParent();
+    }
 }
 void X86Translator::translate_sysenter(GuestInst *Inst) {
     dbgs() << "Untranslated instruction sysenter\n";

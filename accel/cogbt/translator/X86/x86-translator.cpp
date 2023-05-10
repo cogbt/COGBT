@@ -860,19 +860,21 @@ void X86Translator::TranslateFinalize() {
     LLVMTranslator::TranslateFinalize();
 }
 
+// Translate a TU in each function call.
 void X86Translator::Translate() {
-    // FIXME: tb aot initialization.
-    if (aotmode == 1) {
-        // Do translate initialization.
-        TranslateInitialize();
-    }
 
     std::stringstream ss;
     ss << std::hex << TU->GetTUEntry();
     std::string Entry(ss.str());
-    /* InitializeFunction(std::to_string(TU->GetTUEntry())); */
+
+    // Initialize function
     if (aotmode == 0) { // JIT
         InitializeFunction(Entry);
+    }
+    if (aotmode == 1) { // TB AOT mode
+        std::stringstream ss;
+        ss << std::hex << Entry << "." << std::dec << TU->GetTUPCSize();
+        InitializeFunction(ss.str());
     }
     if (aotmode == 2) { // Function AOT mode
         std::stringstream ss;
@@ -885,15 +887,16 @@ void X86Translator::Translate() {
             BasicBlock::Create(Context, Name, TransFunc, ExitBB);
         }
     }
+
     for (auto &block : *TU) {
         assert(TU->size() && "TU size is expected to be non-zero!");
-        if (aotmode == 1) {
-            std::stringstream ss;
-            ss << std::hex << block.GetBlockEntry() << "." << std::dec
-               << block.GetBlockPCSize();
-            InitializeFunction(ss.str());
-            dbgs() << ss.str() << "\n";
-        }
+        /* if (aotmode == 1) { */
+        /*     std::stringstream ss; */
+        /*     ss << std::hex << block.GetBlockEntry() << "." << std::dec */
+        /*        << block.GetBlockPCSize(); */
+        /*     InitializeFunction(ss.str()); */
+        /*     dbgs() << ss.str() << "\n"; */
+        /* } */
         InitializeBlock(block);
         for (auto &inst : block) {
             CurrInst = inst;
@@ -960,9 +963,4 @@ void X86Translator::Translate() {
         }
         /* TransFunc->dump(); */
     }
-
-    // Do translate finalization.
-    // TODO: move it to the end of translation
-    if (aotmode != 2)
-        TranslateFinalize();
 }

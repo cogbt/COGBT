@@ -42,8 +42,6 @@ void X86Translator::GenIndirectJmp(Value *GuestTarget) {
     BindPhysicalReg();
     Builder.CreateCall(FTy, Target);
     Builder.CreateUnreachable();
-
-    ExitBB->eraseFromParent();
 }
 
 void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
@@ -113,38 +111,39 @@ void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
         if (IsExitPC(InstHdl.getPC())) {
             ExitBB->eraseFromParent();
         }
-        return;
+
+    } else {  // Tb AOt or JIT mode
+        BasicBlock *TargetBB =
+            BasicBlock::Create(Context, "target", TransFunc, ExitBB);
+        BasicBlock *FallThroughBB =
+            BasicBlock::Create(Context, "fallthrough", TransFunc, TargetBB);
+        BindPhysicalReg();
+        Builder.CreateCondBr(Cond, TargetBB, FallThroughBB);
+
+        FunctionType *FTy = FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
+        Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
+        Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
+
+        // Create fallthrough link slot.
+        Builder.SetInsertPoint(FallThroughBB);
+        Value *NextPC = ConstInt(Int64Ty, InstHdl.getNextPC());
+        Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {NextPC, Off});
+        AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());
+        // Jump back qemu.
+        Builder.CreateCall(Mod->getFunction("epilogue"));
+        Builder.CreateUnreachable();
+
+        Builder.SetInsertPoint(TargetBB);
+        Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
+        // Create target link slot
+        LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
+        AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());
+        // Jump back qemu.
+        Builder.CreateCall(Mod->getFunction("epilogue"));
+        Builder.CreateUnreachable();
+
+        ExitBB->eraseFromParent();
     }
-    BasicBlock *TargetBB =
-        BasicBlock::Create(Context, "target", TransFunc, ExitBB);
-    BasicBlock *FallThroughBB =
-        BasicBlock::Create(Context, "fallthrough", TransFunc, TargetBB);
-    BindPhysicalReg();
-    Builder.CreateCondBr(Cond, TargetBB, FallThroughBB);
-
-    FunctionType *FTy = FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
-    Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
-
-    // Create fallthrough link slot.
-    Builder.SetInsertPoint(FallThroughBB);
-    Value *NextPC = ConstInt(Int64Ty, InstHdl.getNextPC());
-    Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {NextPC, Off});
-    AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 0);
-    // Jump back qemu.
-    Builder.CreateCall(Mod->getFunction("epilogue"));
-    Builder.CreateUnreachable();
-
-    Builder.SetInsertPoint(TargetBB);
-    Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
-    // Create target link slot
-    LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
-    AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1);
-    // Jump back qemu.
-    Builder.CreateCall(Mod->getFunction("epilogue"));
-    Builder.CreateUnreachable();
-
-    ExitBB->eraseFromParent();
 }
 
 void X86Translator::translate_jae(GuestInst *Inst) {
@@ -318,7 +317,7 @@ void X86Translator::translate_jmp(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     // Create link here, NOTE! Distinguish direct jmp or indirect jmp first.
     X86OperandHandler OpndHdl(InstHdl.getOpnd(0));
-    if (OpndHdl.isImm()) {   // can be directly linked
+    if (OpndHdl.isImm()) {   // direct jmp
         if (aotmode == 2) {     // Function AOT mode
             std::stringstream ss;
             ss << std::hex << InstHdl.getTargetPC();
@@ -330,7 +329,6 @@ void X86Translator::translate_jmp(GuestInst *Inst) {
             if (TargetBB) {
                 Builder.CreateBr(TargetBB);
             } else {    // this label does not in this function, go to epilogue
-                /* std::cout << "jmp " << TargetPCStr << std::endl; */
                 FunctionType *FTy =
                     FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
                 Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
@@ -355,31 +353,22 @@ void X86Translator::translate_jmp(GuestInst *Inst) {
 
             BindPhysicalReg();
             Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
-            AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1);
+            AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());
             Builder.CreateCall(Mod->getFunction("epilogue"));
             Builder.CreateUnreachable();
             ExitBB->eraseFromParent();
         }
-    } else {
+    } else {    // indirect jmp
         Value *Target = LoadOperand(InstHdl.getOpnd(0));
         Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
         Value *EnvEIP = Builder.CreateGEP(Int8Ty, CPUEnv, Off);
         Value *EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
         Builder.CreateStore(Target, EIPAddr);
-        /* Builder.CreateBr(ExitBB); */
 
         GenIndirectJmp(Target);
-
-        /* // call helper_cogbt_lookup_tb_ptr to find target block */
-        /* FunctionType *FTy = */
-        /*     FunctionType::get(Int8PtrTy, Int8PtrTy, false); */
-        /* Target = CallFunc(FTy, "helper_cogbt_lookup_tb_ptr", CPUEnv); */
-        /* FTy = FunctionType::get(VoidTy, false); */
-        /* Target = Builder.CreateBitCast(Target, FTy->getPointerTo()); */
-        /* BindPhysicalReg(); */
-        /* Builder.CreateCall(FTy, Target); */
-        /* Builder.CreateUnreachable(); */
-        /* ExitBB->eraseFromParent(); */
+        if (IsExitPC(InstHdl.getPC())) {
+            ExitBB->eraseFromParent();
+        }
     }
 }
 
@@ -410,13 +399,15 @@ void X86Translator::translate_call(GuestInst *Inst) {
 
         BindPhysicalReg();
         Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
-        if (aotmode == 2)
-            AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());
-        else
-            AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1);
+        /* if (aotmode == 2) */
+        AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());
+        /* else */
+        /*     AttachLinkInfoToIR(LinkSlot, LI_TBLINK, 1); */
         Builder.CreateCall(Mod->getFunction("epilogue"));
         Builder.CreateUnreachable();
-        ExitBB->eraseFromParent();
+        if (IsExitPC(InstHdl.getPC())) {
+            ExitBB->eraseFromParent();
+        }
     } else {
         // do indirect basic block link
         // store target pc into env.
@@ -428,16 +419,9 @@ void X86Translator::translate_call(GuestInst *Inst) {
         /* Builder.CreateBr(ExitBB); */
 
         GenIndirectJmp(Target);
-        /* // call helper_cogbt_lookup_tb_ptr to find target block */
-        /* FunctionType *FTy = */
-        /*     FunctionType::get(Int8PtrTy, Int8PtrTy, false); */
-        /* Target = CallFunc(FTy, "helper_cogbt_lookup_tb_ptr", CPUEnv); */
-        /* FTy = FunctionType::get(VoidTy, false); */
-        /* Target = Builder.CreateBitCast(Target, FTy->getPointerTo()); */
-        /* BindPhysicalReg(); */
-        /* Builder.CreateCall(FTy, Target); */
-        /* Builder.CreateUnreachable(); */
-        /* ExitBB->eraseFromParent(); */
+        if (IsExitPC(InstHdl.getPC())) {
+            ExitBB->eraseFromParent();
+        }
     }
 }
 
@@ -464,16 +448,7 @@ void X86Translator::translate_ret(GuestInst *Inst) {
     // Value *Target = call helper_lookup_tb_ptr
 
     GenIndirectJmp(RA);
-    /* FunctionType *FTy = */
-    /*     FunctionType::get(Int8PtrTy, Int8PtrTy, false); */
-    /* Value *Target = CallFunc(FTy, "helper_cogbt_lookup_tb_ptr", CPUEnv); */
-    /* FTy = FunctionType::get(VoidTy, false); */
-    /* Target = Builder.CreateBitCast(Target, FTy->getPointerTo()); */
-    /* BindPhysicalReg(); */
-    /* Builder.CreateCall(FTy, Target); */
-    /* Builder.CreateUnreachable(); */
-    /* ExitBB->eraseFromParent(); */
-
-    /* SyncAllGMRValue(); */
-    /* Builder.CreateBr(ExitBB); */
+    if (IsExitPC(InstHdl.getPC())) {
+        ExitBB->eraseFromParent();
+    }
 }

@@ -188,8 +188,7 @@ void LLVMTranslator::CreateIllegalInstruction() {
 void LLVMTranslator::TranslateFinalize() {
     // Finalize DIBuilder to make debug info correct.
     DIB->finalize();
-    // TODO: fix it to work with all modes
-    if (aotmode == 2) {
+    if (aotmode != 0) {
 #if 1
         legacy::FunctionPassManager FPM(Mod.get());
         legacy::PassManager MPM;
@@ -225,8 +224,6 @@ void LLVMTranslator::Optimize() {
     FPM.run(*TransFunc);
     FPM.doFinalization();
 
-    /* MPM.add(createFlagReductionPass()); */
-    /* MPM.run(*Mod.get()); */
 #else
     legacy::FunctionPassManager FPM(Mod.get());
     FPM.add(createPromoteMemoryToRegisterPass());
@@ -332,7 +329,7 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
         return nullptr;
     }
     if (aotmode == 1) {
-        EmitObjectCode();
+        /* EmitObjectCode(); */
         return nullptr;
     }
 

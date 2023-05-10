@@ -9,9 +9,12 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <memory>
 using std::string;
 using std::vector;
 using std::set;
+using std::unique_ptr;
+using std::shared_ptr;
 
 #else
 
@@ -51,6 +54,7 @@ typedef struct JsonBlock JsonBlock;
 class JsonFunc {
     string Name;
     uint64_t EntryPoint, ExitPoint = -1;
+    uint64_t FuncBoundary = -1;     // guest function range
     set<uint64_t> BlockStrs;
     set<JsonBlock> Blocks;
 public:
@@ -58,12 +62,18 @@ public:
         : Name(Name), EntryPoint(EntryPoint), BlockStrs(std::move(BS)) {
         Blocks.clear();
     }
+    JsonFunc(string Name, uint64_t EntryPoint, uint64_t FuncBoundary)
+        : Name(Name), EntryPoint(EntryPoint), FuncBoundary(FuncBoundary) {}
 
     string& getName() { return Name; }
     uint64_t getEntryPoint() { return EntryPoint; }
     uint64_t getExitPoint() { return ExitPoint; }
+    uint64_t getFuncBoundary() { return FuncBoundary; }
     void setEntryPoint(uint64_t EntryPoint) { this->EntryPoint = EntryPoint; }
     void setExitPoint(uint64_t ExitPoint) { this->ExitPoint = ExitPoint; }
+    void setFuncBoundary(uint64_t FuncBoundary) {
+        this->FuncBoundary = FuncBoundary;
+    }
     set<uint64_t> &getBlockStrs() { return BlockStrs; }
     void addBlockStrs(uint64_t BlockStr) { BlockStrs.insert(BlockStr); }
 
@@ -99,6 +109,18 @@ public:
         fprintf(ff, "\t\"EntryPoint\": \"0x%lx\",\n", EntryPoint);
         if (ExitPoint)
             fprintf(ff, "\t\"ExitPoint\": \"0x%lx\",\n", ExitPoint);
+        fprintf(ff, "\t\"FuncBoundary\": \"0x%lx\",\n", FuncBoundary);
+
+        fprintf(ff, "\t\"BlockStrs\": [\n");
+        for(set<uint64_t>::iterator it = BlockStrs.begin();
+                it != BlockStrs.end(); it++) {
+            if (it == (--BlockStrs.end()))
+                fprintf(ff, "\t\t\"0x%lx\"\n", *it);
+            else
+                fprintf(ff, "\t\t\"0x%lx\",\n", *it);
+        }
+        fprintf(ff, "\t],\n");
+
         fprintf(ff, "\t\"Blocks\": [\n");
         for(set<JsonBlock>::iterator it = Blocks.begin();
                 it != Blocks.end(); it++) {

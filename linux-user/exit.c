@@ -37,9 +37,10 @@ extern uint64_t tb_not_find;
 extern uint64_t syscall_number;
 extern uint64_t cogbt_indirect_times;
 extern uint64_t qemu_indirect_times;
-/* extern long cogbt_indirect_time; */
 #endif
 #endif
+
+extern FILE *dump_path_file;
 
 void preexit_cleanup(CPUArchState *env, int code)
 {
@@ -58,10 +59,13 @@ void preexit_cleanup(CPUArchState *env, int code)
         fprintf(stderr, "syscall_number = %ld\n", syscall_number);
         fprintf(stderr, "cogbt_indirect_times = %ld\n", cogbt_indirect_times);
         fprintf(stderr, "qemu_indirect_times = %ld\n", qemu_indirect_times);
-        /* fprintf(stderr, "cogbt_indirect_time = %ld s\n", */
-        /* cogbt_indirect_time / 100000000); */
 #endif
 #endif
+
+        if (dump_path_file) {
+            fclose(dump_path_file);
+        }
+
         gdb_exit(code);
         qemu_plugin_user_exit();
 }
