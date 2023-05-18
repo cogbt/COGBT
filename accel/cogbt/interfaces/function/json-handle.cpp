@@ -21,7 +21,7 @@ void json_parse(const char *pf, vector<std::shared_ptr<JsonFunc>> &JsonFuncs,
 
     // 1. Check whether json file exists.
     if (access(pf, F_OK) != 0) {
-        fprintf(stderr, "Open json file error!");
+        fprintf(stderr, "Open json file error!\n");
         return;
     }
 

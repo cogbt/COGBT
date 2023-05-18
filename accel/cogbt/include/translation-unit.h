@@ -88,17 +88,13 @@ public:
 
     /// GetTUEntry - Get the first pc of TU.
     uint64_t GetTUEntry() {
-        if (GuestBlocks.empty()) {
-            exit(-1);
-        }
+        assert(!GuestBlocks.empty() && "GuestBlocks shouldn't be empty!");
         return (*GuestBlocks[0].begin())->address;
     }
 
     /// GetTUExit - Get the last pc of TU.
     uint64_t GetTUExit() {
-        if (GuestBlocks.empty()) {
-            exit(-1);
-        }
+        assert(!GuestBlocks.empty() && "GuestBlocks shouldn't be empty!");
         return (*GuestBlocks.rbegin()->rbegin())->address;
     }
 

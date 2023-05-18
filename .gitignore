@@ -21,5 +21,6 @@ compile_commands.json
 capstone
 meson.build
 accel/cogbt/meson.build
+build64
 build64-dbg
 build64-qemu

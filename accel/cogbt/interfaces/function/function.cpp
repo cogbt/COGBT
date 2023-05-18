@@ -128,7 +128,7 @@ static void block_parse(const char *pf, vector<shared_ptr<JsonFunc>> &JsonFuncs)
     FILE *path = fopen(pf, "r");
     // The file is not exist
     if (path == nullptr) {
-        fprintf(stderr, "path file is not existed.\n");
+        fprintf(stderr, "Path file is not existed.\n");
         return;
     }
 
@@ -212,6 +212,10 @@ static void partition_helper(shared_ptr<JsonFunc> func,
                 func->getEntryPoint(), FuncBoundary, pageBoundary,
                 func->getEntryPoint(), func->getExitPoint());
 #endif
+            // Note: Prevent `jmp/br target` in range [ExitPoint, pageBoundary)
+            // from being inserted into func->BlockStrs. Because the ending of
+            // these basic blocks must exceed the pageBoundary.
+            pageBoundary = ExitPoint;
             break;
         }
         // meet function exit instruction
@@ -224,6 +228,8 @@ static void partition_helper(shared_ptr<JsonFunc> func,
             func->setExitPoint(pc);
             break;
         } else if (func_tu_inst_is_terminator(pins)) {
+            if (pc >= FuncBoundary)
+                break;
             // insert into BlockStrs
             func->addBlockStrs(pc);
         }
@@ -248,8 +254,17 @@ static void partition_helper(shared_ptr<JsonFunc> func,
     }
 
     // 2. insert jmp target into funcs blockStrs
-    uint64_t Boundary = std::min(FuncBoundary, pageBoundary);
+    uint64_t Boundary = -1;
+    if (FuncBoundary <= pageBoundary) {
+        Boundary = FuncBoundary;
+    } else {
+        Boundary = pageBoundary;
+        func->setFuncBoundary(pageBoundary);
+    }
+
     set<uint64_t> Visited;
+#define TARGETS_THRESHOLD 4096
+    bool targets_handle = true;
     while (!targets.empty()) {
         uint64_t target = targets.front();
         targets.pop_front();
@@ -272,25 +287,34 @@ static void partition_helper(shared_ptr<JsonFunc> func,
                 assert(res && "cs_disasm error");
                 entry = pins->address + pins->size;
                 // add target address
-                if (cs_insn_group(handle, pins, CS_GRP_JUMP) &&
+                if (targets_handle && cs_insn_group(handle, pins, CS_GRP_JUMP) &&
                     pins->detail->x86.operands[0].type == X86_OP_IMM) {
-                    if (Visited.count(pins->detail->x86.operands[0].imm) == 0)
+                    if (Visited.count(pins->detail->x86.operands[0].imm) == 0) {
                         targets.push_back(pins->detail->x86.operands[0].imm);
-                    if (inst_is_conditional_jmp(pins)) {
-                        if (Visited.count(entry) == 0)
+                        if (targets.size() > TARGETS_THRESHOLD)
+                            targets_handle = false;
+                    }
+                    if (targets_handle && inst_is_conditional_jmp(pins)) {
+                        if (Visited.count(entry) == 0) {
                             targets.push_back(entry);
+                            if (targets.size() > TARGETS_THRESHOLD)
+                                targets_handle = false;
+                        }
                     }
                 }
             } while (!func_tu_inst_is_terminator(pins) && entry < Boundary);
         }
     }
+#undef TARGETS_THRESHOLD
     /* func->dump(stderr); */
 }
 
 static void partition_funcs(vector<shared_ptr<JsonFunc>> &JsonFuncs) {
     std::deque<shared_ptr<JsonFunc>> WorkList;
+    set<uint64_t> Visited;
     for(size_t i = 0; i < JsonFuncs.size(); i++) {
         WorkList.push_back(JsonFuncs[i]);
+        Visited.insert(JsonFuncs[i]->getEntryPoint());
     }
     JsonFuncs.clear();
 
@@ -302,7 +326,10 @@ static void partition_funcs(vector<shared_ptr<JsonFunc>> &JsonFuncs) {
         partition_helper(JF, NewFuncs);
         // insert NewFuncs into WorkList
         for(size_t i = 0; i < NewFuncs.size(); i++) {
-            WorkList.push_back(NewFuncs[i]);
+            if (Visited.count(NewFuncs[i]->getEntryPoint()) == 0) {
+                WorkList.push_back(NewFuncs[i]);
+                Visited.insert(NewFuncs[i]->getEntryPoint());
+            }
         }
         // insert funcs partitioned into JsonFuncs
         JsonFuncs.push_back(JF);
@@ -340,7 +367,12 @@ static void calculate_func_boundary(vector<shared_ptr<JsonFunc>> &JsonFuncs) {
         uint64_t FuncBoundary = -1;
         if (i+1 < JsonFuncs.size())
             FuncBoundary = JsonFuncs[i+1]->getEntryPoint();
-        uint64_t Exit = *JsonFuncs[i]->name_rbegin();
+        uint64_t Exit = -1;
+        if (JsonFuncs[i]->getBlockStrs().empty()) {     // elf parser
+            Exit = JsonFuncs[i]->getEntryPoint();
+        } else {    // json file parser
+            Exit = *JsonFuncs[i]->name_rbegin();
+        }
         assert(Exit <= FuncBoundary);
         cs_insn *pins = nullptr;
         do {
@@ -455,12 +487,7 @@ void func_aot_gen(void) {
             fprintf(stderr, "+--------------------------------------------+\n");
             fprintf(stderr, "|               Guest Function               |\n");
             fprintf(stderr, "+--------------------------------------------+\n");
-            for (auto bit = TU->begin(); bit != TU->end(); ++bit) {
-                for (auto iit = bit->begin(); iit != bit->end(); ++iit) {
-                    fprintf(stderr, "0x%lx  %s\t%s\n", (*iit)->address,
-                            (*iit)->mnemonic, (*iit)->op_str);
-                }
-            }
+            TU->dump();
         }
         llvm_set_tu(Translator, TU);
         llvm_translate(Translator);

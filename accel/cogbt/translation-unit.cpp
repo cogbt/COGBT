@@ -21,8 +21,14 @@ GuestBlock *TranslationUnit::CreateAndAddGuestBlock() {
 }
 
 void TranslationUnit::dump() {
-    // TODO
-    exit(0);
+    fprintf(stderr, "TUEntry : 0x%lx\n", GetTUEntry());
+    fprintf(stderr, "TUSize : %ld\n", GetTUPCSize());
+    for (auto bit = this->begin(); bit != this->end(); ++bit) {
+        for (auto iit = bit->begin(); iit != bit->end(); ++iit) {
+            fprintf(stderr, "0x%lx  %s\t%s\n", (*iit)->address,
+                    (*iit)->mnemonic, (*iit)->op_str);
+        }
+    }
 }
 
 //===---------------------------------------------------------------------====//

@@ -1,3 +1,4 @@
+#include "qemu/osdep.h"
 #include "llvm-translator.h"
 #include "jit-eventlistener.h"
 #include "host-info.h"
@@ -199,10 +200,17 @@ void LLVMTranslator::TranslateFinalize() {
         Builder.SLPVectorize = true;
         Builder.populateFunctionPassManager(FPM);
         Builder.populateModulePassManager(MPM);
+        MPM.add(createAndiReductionPass());
+        MPM.add(createDeadCodeEliminationPass());
+        MPM.add(createPatternReductionPass());
+
         MPM.run(*Mod.get());
 #else
 #endif
+
+#ifdef CONFIG_COGBT_DEBUG
         Mod->print(dbgs(), nullptr);
+#endif
         EmitObjectCode();
     }
 }
@@ -212,6 +220,7 @@ void LLVMTranslator::Optimize() {
     legacy::FunctionPassManager FPM(Mod.get());
     /* legacy::PassManager MPM; */
 
+    // TODO: optimize populateModulePassManager
     FPM.add(createFlagReductionPass());
     FPM.add(createSextReductionPass());
     PassManagerBuilder Builder;
@@ -223,6 +232,7 @@ void LLVMTranslator::Optimize() {
     FPM.doInitialization();
     FPM.run(*TransFunc);
     FPM.doFinalization();
+    /* TransFunc->dump(); */
 
 #else
     legacy::FunctionPassManager FPM(Mod.get());

@@ -106,6 +106,8 @@ void parse_elf_format(const char* exec_path, vector<std::shared_ptr<JsonFunc>>
             /* WeakSyms.insert(syms[i].st_value); */
             continue;
         }
+
+        // Note: In this situation, function end location is imprecise.
         if (syms[i].st_size == 0)
             continue;
         /* if (WeakSyms.count(syms[i].st_value)) */
@@ -113,8 +115,12 @@ void parse_elf_format(const char* exec_path, vector<std::shared_ptr<JsonFunc>>
         if (Visited.count(syms[i].st_value) != 0)
             continue;
         Visited.insert(syms[i].st_value);
+
+        uint64_t FuncBoundary = -1;
+        if (syms[i].st_size != 0)
+            FuncBoundary = syms[i].st_value + syms[i].st_size;
         std::shared_ptr<JsonFunc> JF(new JsonFunc(string(strs + syms[i].st_name),
-                    syms[i].st_value, syms[i].st_value + syms[i].st_size));
+                    syms[i].st_value, FuncBoundary));
         JsonFuncs.push_back(JF); 
     }
 

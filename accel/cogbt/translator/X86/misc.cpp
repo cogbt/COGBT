@@ -2700,8 +2700,8 @@ void X86Translator::translate_vmovdqu32(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vmovdqu64(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovdqu64\n";
-    exit(-1);
+    /* dbgs() << "Untranslated instruction vmovdqu64\n"; */
+    CreateIllegalInstruction();
 }
 void X86Translator::translate_vmovdqu8(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmovdqu8\n";
