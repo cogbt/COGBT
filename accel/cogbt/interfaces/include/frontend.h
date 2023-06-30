@@ -5,9 +5,9 @@
 #include "function.h"
 
 enum JSON_MODE {
-    JSON_ORIGIN     = 1      ,   // from ghidra
+    JSON_GHIDRA     = 1      ,   // from ghidra
     JSON_FUNC_TXT   = 1 << 1 ,   // from cogbt, reusable
-    JSON_TRACE      = 1 << 2    // from trace collect
+    JSON_TRACE      = 1 << 2 ,   // from trace collect
 };
 
 

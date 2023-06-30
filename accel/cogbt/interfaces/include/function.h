@@ -55,10 +55,10 @@ class JsonFunc {
     string Name;
     uint64_t EntryPoint, ExitPoint = -1;
     uint64_t FuncBoundary = -1;     // guest function range
-    set<uint64_t> BlockStrs;
+    vector<uint64_t> BlockStrs;
     set<JsonBlock> Blocks;
 public:
-    JsonFunc(string Name, uint64_t EntryPoint, set<uint64_t> &BS)
+    JsonFunc(string Name, uint64_t EntryPoint, vector<uint64_t> &BS)
         : Name(Name), EntryPoint(EntryPoint), BlockStrs(std::move(BS)) {
         Blocks.clear();
     }
@@ -74,9 +74,17 @@ public:
     void setFuncBoundary(uint64_t FuncBoundary) {
         this->FuncBoundary = FuncBoundary;
     }
-    set<uint64_t> &getBlockStrs() { return BlockStrs; }
-    void addBlockStrs(uint64_t BlockStr) { BlockStrs.insert(BlockStr); }
+    vector<uint64_t> &getBlockStrs() { return BlockStrs; }
+    void addBlockStrs(uint64_t BlockStr) { BlockStrs.push_back(BlockStr); }
 
+    ///  formalize - Formalization JsonFunc, this involves two steps:
+    ///     1. Sort BlockStrs
+    ///     2. Calculate Blocks by using the sorted BlockStrs as the entry point
+    ///        of JsonBlock.
+    /// Note:
+    ///     1. The exit point of each JsonBlock is either a termination instruction
+    ///        or the entry point of next JsonBlock.
+    ///     2. The exit point of the last JsonBlock cannot exceed `Boundary`.
     void formalize(uint64_t Boundary);
 
     void addJsonBlock(const JsonBlock &JB) { Blocks.insert(JB); }
@@ -89,8 +97,8 @@ public:
     Iterator begin() { return Blocks.begin(); }
     Iterator end() { return Blocks.end(); }
 
-    using Name_Iterator = set<uint64_t>::iterator;
-    using Name_Reverse_Iterator = set<uint64_t>::reverse_iterator;
+    using Name_Iterator = vector<uint64_t>::iterator;
+    using Name_Reverse_Iterator = vector<uint64_t>::reverse_iterator;
     Name_Iterator name_begin() { return BlockStrs.begin(); }
     Name_Iterator name_end() { return BlockStrs.end(); }
     Name_Iterator name_erase(Name_Iterator it, Name_Iterator et) {
@@ -103,37 +111,7 @@ public:
         return EntryPoint < JF.EntryPoint;
     }
 
-    void dump(FILE *ff) const {
-        fprintf(ff, "\"0x%lx\": {\n", EntryPoint);
-        fprintf(ff, "\t\"Name\": \"%s\",\n", Name.c_str());
-        fprintf(ff, "\t\"EntryPoint\": \"0x%lx\",\n", EntryPoint);
-        if (ExitPoint)
-            fprintf(ff, "\t\"ExitPoint\": \"0x%lx\",\n", ExitPoint);
-        fprintf(ff, "\t\"FuncBoundary\": \"0x%lx\",\n", FuncBoundary);
-
-        fprintf(ff, "\t\"BlockStrs\": [\n");
-        for(set<uint64_t>::iterator it = BlockStrs.begin();
-                it != BlockStrs.end(); it++) {
-            if (it == (--BlockStrs.end()))
-                fprintf(ff, "\t\t\"0x%lx\"\n", *it);
-            else
-                fprintf(ff, "\t\t\"0x%lx\",\n", *it);
-        }
-        fprintf(ff, "\t],\n");
-
-        fprintf(ff, "\t\"Blocks\": [\n");
-        for(set<JsonBlock>::iterator it = Blocks.begin();
-                it != Blocks.end(); it++) {
-            if (it == (--Blocks.end()))
-                fprintf(ff, "\t\t\"[0x%lx, 0x%lx), %ld\"\n", it->getEntry(),
-                    it->getExit(), it->getInsNum());
-            else
-                fprintf(ff, "\t\t\"[0x%lx, 0x%lx), %ld\",\n", it->getEntry(),
-                    it->getExit(), it->getInsNum());
-        }
-        fprintf(ff, "\t]\n");
-        fprintf(ff, "}\n");
-    }
+    void dump(FILE *ff) const;
 };
 #else
 typedef struct JsonFunc JsonFunc;

@@ -75,17 +75,17 @@ void cogbt_function_init(void) {
 
 void JsonFunc::formalize(uint64_t Boundary) {
     assert(Blocks.empty());
+    sort(BlockStrs.begin(), BlockStrs.end());
     for (auto it = BlockStrs.begin(); it != BlockStrs.end(); ) {
         uint64_t Entry = *it;
         uint64_t NextEntry = ++it != BlockStrs.end() ? *it : Boundary;
-            /* std::min(ExitPoint, Boundary); */
         uint64_t Exit = Entry;
         uint64_t InsNum = 0;
-        cs_insn *pins = nullptr;
         // Note: If entry point is equal to exit point in one block, this block
         // is null. These cases always appear at the end of the JsonFunc.
-        if (Exit == NextEntry)
+        if (Entry == NextEntry)
             continue;
+        cs_insn *pins = nullptr;
         do {
             if (pins)
                 cs_free(pins, 1);
@@ -94,11 +94,42 @@ void JsonFunc::formalize(uint64_t Boundary) {
             ++InsNum;
             Exit = pins->address + pins->size;
         } while (!func_tu_inst_is_terminator(pins) && Exit < NextEntry);
-        /* } while (!func_tu_inst_is_terminator(pins)); */
+
         if (pins)
             cs_free(pins, 1);
         Blocks.insert(JsonBlock(Entry, Exit, InsNum));
     }
+}
+
+void JsonFunc::dump(FILE *ff) const {
+    fprintf(ff, "\"0x%lx\": {\n", EntryPoint);
+    fprintf(ff, "\t\"Name\": \"%s\",\n", Name.c_str());
+    fprintf(ff, "\t\"EntryPoint\": \"0x%lx\",\n", EntryPoint);
+    if (ExitPoint)
+        fprintf(ff, "\t\"ExitPoint\": \"0x%lx\",\n", ExitPoint);
+    fprintf(ff, "\t\"FuncBoundary\": \"0x%lx\",\n", FuncBoundary);
+
+    fprintf(ff, "\t\"BlockStrs\": [\n");
+    for(auto it = BlockStrs.begin(); it != BlockStrs.end(); it++) {
+        if (it == (--BlockStrs.end()))
+            fprintf(ff, "\t\t\"0x%lx\"\n", *it);
+        else
+            fprintf(ff, "\t\t\"0x%lx\",\n", *it);
+    }
+    fprintf(ff, "\t],\n");
+
+    fprintf(ff, "\t\"Blocks\": [\n");
+    for(set<JsonBlock>::iterator it = Blocks.begin();
+            it != Blocks.end(); it++) {
+        if (it == (--Blocks.end()))
+            fprintf(ff, "\t\t\"[0x%lx, 0x%lx), %ld\"\n", it->getEntry(),
+                it->getExit(), it->getInsNum());
+        else
+            fprintf(ff, "\t\t\"[0x%lx, 0x%lx), %ld\",\n", it->getEntry(),
+                it->getExit(), it->getInsNum());
+    }
+    fprintf(ff, "\t]\n");
+    fprintf(ff, "}\n");
 }
 
 static void GenTU(shared_ptr<JsonFunc> JF, TranslationUnit *TU) {
@@ -149,8 +180,8 @@ static void block_parse(const char *pf, vector<shared_ptr<JsonFunc>> &JsonFuncs)
         ss << std::hex << pc;
         std::string Name("0x" + ss.str());
         uint64_t FuncEntry = pc;
-        set<uint64_t> BlockStrs;
-        BlockStrs.insert(pc);
+        vector<uint64_t> BlockStrs;
+        BlockStrs.push_back(pc);
 
         cs_insn *pins = nullptr;
         uint64_t InsNum = 0;
@@ -189,11 +220,14 @@ static void partition_helper(shared_ptr<JsonFunc> func,
     // two pages boundary that current function can reach
     uint64_t pageBoundary = (pc & X86_PAGE_MASK) + X86_PAGE_SIZE * 2;
     // direct/conditional jmp target address
+    set<uint64_t> Visited;
     std::deque<uint64_t> targets;
 
     // 1. Partition by exit instrcutions and GPA range
     func->getBlockStrs().clear();
-    func->addBlockStrs(pc);
+    /* func->addBlockStrs(pc); */
+    targets.push_back(pc);
+    Visited.insert(pc);
 
     cs_insn *pins = nullptr;
     do {
@@ -205,9 +239,7 @@ static void partition_helper(shared_ptr<JsonFunc> func,
 
         // over GPA range
         if (pc >= pageBoundary) {
-            /* uint64_t ExitPoint = *func->name_rbegin(); */
-            /* func->getBlockStrs().erase(--func->name_end()); */
-            uint64_t ExitPoint = (pc == pageBoundary) ? pc : pins->address;
+            uint64_t ExitPoint =  (pc == pageBoundary) ? pc : pins->address;
             func->setExitPoint(ExitPoint);
             func->setFuncBoundary(ExitPoint);
             pc = ExitPoint;
@@ -227,8 +259,9 @@ static void partition_helper(shared_ptr<JsonFunc> func,
         if (func_tu_inst_is_funcexit(pins)) {
             // During a conditional jmp insert, pins->address may be inserted
             // into targets. We should remove it.
-            if (!targets.empty() && targets.back() == pins->address) {
+            if (!targets.empty() && targets.back() == pc) {
                 targets.pop_back();
+                Visited.erase(pins->address);
             }
             func->setExitPoint(pc);
             break;
@@ -236,14 +269,24 @@ static void partition_helper(shared_ptr<JsonFunc> func,
             if (pc >= FuncBoundary)
                 break;
             // insert into BlockStrs
-            func->addBlockStrs(pc);
+            /* func->addBlockStrs(pc); */
+            /* if (Visited.count(pc) == 0) { */
+            /*     Visited.insert(pc); */
+            /*     targets.push_back(pc); */
+            /* } */
         }
         // add target address
         if (cs_insn_group(handle, pins, CS_GRP_JUMP) &&
             pins->detail->x86.operands[0].type == X86_OP_IMM) {
-            targets.push_back(pins->detail->x86.operands[0].imm);
+            if (Visited.count(pins->detail->x86.operands[0].imm) == 0) {
+                Visited.insert(pins->detail->x86.operands[0].imm);
+                targets.push_back(pins->detail->x86.operands[0].imm);
+            }
             if (inst_is_conditional_jmp(pins)) {
-                targets.push_back(pc);
+                if (Visited.count(pc) == 0) {
+                    Visited.insert(pc);
+                    targets.push_back(pc);
+                }
             }
         }
     } while (pc < FuncBoundary);
@@ -267,19 +310,19 @@ static void partition_helper(shared_ptr<JsonFunc> func,
         func->setFuncBoundary(pageBoundary);
     }
 
-    set<uint64_t> Visited;
-#define TARGETS_THRESHOLD 4096
+#define TARGETS_THRESHOLD 1024
     bool targets_handle = true;
+    assert(Visited.size() <= TARGETS_THRESHOLD);
     while (!targets.empty()) {
         uint64_t target = targets.front();
         targets.pop_front();
-        Visited.insert(target);
         if (target < func->getEntryPoint())
             continue;
         if (target >= Boundary)
             continue;
 
-        func->getBlockStrs().insert(target);
+        func->addBlockStrs(target);
+        Visited.insert(target);
 
         uint64_t ExitPoint = func->getExitPoint();
         if (target >= ExitPoint) {
@@ -296,12 +339,14 @@ static void partition_helper(shared_ptr<JsonFunc> func,
                     pins->detail->x86.operands[0].type == X86_OP_IMM) {
                     if (Visited.count(pins->detail->x86.operands[0].imm) == 0) {
                         targets.push_back(pins->detail->x86.operands[0].imm);
+                        Visited.insert(pins->detail->x86.operands[0].imm);
                         if (targets.size() > TARGETS_THRESHOLD)
                             targets_handle = false;
                     }
                     if (targets_handle && inst_is_conditional_jmp(pins)) {
                         if (Visited.count(entry) == 0) {
                             targets.push_back(entry);
+                            Visited.insert(entry);
                             if (targets.size() > TARGETS_THRESHOLD)
                                 targets_handle = false;
                         }
@@ -364,21 +409,26 @@ int json_funcs_search(vector<shared_ptr<JsonFunc>> &JsonFuncs, uint64_t target) 
     return -1;
 }
 
-// Calculate the Function ExitPoint
+// Calculate the Function Boundary
 static void calculate_func_boundary(vector<shared_ptr<JsonFunc>> &JsonFuncs) {
     for(size_t i = 0; i < JsonFuncs.size(); i++) {
         if (JsonFuncs[i]->getFuncBoundary() != (uint64_t) -1)
             continue;
-        uint64_t FuncBoundary = -1;
+        uint64_t NextEntry = -1;
         if (i+1 < JsonFuncs.size())
-            FuncBoundary = JsonFuncs[i+1]->getEntryPoint();
+            NextEntry = JsonFuncs[i+1]->getEntryPoint();
         uint64_t Exit = -1;
-        if (JsonFuncs[i]->getBlockStrs().empty()) {     // elf parser
-            Exit = JsonFuncs[i]->getEntryPoint();
+        if (JsonFuncs[i]->getBlockStrs().empty()) {     // elf parser, current is invalid
+            Exit = JsonFuncs[i]->getExitPoint();
         } else {    // json file parser
             Exit = *JsonFuncs[i]->name_rbegin();
         }
-        assert(Exit <= FuncBoundary);
+        assert(Exit <= NextEntry);
+        if (Exit == NextEntry) {
+            JsonFuncs[i]->setFuncBoundary(Exit);
+            return;
+        }
+
         cs_insn *pins = nullptr;
         do {
             if (pins)
@@ -386,7 +436,7 @@ static void calculate_func_boundary(vector<shared_ptr<JsonFunc>> &JsonFuncs) {
             int res = cs_disasm(handle, (uint8_t *)Exit, 15, Exit, 1, &pins);
             assert(res && "cs_disasm error");
             Exit = pins->address + pins->size;
-        } while (!func_tu_inst_is_cfi(pins) && Exit < FuncBoundary);
+        } while (!func_tu_inst_is_cfi(pins) && Exit < NextEntry);
         JsonFuncs[i]->setFuncBoundary(Exit);
     }
 }
@@ -419,7 +469,7 @@ static void first_parse(const char* exec_path, vector<shared_ptr<JsonFunc>> &Jso
     char json_path[255];
     strcpy(json_path, exec_path);
     strcat(json_path, ".json");
-    json_parse(json_path, JsonFuncs, JSON_ORIGIN);
+    json_parse(json_path, JsonFuncs, JSON_GHIDRA);
     json_funcs_sort(JsonFuncs);
 #ifdef CONFIG_COGBT_DEBUG
     check_json_funcs(JsonFuncs, "json parse");
@@ -449,9 +499,9 @@ static void first_parse(const char* exec_path, vector<shared_ptr<JsonFunc>> &Jso
 }
 
 void func_tu_parse(const char *pf) {
-    // Lookup whether .json.txt file exists.
+    // 1. Lookup whether .json.txt file exists.
     // Existence indicates that it is not the first execution.
-    int func_txt_exist = false;
+    bool func_txt_exist = false;
     char json_txt_path[255];
     strcpy(json_txt_path, pf);
     strcat(json_txt_path, ".json.txt");
@@ -477,9 +527,9 @@ void func_tu_parse(const char *pf) {
 
     // 4. generate TU
     for (size_t i = 0; i < JsonFuncs.size(); i++) {
-        /* JsonFuncs[i]->dump(stdout); */
         TranslationUnit *TU = new TranslationUnit();
         GenTU(JsonFuncs[i], TU);
+        /* TU->dump(); */
         TUs.push_back(TU);
     }
 }
@@ -487,7 +537,8 @@ void func_tu_parse(const char *pf) {
 void func_aot_gen(void) {
     LLVMTranslator *Translator = create_llvm_translator(0, 0);
     llvm_initialize(Translator);
-    for (TranslationUnit *TU : TUs) {
+    for (size_t i = 0; i < TUs.size(); ++i) {
+        TranslationUnit *TU = TUs[i];
         if (debug_guest_inst(Translator)) {
             fprintf(stderr, "+--------------------------------------------+\n");
             fprintf(stderr, "|               Guest Function               |\n");

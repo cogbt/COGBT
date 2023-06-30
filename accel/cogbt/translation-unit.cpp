@@ -21,6 +21,7 @@ GuestBlock *TranslationUnit::CreateAndAddGuestBlock() {
 }
 
 void TranslationUnit::dump() {
+    fprintf(stderr, "================ TU details ==============\n");
     fprintf(stderr, "TUEntry : 0x%lx\n", GetTUEntry());
     fprintf(stderr, "TUSize : %ld\n", GetTUPCSize());
     for (auto bit = this->begin(); bit != this->end(); ++bit) {

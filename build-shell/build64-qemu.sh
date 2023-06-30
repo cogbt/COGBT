@@ -49,8 +49,8 @@ make_cmd() {
     cd build64-qemu
 
     if [ $make_configure -eq 1 ] ; then
-        ../configure --target-list=x86_64-linux-user --enable-debug \
-			--extra-ldflags=-lcapstone
+        ../configure --target-list=x86_64-linux-user \
+        --extra-ldflags=-lcapstone
     fi
 
     if [ ! -f "/usr/bin/ninja" ]; then

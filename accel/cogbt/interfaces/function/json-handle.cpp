@@ -14,14 +14,14 @@ using json = nlohmann::json;
 void json_parse(const char *pf, vector<std::shared_ptr<JsonFunc>> &JsonFuncs, 
         uint32_t mode) {
     // TODO:
-    if (mode & JSON_FUNC_TXT)
+    if (mode & JSON_FUNC_TXT || mode & JSON_TRACE)
         assert(JsonFuncs.empty());
 
     vector<std::shared_ptr<JsonFunc>> NewFuncs;
 
     // 1. Check whether json file exists.
     if (access(pf, F_OK) != 0) {
-        fprintf(stderr, "Open json file error!\n");
+        fprintf(stderr, "Open json file(%s) error!\n", pf);
         return;
     }
 
@@ -38,12 +38,14 @@ void json_parse(const char *pf, vector<std::shared_ptr<JsonFunc>> &JsonFuncs,
     for (auto& func: data) {
         string Name;
         uint64_t EntryPoint, ExitPoint = -1;
-        set<uint64_t> BlockStrs;
+        vector<uint64_t> BlockStrs;
         set<JsonBlock> Blocks;
 
         // parse Name
-        assert(func["Name"].is_string());
-        Name = func["Name"].get<string>();
+        if (!func["Name"].is_null()) {
+            assert(func["Name"].is_string());
+            Name = func["Name"].get<string>();
+        }
 
         // parse EntryPoint
         assert(func["EntryPoint"].is_string());
@@ -59,9 +61,9 @@ void json_parse(const char *pf, vector<std::shared_ptr<JsonFunc>> &JsonFuncs,
         // parse Blocks
         assert(func["Blocks"].is_array());
         for (auto &Block: func["Blocks"]) {
-            if (mode & JSON_ORIGIN) {
+            if (mode & JSON_GHIDRA) {
                 assert(Block.is_string());
-                BlockStrs.insert(stol(Block.get<string>(), nullptr, 16));
+                BlockStrs.push_back(stol(Block.get<string>(), nullptr, 16));
             }
 
             if (mode & JSON_FUNC_TXT) {
@@ -77,16 +79,35 @@ void json_parse(const char *pf, vector<std::shared_ptr<JsonFunc>> &JsonFuncs,
                 assert(Block["InsNum"].is_string());
                 InsNum = stol(Block["InsNum"].get<string>());
 
+                BlockStrs.push_back(Entry);
+                Blocks.insert(JsonBlock(Entry, Exit, InsNum));
+            }
+
+            if (mode & JSON_TRACE) {
+#if 1
+                assert(Block.is_string());
+                BlockStrs.push_back(stol(Block.get<string>(), nullptr, 16));
+#else
+                assert(Block.is_object());
+                uint64_t Entry = 0, Exit = -1, InsNum = 0;
+
+                assert(Block["Entry"].is_string());
+                Entry = stol(Block["Entry"].get<string>(), nullptr, 16);
+
+                assert(Block["Exit"].is_string());
+                Exit = stol(Block["Exit"].get<string>(), nullptr, 16);
+
+                assert(Block["InsNum"].is_string());
+                InsNum = stol(Block["InsNum"].get<string>());
+
                 BlockStrs.insert(Entry);
                 Blocks.insert(JsonBlock(Entry, Exit, InsNum)); 
+#endif
             }
         }
 
         // generate JsonFuncs
-        if (mode & JSON_ORIGIN) {
-            /* if (EntryPoint == 0x4063c5) { */
-            /*     fprintf(stdout, "debug\n"); */
-            /* } */
+        if (mode & JSON_GHIDRA) {
             int index = json_funcs_search(JsonFuncs, EntryPoint);
             if (index == -1) {  // not search
                 assert(BlockStrs.size() == 1);
@@ -103,7 +124,9 @@ void json_parse(const char *pf, vector<std::shared_ptr<JsonFunc>> &JsonFuncs,
         }
 
         if (mode == JSON_TRACE) {
-
+            std::shared_ptr<JsonFunc> JF(new JsonFunc(Name, EntryPoint, BlockStrs));
+            JF->addJsonBlocks(Blocks);
+            NewFuncs.push_back(JF);
         }
     }
 
