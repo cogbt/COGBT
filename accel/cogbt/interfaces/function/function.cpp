@@ -82,6 +82,10 @@ void JsonFunc::formalize(uint64_t Boundary) {
         uint64_t Exit = Entry;
         uint64_t InsNum = 0;
         cs_insn *pins = nullptr;
+        // Note: If entry point is equal to exit point in one block, this block
+        // is null. These cases always appear at the end of the JsonFunc.
+        if (Exit == NextEntry)
+            continue;
         do {
             if (pins)
                 cs_free(pins, 1);
@@ -200,11 +204,12 @@ static void partition_helper(shared_ptr<JsonFunc> func,
         pc = pins->address + pins->size;
 
         // over GPA range
-        if (pc > pageBoundary) {
-            uint64_t ExitPoint = *func->name_rbegin();
-            func->getBlockStrs().erase(--func->name_end());
+        if (pc >= pageBoundary) {
+            /* uint64_t ExitPoint = *func->name_rbegin(); */
+            /* func->getBlockStrs().erase(--func->name_end()); */
+            uint64_t ExitPoint = (pc == pageBoundary) ? pc : pins->address;
             func->setExitPoint(ExitPoint);
-            /* func->setFuncBoundary(ExitPoint); */
+            func->setFuncBoundary(ExitPoint);
             pc = ExitPoint;
 #ifdef CONFIG_COGBT_DEBUG
             fprintf(stderr, "TranslationUnit: [0x%lx ~ 0x%lx) over pageBoundary(0x%lx). "

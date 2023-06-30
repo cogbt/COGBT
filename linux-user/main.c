@@ -1038,7 +1038,7 @@ int main(int argc, char **argv, char **envp)
             /* fprintf(stderr, "register tb pc 0x%lx cs_base 0x%lx flags 0x%x cflags 0x%x\n", tb->pc,tb->cs_base,tb->flags,tb->cflags); //debug */
             aot_tb_register(tb, cpu);
             if (!tb_htable_lookup(cpu, tb->pc, 0, tb->flags, tb->cflags)) {
-                fprintf(stderr, "aot: tb_htable_lookup error!\n");
+                fprintf(stderr, "aot: (0x%lx)tb_htable_lookup error!\n", tb->pc);
                 exit(-1);
             }
         }
