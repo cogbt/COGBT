@@ -79,6 +79,11 @@ void X86Translator::InitializeFunction(StringRef Name) {
     // values into physical registers.
     ExitBB = BasicBlock::Create(Context, "exit", TransFunc);
     Builder.SetInsertPoint(ExitBB);
+
+    Builder.CreateCall(Mod->getFunction("epilogue"));
+    Builder.CreateUnreachable();
+
+#if 0
     for (int i = 0; i < GetNumGMRs(); i++) {
         // Load latest guest state values.
         Value *GMRVal = Builder.CreateLoad(Int64Ty, GMRStates[i]);
@@ -96,6 +101,7 @@ void X86Translator::InitializeFunction(StringRef Name) {
     Builder.CreateUnreachable();
 
     // Insert a default branch of EntryBB to ExitBB.
+#endif
     Builder.SetInsertPoint(EntryBB);
     Builder.CreateBr(ExitBB);
 
@@ -701,7 +707,7 @@ void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src0,
 
     X86InstHandler InstHdl(Inst);
     std::string Name;
-    switch (Inst->id) {
+    switch (Inst->guestInst->id) {
     case X86_INS_ADD:
     case X86_INS_XADD:
         Name = std::string("llvm.loongarch.x86add") +
@@ -845,7 +851,7 @@ void X86Translator::CalcEflag(GuestInst *Inst, Value *Dest, Value *Src0,
     case X86_INS_DAA:
     case X86_INS_DAS:
     default:
-        dbgs() << Inst->mnemonic << "\n";
+        dbgs() << Inst->guestInst->mnemonic << "\n";
         llvm_unreachable("Unhandled Inst");
     }
     // debug
@@ -902,13 +908,13 @@ void X86Translator::Translate() {
         /* } */
         InitializeBlock(block);
         for (auto &inst : block) {
-            CurrInst = inst;
-            switch (inst->id) {
+            CurrInst = &inst;
+            switch (inst.guestInst->id) {
             default:
                 assert(0 && "Unknown x86 opcode!");
 #define HANDLE_X86_INST(opcode, name)                                          \
     case opcode:                                                               \
-        translate_##name(inst);                                                \
+        translate_##name(&inst);                                               \
         break;
 #include "x86-inst.def"
             }
@@ -936,7 +942,7 @@ void X86Translator::Translate() {
             Builder.CreateBr(ExitBB);
         }
 #endif
-        X86InstHandler GuestInstHdl(*block.rbegin());
+        X86InstHandler GuestInstHdl(&*block.rbegin());
         if (aotmode == 2 && !GuestInstHdl.isTerminator()) {
             std::stringstream ss;
             ss << std::hex << GuestInstHdl.getNextPC();
@@ -957,6 +963,7 @@ void X86Translator::Translate() {
                 BindPhysicalReg();
                 Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {NextPC, Off});
                 AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());
+                /* Builder.CreateBr(ExitBB); */
                 Builder.CreateCall(Mod->getFunction("epilogue"));
                 Builder.CreateUnreachable();
             }

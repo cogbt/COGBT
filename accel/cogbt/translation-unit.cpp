@@ -1,11 +1,12 @@
 #include "translation-unit.h"
+#include "x86-inst-handler.h"
 #include <cstdlib>
 
 //===---------------------------------------------------------------------====//
 // GuestBlock implementation
 //===---------------------------------------------------------------------====//
-void GuestBlock::AddGuestInst(GuestInst *Inst) {
-    GuestInsts.push_back(Inst);
+void GuestBlock::AddGuestInst(GuestInst Inst) {
+    GuestInsts.emplace_back(Inst);
 }
 
 //===---------------------------------------------------------------------====//
@@ -26,8 +27,10 @@ void TranslationUnit::dump() {
     fprintf(stderr, "TUSize : %ld\n", GetTUPCSize());
     for (auto bit = this->begin(); bit != this->end(); ++bit) {
         for (auto iit = bit->begin(); iit != bit->end(); ++iit) {
-            fprintf(stderr, "0x%lx  %s\t%s\n", (*iit)->address,
-                    (*iit)->mnemonic, (*iit)->op_str);
+            GuestInst *inst = &(*iit);
+            X86InstHandler InstHdl(inst);
+            fprintf(stderr, "0x%lx  %s\t%s\n", InstHdl.getPC(),
+                    InstHdl.getMnemonic(), InstHdl.getOPStr());
         }
     }
 }
@@ -45,7 +48,7 @@ void tu_init(TranslationUnit *TU) {
     TU->Clear();
 }
 
-void guest_block_add_inst(GuestBlock *Block, GuestInst *Inst) {
+void guest_block_add_inst(GuestBlock *Block, GuestInst Inst) {
     Block->AddGuestInst(Inst);
 }
 

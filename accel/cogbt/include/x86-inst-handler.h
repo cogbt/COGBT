@@ -4,6 +4,7 @@
 #include "translation-unit.h"
 #include "x86-opnd-handler.h"
 #include <capstone.h>
+#include <sstream>
 
 extern "C" bool guest_inst_is_terminator(cs_insn *insn);
 extern "C" int aotmode;
@@ -49,12 +50,12 @@ public:
     /* } */
 
     X86Operand *getOpnd(int idx) {
-        assert(idx < (int)Inst->detail->x86.op_count);
-        return &Inst->detail->x86.operands[idx];
+        assert(idx < (int)Inst->guestInst->detail->x86.op_count);
+        return &Inst->guestInst->detail->x86.operands[idx];
     }
 
     int getOpndNum() {
-        return Inst->detail->x86.op_count;
+        return Inst->guestInst->detail->x86.op_count;
     }
 
     int getOpndSize() {
@@ -63,11 +64,11 @@ public:
     }
 
     uint64_t getPC() {
-        return Inst->address;
+        return Inst->guestInst->address;
     }
 
     uint64_t getNextPC() {
-        return Inst->address + Inst->size;
+        return Inst->guestInst->address + Inst->guestInst->size;
     }
 
     uint64_t getTargetPC() {
@@ -78,21 +79,41 @@ public:
 
     bool isTerminator() {
         if (aotmode == 2)
-            return func_tu_inst_is_terminator(Inst);
+            return func_tu_inst_is_terminator(Inst->guestInst);
         else
-            return guest_inst_is_terminator(Inst);
+            return guest_inst_is_terminator(Inst->guestInst);
     }
 
     // Whether this instruction has prefix rep.
     bool hasRep() {
-        return Inst->detail->x86.prefix[0] != 0;
+        return Inst->guestInst->detail->x86.prefix[0] != 0;
     }
     bool hasRepe() {
-        return Inst->detail->x86.prefix[0] == X86_PREFIX_REPE;
+        return Inst->guestInst->detail->x86.prefix[0] == X86_PREFIX_REPE;
     }
     bool hasRepne() {
-        return Inst->detail->x86.prefix[0] == X86_PREFIX_REPNE;
+        return Inst->guestInst->detail->x86.prefix[0] == X86_PREFIX_REPNE;
     }
+
+    // trace
+    unsigned int getNumOfTraceTargets() {
+       return Inst->getNumOfTraceTargets();
+    }
+
+    std::string getTraceTarget(int index) {
+        std::stringstream ss;
+        ss << std::hex << Inst->getTraceTarget(index);
+        return ss.str();
+    }
+
+    const char* getMnemonic() {
+        return Inst->guestInst->mnemonic;
+    }
+
+    const char* getOPStr() {
+        return Inst->guestInst->op_str;
+    }
+
 private:
     GuestInst *Inst;
     static const char PFTable[256];

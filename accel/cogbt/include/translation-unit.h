@@ -9,44 +9,73 @@
 #include <cassert>
 #include "capstone.h"
 using std::vector;
-using GuestInst = cs_insn;
+/* using GuestInst = cs_insn; */
 using GuestPC = uint64_t;
+extern "C" bool guest_inst_is_terminator(cs_insn *inst);
 
 #else
 
 #include <stdint.h>
 #include <assert.h>
-typedef struct cs_insn GuestInst;
+/* typedef struct cs_insn GuestInst; */
 typedef uint64_t GuestPC;
 
 #endif // include headfile
+
+
+#ifdef __cplusplus
+class GuestInst {
+private:
+    vector<uint64_t> traceTargets;
+public:
+    cs_insn *guestInst;
+
+    GuestInst(cs_insn* inst) : guestInst(inst) {}
+    int getNumOfTraceTargets() { return traceTargets.size(); }
+    void addTraceTarget(uint64_t target) { traceTargets.push_back(target); }
+    bool searchTraceTarget(uint64_t target) {
+        for (size_t i = 0; i < traceTargets.size(); ++i) {
+            if (traceTargets[i] == target)
+                return true;
+        }
+        return false;
+    }
+    uint64_t getTraceTarget(int index) {
+        assert(index < (int) traceTargets.size());
+        return traceTargets[index];
+    }
+
+};
+#else
+typedef struct GuestInst GuestInst;
+#endif // class GuestInst
 
 //===---------------------------------------------------------------------====//
 // GuestBlock definition
 //===---------------------------------------------------------------------====//
 #ifdef __cplusplus
 class GuestBlock {
-    vector<GuestInst *> GuestInsts;
+    vector<GuestInst> GuestInsts;
 public:
-    void AddGuestInst(GuestInst *Inst);
+    void AddGuestInst(GuestInst Inst);
 
     /// All APIs for GuestInst should be registered below
     /// GetBlockEntry - Get block entry pc.
     uint64_t GetBlockEntry() {
         assert(!GuestInsts.empty() && "Block shouldn't be empty!");
-        return GuestInsts[0]->address;
+        return GuestInsts[0].guestInst->address;
     }
 
     /// GetBlockPCSize - Get guest block pc size(last pc - first pc).
     size_t GetBlockPCSize() {
         assert(!GuestInsts.empty() && "Block shouldn't be empty!");
-        return GuestInsts.back()->address + GuestInsts.back()->size -
-               GetBlockEntry();
+        return GuestInsts.back().guestInst->address +
+            GuestInsts.back().guestInst->size - GetBlockEntry();
     }
 
     /// @name All APIs about iterators.
-    using iteraotr = vector<GuestInst *>::iterator;
-    using reverse_iterator = vector<GuestInst *>::reverse_iterator;
+    using iteraotr = vector<GuestInst>::iterator;
+    using reverse_iterator = vector<GuestInst>::reverse_iterator;
 
     iteraotr begin() { return GuestInsts.begin(); }
     iteraotr end() { return GuestInsts.end(); }
@@ -54,6 +83,11 @@ public:
     reverse_iterator rend() { return GuestInsts.rend(); }
     size_t size() { return GuestInsts.size(); }
     bool empty() { return GuestInsts.empty(); }
+
+    void addTraceTarget(uint64_t target) {
+        assert(guest_inst_is_terminator(GuestInsts.rend()->guestInst));
+        GuestInsts.rend()->addTraceTarget(target);
+    }
 };
 #else
 typedef struct GuestBlock GuestBlock;
@@ -89,13 +123,13 @@ public:
     /// GetTUEntry - Get the first pc of TU.
     uint64_t GetTUEntry() {
         assert(!GuestBlocks.empty() && "GuestBlocks shouldn't be empty!");
-        return (*GuestBlocks[0].begin())->address;
+        return GuestBlocks[0].begin()->guestInst->address;
     }
 
     /// GetTUExit - Get the last pc of TU.
     uint64_t GetTUExit() {
         assert(!GuestBlocks.empty() && "GuestBlocks shouldn't be empty!");
-        return (*GuestBlocks.rbegin()->rbegin())->address;
+        return GuestBlocks.rbegin()->rbegin()->guestInst->address;
     }
 
     /// GetTUPCSize - Get size of target code for this TranslationUnit.
@@ -139,7 +173,7 @@ extern "C" {
 TranslationUnit *tu_get(void);
 void tu_init(TranslationUnit *TU);
 
-void guest_block_add_inst(GuestBlock *Block, GuestInst *Inst);
+void guest_block_add_inst(GuestBlock *Block, GuestInst Inst);
 GuestBlock *guest_tu_create_block(TranslationUnit *TU);
 
 #ifdef __cplusplus
