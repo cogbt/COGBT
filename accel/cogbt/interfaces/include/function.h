@@ -56,7 +56,7 @@ class JsonFunc {
     uint64_t EntryPoint, ExitPoint = -1;
     uint64_t FuncBoundary = -1;     // guest function range
     vector<uint64_t> BlockStrs;
-    set<JsonBlock> Blocks;
+    vector<JsonBlock> Blocks;
 public:
     JsonFunc(string Name, uint64_t EntryPoint, vector<uint64_t> &BS)
         : Name(Name), EntryPoint(EntryPoint), BlockStrs(std::move(BS)) {
@@ -87,13 +87,13 @@ public:
     ///     2. The exit point of the last JsonBlock cannot exceed `Boundary`.
     void formalize(uint64_t Boundary);
 
-    void addJsonBlock(const JsonBlock &JB) { Blocks.insert(JB); }
-    void addJsonBlocks(const set<JsonBlock> &JBs) {
+    void addJsonBlock(const JsonBlock &JB) { Blocks.push_back(JB); }
+    void addJsonBlocks(const vector<JsonBlock> &JBs) {
         for (auto JB : JBs)
             addJsonBlock(JB);
     }
 
-    using Iterator = std::set<JsonBlock>::iterator;
+    using Iterator = std::vector<JsonBlock>::iterator;
     Iterator begin() { return Blocks.begin(); }
     Iterator end() { return Blocks.end(); }
 

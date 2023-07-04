@@ -39,7 +39,7 @@ void json_parse(const char *pf, vector<std::shared_ptr<JsonFunc>> &JsonFuncs,
         string Name;
         uint64_t EntryPoint, ExitPoint = -1;
         vector<uint64_t> BlockStrs;
-        set<JsonBlock> Blocks;
+        vector<JsonBlock> Blocks;
 
         // parse Name
         if (!func["Name"].is_null()) {
@@ -80,7 +80,7 @@ void json_parse(const char *pf, vector<std::shared_ptr<JsonFunc>> &JsonFuncs,
                 InsNum = stol(Block["InsNum"].get<string>());
 
                 BlockStrs.push_back(Entry);
-                Blocks.insert(JsonBlock(Entry, Exit, InsNum));
+                Blocks.push_back(JsonBlock(Entry, Exit, InsNum));
             }
 
             if (mode & JSON_TRACE) {

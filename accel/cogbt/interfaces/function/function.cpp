@@ -97,7 +97,7 @@ void JsonFunc::formalize(uint64_t Boundary) {
 
         if (pins)
             cs_free(pins, 1);
-        Blocks.insert(JsonBlock(Entry, Exit, InsNum));
+        Blocks.push_back(JsonBlock(Entry, Exit, InsNum));
     }
 }
 
@@ -119,8 +119,7 @@ void JsonFunc::dump(FILE *ff) const {
     fprintf(ff, "\t],\n");
 
     fprintf(ff, "\t\"Blocks\": [\n");
-    for(set<JsonBlock>::iterator it = Blocks.begin();
-            it != Blocks.end(); it++) {
+    for(auto it = Blocks.begin(); it != Blocks.end(); it++) {
         if (it == (--Blocks.end()))
             fprintf(ff, "\t\t\"[0x%lx, 0x%lx), %ld\"\n", it->getEntry(),
                 it->getExit(), it->getInsNum());
