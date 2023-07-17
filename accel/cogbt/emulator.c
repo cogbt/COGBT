@@ -74,19 +74,7 @@ struct KeyVal SymTable[] = {
     {"helper_psrldq_xmm", helper_psrldq_xmm_wrapper},
     {"helper_fcomi_ST0_FT0_cogbt", helper_fcomi_ST0_FT0_wrapper},
     {"helper_fucomi_ST0_FT0_cogbt", helper_fucomi_ST0_FT0_wrapper},
-#define SSE_HELPER_CMP_BINDING(name) \
-    {"helper_" #name "ps", helper_ ## name ## ps_wrapper}, \
-    {"helper_" #name "ss", helper_ ## name ## ss_wrapper}, \
-    {"helper_" #name "pd", helper_ ## name ## pd_wrapper}, \
-    {"helper_" #name "sd", helper_ ## name ## sd_wrapper},
-    SSE_HELPER_CMP_BINDING(cmpeq)
-    SSE_HELPER_CMP_BINDING(cmplt)
-    SSE_HELPER_CMP_BINDING(cmple)
-    SSE_HELPER_CMP_BINDING(cmpunord)
-    SSE_HELPER_CMP_BINDING(cmpneq)
-    SSE_HELPER_CMP_BINDING(cmpnlt)
-    SSE_HELPER_CMP_BINDING(cmpnle)
-    SSE_HELPER_CMP_BINDING(cmpord)
+    {"helper_rdrand_cogbt", helper_rdrand_cogbt},
 
     {"helper_raise_syscall", helper_raise_syscall},
     {"helper_cogbt_lookup_tb_ptr", helper_cogbt_lookup_tb_ptr},
@@ -156,6 +144,10 @@ int GuestSegOffset(int seg_idx) {
 
 int GuestEIPOffset(void) {
     return offsetof(CPUX86State, eip);
+}
+
+int GuestLoadbiasOffset(void) {
+    return offsetof(CPUX86State, elf_loadbias);
 }
 
 int GuestZMMRegOffset(int reg_idx, int reg_start_byte) {

@@ -33,7 +33,7 @@ void parse_elf_format(const char* exec_path, vector<std::shared_ptr<JsonFunc>>
     int fd = open(exec_path, O_RDONLY, 0);
     if (fd < 0) {
         perror("open file failed\n");
-        return;
+        exit(-1);
     }
 
     /* 1. read ELF header */
@@ -44,9 +44,8 @@ void parse_elf_format(const char* exec_path, vector<std::shared_ptr<JsonFunc>>
     }
 
     /* 2. check if is an ELF shared object or exec */
-    // (ehdr->e_type == ET_DYN)
     if (!((memcmp(ehdr->e_ident, ELFMAG, SELFMAG) == 0) && 
-                (ehdr->e_type == ET_EXEC))) {
+                (ehdr->e_type == ET_EXEC || ehdr->e_type == ET_DYN))) {
         fprintf(stderr, "not a exec object\n");
         goto give_up;
     }
@@ -65,10 +64,10 @@ void parse_elf_format(const char* exec_path, vector<std::shared_ptr<JsonFunc>>
         fprintf(stderr, "find no symbol table\n");
         goto give_up;
     }
-    if (find_sym_table(shdr, shnum, SHT_DYNSYM, &sym_idx, &str_idx)) {
-        fprintf(stderr, "The programs dynamically linked are not supported.\n");
-        goto give_up;
-    }
+    /* if (find_sym_table(shdr, shnum, SHT_DYNSYM, &sym_idx, &str_idx)) { */
+    /*     fprintf(stderr, "The programs dynamically linked are not supported.\n"); */
+    /*     goto give_up; */
+    /* } */
 
     /* 4.1 read symbol string */
     secsz = shdr[str_idx].sh_size;

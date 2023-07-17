@@ -18,6 +18,7 @@ int GuestStateOffset(int Idx);
 int GuestEflagOffset(void);
 int GuestSegOffset(int SegIdx);
 int GuestEIPOffset(void);
+int GuestLoadbiasOffset(void);
 int GuestXMMT0Offset(void);
 int GuestMMXT0Offset(void);
 int GuestXMMOffset(int idx);

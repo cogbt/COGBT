@@ -1,6 +1,25 @@
 #include "emulator.h"
 #include "x86-translator.h"
 
+#define GEN_CMPSS(name) {\
+    X86InstHandler InstHdl(Inst);\
+    X86OperandHandler Opnd0(InstHdl.getOpnd(0));\
+    X86OperandHandler Opnd1(InstHdl.getOpnd(1));\
+    FunctionType *FTy =\
+        FunctionType::get(VoidTy, {Int8PtrTy, Int8PtrTy, Int8PtrTy}, false);\
+    Value *SrcXMMOff = nullptr;\
+    if (Opnd0.isMem()) {\
+        Value *Src = LoadOperand(InstHdl.getOpnd(0));\
+        FlushXMMT0(Src, Int32PtrTy);\
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMT0Offset());\
+    } else\
+        SrcXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd0.GetXMMID()));\
+    Value *DestXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd1.GetXMMID()));\
+    Value *SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcXMMOff);\
+    Value *DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestXMMOff);\
+    CallFunc(FTy, name, {CPUEnv, DestAddr, SrcAddr});\
+}
+
 void X86Translator::translate_addsubpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction addsubpd\n";
     exit(-1);
@@ -1571,12 +1590,18 @@ void X86Translator::translate_rdpmc(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_rdrand(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction rdrand\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    FunctionType *Fy = FunctionType::get(Int64Ty, Int8PtrTy, false);
+    Value *Random = CallFunc(Fy, "helper_rdrand_cogbt", CPUEnv);
+    StoreOperand(Random, InstHdl.getOpnd(0));
+    ReloadGMRValue(X86Config::EFLAG);
 }
 void X86Translator::translate_rdseed(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction rdseed\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    FunctionType *Fy = FunctionType::get(Int64Ty, Int8PtrTy, false);
+    Value *Random = CallFunc(Fy, "helper_rdrand_cogbt", CPUEnv);
+    StoreOperand(Random, InstHdl.getOpnd(0));
+    ReloadGMRValue(X86Config::EFLAG);
 }
 
 void X86Translator::translate_rdtsc(GuestInst *Inst) {
@@ -4292,36 +4317,48 @@ void X86Translator::translate_cmpss(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_cmpeqss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpeqss\n";
-    exit(-1);
+    GEN_CMPSS("helper_cmpeqss")
 }
 void X86Translator::translate_cmpltss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpltss\n";
-    exit(-1);
+    GEN_CMPSS("helper_cmpltss")
+    /* X86InstHandler InstHdl(Inst); */
+    /* X86OperandHandler Opnd0(InstHdl.getOpnd(0)); */
+    /* X86OperandHandler Opnd1(InstHdl.getOpnd(1)); */
+
+    /* FunctionType *FTy = */
+    /*     FunctionType::get(VoidTy, {Int8PtrTy, Int8PtrTy, Int8PtrTy}, false); */
+
+    /* // Get Src operand zmmreg offset in CPUX86State */
+    /* Value *SrcXMMOff = nullptr; */
+    /* if (Opnd0.isMem()) { */
+    /*     Value *Src = LoadOperand(InstHdl.getOpnd(0)); */
+    /*     FlushXMMT0(Src, Int32PtrTy); */
+    /*     SrcXMMOff = ConstInt(Int64Ty, GuestXMMT0Offset()); */
+    /* } else */
+    /*     SrcXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd0.GetXMMID())); */
+
+    /* Value *DestXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd1.GetXMMID())); */
+    /* Value *SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcXMMOff); */
+    /* Value *DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestXMMOff); */
+    /* CallFunc(FTy, "helper_cmpltss", {CPUEnv, DestAddr, SrcAddr}); */
 }
 void X86Translator::translate_cmpless(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpless\n";
-    exit(-1);
+    GEN_CMPSS("helper_cmpless")
 }
 void X86Translator::translate_cmpunordss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpunordss\n";
-    exit(-1);
+    GEN_CMPSS("helper_cmpunordss")
 }
 void X86Translator::translate_cmpneqss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpneqss\n";
-    exit(-1);
+    GEN_CMPSS("helper_cmpneqss")
 }
 void X86Translator::translate_cmpnltss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpnltss\n";
-    exit(-1);
+    GEN_CMPSS("helper_cmpnltss")
 }
 void X86Translator::translate_cmpnless(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpnless\n";
-    exit(-1);
+    GEN_CMPSS("helper_cmpnless")
 }
 void X86Translator::translate_cmpordss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpordss\n";
-    exit(-1);
+    GEN_CMPSS("helper_cmpordss")
 }
 void X86Translator::translate_cmpps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cmpps\n";

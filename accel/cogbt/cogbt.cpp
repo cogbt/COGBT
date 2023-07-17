@@ -123,7 +123,7 @@ void cogbt_jmp_cache_init(uint64_t start_code, uint64_t end_code) {
 void cogbt_jmp_cache_add(uint64_t target_pc, uint64_t host_pc) {
     if (target_pc < cogbt_jmp_cache_start_code ||
             target_pc >= cogbt_jmp_cache_end_code) {
-        fprintf(stderr, "error pc, %lx, %lx, %lx\n", target_pc,
+        fprintf(stderr, "error pc, 0x%lx is not in [0x%lx, 0x%lx)\n", target_pc,
                 cogbt_jmp_cache_start_code, cogbt_jmp_cache_end_code);
         exit(-1);
     }

@@ -364,7 +364,7 @@ void X86Translator::translate_movmskpd(GuestInst *Inst) {
     FunctionType *FTy =
         FunctionType::get(Int32Ty, {Int8PtrTy, Int8PtrTy}, false);
 
-    // Get Src operand zmmreg offset in CPUX86State
+    // Get Src operand xmmreg offset in CPUX86State
     assert(Opnd0.isXMM());
     Value *SrcXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd0.GetXMMID()));
 
@@ -374,8 +374,20 @@ void X86Translator::translate_movmskpd(GuestInst *Inst) {
     StoreOperand(Src, InstHdl.getOpnd(1));
 }
 void X86Translator::translate_movmskps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movmskps\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler Opnd0(InstHdl.getOpnd(0));
+
+    FunctionType *FTy =
+        FunctionType::get(Int32Ty, {Int8PtrTy, Int8PtrTy}, false);
+
+    // Get Src operand xmmreg offset in CPUX86State
+    assert(Opnd0.isXMM());
+    Value *SrcXMMOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd0.GetXMMID()));
+
+    Value *SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcXMMOff);
+    Value *Src = CallFunc(FTy, "helper_movmskps", {CPUEnv, SrcAddr});
+    Src = Builder.CreateZExt(Src, Int64Ty);
+    StoreOperand(Src, InstHdl.getOpnd(1));
 }
 void X86Translator::translate_movntdqa(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movntdqa\n";

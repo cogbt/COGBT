@@ -1704,6 +1704,7 @@ TranslationBlock *tb_gen_code(CPUState *cpu,
 }
 
 #ifdef CONFIG_COGBT
+extern abi_ulong elf_bias;
 void aot_tb_register(TranslationBlock *tb, CPUState *cpu);
 void aot_tb_register(TranslationBlock *tb, CPUState *cpu)
 {

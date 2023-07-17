@@ -1505,6 +1505,8 @@ typedef struct CPUArchState {
                         flags and DF are set to zero because they are
                         stored elsewhere */
 
+    /* Temporary Solution: bias for shared files in memory */
+    target_ulong elf_loadbias;
     /* emulator internal eflags handling */
     target_ulong cc_dst;
     target_ulong cc_src;

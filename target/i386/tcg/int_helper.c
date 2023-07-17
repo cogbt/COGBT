@@ -493,3 +493,22 @@ target_ulong HELPER(rdrand)(CPUX86State *env)
     env->cc_src = CC_C;
     return ret;
 }
+#ifdef CONFIG_COGBT
+target_ulong HELPER(rdrand_cogbt)(CPUX86State* env) {
+    Error *err = NULL;
+    target_ulong ret;
+
+    if (qemu_guest_getrandom(&ret, sizeof(ret), &err) < 0) {
+        qemu_log_mask(LOG_UNIMP, "rdrand: Crypto failure: %s",
+                      error_get_pretty(err));
+        error_free(err);
+        /* Failure clears CF and all other flags, and returns 0.  */
+        env->eflags = 0;
+        return 0;
+    }
+
+    /* Success sets CF and clears all others.  */
+    env->eflags = CC_C;
+    return ret;
+}
+#endif

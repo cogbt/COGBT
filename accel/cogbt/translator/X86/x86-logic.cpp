@@ -57,15 +57,30 @@ void X86Translator::translate_shr(GuestInst *Inst) {
 
 void X86Translator::translate_shl(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
-    Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
-    Value *Src1 = LoadOperand(InstHdl.getOpnd(1));
+    int OpndNum = InstHdl.getOpndNum();
+    assert(OpndNum == 1 || OpndNum == 2);
+
+    Value *Src0 = nullptr;  // shift opnd
+    Value *Src1 = nullptr;  // src/dest opnd
+    if (OpndNum == 2) {
+        Src0 = LoadOperand(InstHdl.getOpnd(0));
+        Src1 = LoadOperand(InstHdl.getOpnd(1));
+    } else {
+        Src0 = LoadGMRValue(Int8Ty, X86Config::ECX);
+        Src1 = LoadOperand(InstHdl.getOpnd(0));
+    }
     int Src0Size = Src0->getType()->getIntegerBitWidth();
     int Src1Size = Src1->getType()->getIntegerBitWidth();
     if (Src0Size < Src1Size) {
         Src0 = Builder.CreateZExt(Src0, Src1->getType());
     }
+
     Value *Dest = Builder.CreateShl(Src1, Src0);
-    StoreOperand(Dest, InstHdl.getOpnd(1));
+    /* StoreOperand(Dest, InstHdl.getOpnd(1)); */
+    if (OpndNum == 2)
+        StoreOperand(Dest, InstHdl.getOpnd(1));
+    else
+        StoreOperand(Dest, InstHdl.getOpnd(0));
     CalcEflag(Inst, Dest, Src0, Src1);
 }
 

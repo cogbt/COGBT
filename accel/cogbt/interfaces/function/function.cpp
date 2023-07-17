@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <sstream>
 
+extern "C" uint64_t elf_loadbias;
+
 using std::unique_ptr;
 using std::shared_ptr;
 
@@ -89,7 +91,7 @@ void JsonFunc::formalize(uint64_t Boundary) {
         do {
             if (pins)
                 cs_free(pins, 1);
-            int res = cs_disasm(handle, (uint8_t *)Exit, 15, Exit, 1, &pins);
+            int res = cs_disasm(handle, (uint8_t *)(Exit + elf_loadbias), 15, Exit, 1, &pins);
             assert(res && "cs_disasm error");
             ++InsNum;
             Exit = pins->address + pins->size;
@@ -134,12 +136,14 @@ void JsonFunc::dump(FILE *ff) const {
 static void GenTU(shared_ptr<JsonFunc> JF, TranslationUnit *TU) {
     tu_init(TU);
     for (auto it = JF->begin(); it != JF->end(); ++it) {
-        uint64_t Entry = it->getEntry();
+        uint64_t Entry = it->getEntry() + elf_loadbias;
         uint64_t InsNum = it->getInsNum();
 
         cs_insn **insns = (cs_insn **)calloc(InsNum, sizeof(cs_insn *));
 
         for (int i = 0; i < (int)InsNum; i++) {
+            /* int res = cs_disasm(handle, (const uint8_t *)(Entry + elf_loadbias), 15, Entry, 1, */
+            /*                     insns + i); */
             int res = cs_disasm(handle, (const uint8_t *)Entry, 15, Entry, 1,
                                 insns + i);
             if (res == 0) {
@@ -148,7 +152,7 @@ static void GenTU(shared_ptr<JsonFunc> JF, TranslationUnit *TU) {
             }
             Entry = insns[i]->address + insns[i]->size;
         }
-        assert(Entry == it->getExit());
+        assert(Entry == it->getExit() + elf_loadbias);
         GuestBlock *block = guest_tu_create_block(TU);
         for (int i = 0; i < (int)InsNum; i++) {
             guest_block_add_inst(block, insns[i]);
@@ -187,7 +191,7 @@ static void block_parse(const char *pf, vector<shared_ptr<JsonFunc>> &JsonFuncs)
         do {
             if (pins)
                 cs_free(pins, 1);
-            int res = cs_disasm(handle, (uint8_t *)pc, 15, pc, 1, &pins);
+            int res = cs_disasm(handle, (uint8_t *)(pc + elf_loadbias), 15, pc, 1, &pins);
             assert(res && "cs_disasm error");
             ++InsNum;
             pc = pins->address + pins->size;
@@ -232,7 +236,7 @@ static void partition_helper(shared_ptr<JsonFunc> func,
     do {
         if (pins)
             cs_free(pins, 1);
-        int res = cs_disasm(handle, (uint8_t *)pc, 15, pc, 1, &pins);
+        int res = cs_disasm(handle, (uint8_t *)(pc + elf_loadbias), 15, pc, 1, &pins);
         assert(res && "cs_disasm error");
         pc = pins->address + pins->size;
 
@@ -330,7 +334,7 @@ static void partition_helper(shared_ptr<JsonFunc> func,
             do {
                 if (pins)
                     cs_free(pins, 1);
-                int res = cs_disasm(handle, (uint8_t *)entry, 15, entry, 1, &pins);
+                int res = cs_disasm(handle, (uint8_t *)(entry + elf_loadbias), 15, entry, 1, &pins);
                 assert(res && "cs_disasm error");
                 entry = pins->address + pins->size;
                 // add target address
@@ -432,7 +436,7 @@ static void calculate_func_boundary(vector<shared_ptr<JsonFunc>> &JsonFuncs) {
         do {
             if (pins)
                 cs_free(pins, 1);
-            int res = cs_disasm(handle, (uint8_t *)Exit, 15, Exit, 1, &pins);
+            int res = cs_disasm(handle, (uint8_t *)(Exit + elf_loadbias), 15, Exit, 1, &pins);
             assert(res && "cs_disasm error");
             Exit = pins->address + pins->size;
         } while (!func_tu_inst_is_cfi(pins) && Exit < NextEntry);

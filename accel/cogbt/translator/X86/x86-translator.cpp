@@ -666,6 +666,7 @@ void X86Translator::AddExternalSyms() {
     EE->addGlobalMapping("helper_fucomi_ST0_FT0_cogbt", (uint64_t)helper_fucomi_ST0_FT0_wrapper);
 
     EE->addGlobalMapping("helper_cogbt_lookup_tb_ptr", (uint64_t)helper_cogbt_lookup_tb_ptr_wrapper);
+    /* EE->addGlobalMapping("helper_rdrand_cogbt", (uint64_t)helper_rdrand_cogbt); */
 }
 
 void X86Translator::GetLBTIntrinsic(StringRef Name, Value *Src0, Value *Src1) {
@@ -943,7 +944,7 @@ void X86Translator::Translate() {
         }
 #endif
         X86InstHandler GuestInstHdl(&*block.rbegin());
-        if (aotmode == 2 && !GuestInstHdl.isTerminator()) {
+        if (!GuestInstHdl.isTerminator()) {
             std::stringstream ss;
             ss << std::hex << GuestInstHdl.getNextPC();
             std::string NextPCStr(ss.str());

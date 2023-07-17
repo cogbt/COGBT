@@ -1029,6 +1029,9 @@ void dump_path (uint64_t pc) {
     fprintf(dump_path_file, "0x%lx\n", pc);
     fflush(NULL);
 }
+#ifdef CONFIG_COGBT
+extern abi_ulong elf_loadbias;
+#endif
 
 int cpu_exec(CPUState *cpu)
 {
@@ -1129,10 +1132,10 @@ int cpu_exec(CPUState *cpu)
             tb = tb_lookup(cpu, pc, cs_base, flags, cflags);
             if (tb == NULL) {
                 mmap_lock();
-#ifdef CONFIG_COGBT_DEBUG
+#if defined(CONFIG_COGBT) || defined(CONFIG_COGBT_DEBUG)
                 tb_not_find++;
 #endif
-                dump_path(pc);
+                dump_path(pc - elf_loadbias);
 
                 tb = tb_gen_code(cpu, pc, cs_base, flags, cflags);
                 mmap_unlock();

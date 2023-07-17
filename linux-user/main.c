@@ -160,6 +160,10 @@ uint64_t debug_start_cnter = 0, debug_end_cnter = 0;
    by remapping the process stack directly at the right place */
 unsigned long guest_stack_size = 8 * 1024 * 1024UL;
 
+#ifdef CONFIG_COGBT
+/* bias for shared files in memory */
+abi_ulong elf_loadbias = 0;
+#endif
 /***********************************************************/
 /* Helper routines for implementing atomic operations.  */
 
@@ -966,6 +970,12 @@ int main(int argc, char **argv, char **envp)
     syscall_init();
     signal_init();
 #ifdef CONFIG_COGBT
+    env->elf_loadbias = info->load_bias;
+    elf_loadbias = info->load_bias;
+#ifdef CONFIG_COGBT_DEBUG
+    if (elf_loadbias)
+        fprintf(stderr, "elf load bias = 0x%lx\n", elf_loadbias);
+#endif
 #ifdef CONFIG_COGBT_JMP_CACHE
     cogbt_jmp_cache_init(info->start_code, info->end_code);
 #endif
@@ -1021,6 +1031,7 @@ int main(int argc, char **argv, char **envp)
             tb->tc.size = tc_size;
             tb->tc.ptr = tc_ptr;
 
+            /* tb->pc = pc + elf_loadbias; */
             tb->pc = pc;
             tb->cs_base = 0;
             tb->flags = env->hflags |

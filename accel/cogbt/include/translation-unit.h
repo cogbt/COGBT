@@ -9,15 +9,12 @@
 #include <cassert>
 #include "capstone.h"
 using std::vector;
-/* using GuestInst = cs_insn; */
 using GuestPC = uint64_t;
-extern "C" bool guest_inst_is_terminator(cs_insn *inst);
 
 #else
 
 #include <stdint.h>
 #include <assert.h>
-/* typedef struct cs_insn GuestInst; */
 typedef uint64_t GuestPC;
 
 #endif // include headfile
@@ -85,8 +82,8 @@ public:
     bool empty() { return GuestInsts.empty(); }
 
     void addTraceTarget(uint64_t target) {
-        assert(guest_inst_is_terminator(GuestInsts.rend()->guestInst));
-        GuestInsts.rend()->addTraceTarget(target);
+        // TODO: check whether GuestInsts.back() is a terminator instruction.
+        GuestInsts.back().addTraceTarget(target);
     }
 };
 #else

@@ -13,6 +13,8 @@
 #define DISASSEMBLE_DEBUG
 using std::vector;
 
+extern "C" uint64_t elf_loadbias;
+
 /* capsthone handler, will be used in some cs API. */
 static csh handle;
 static TranslationUnit *global_tu;
@@ -47,6 +49,7 @@ void block_tu_file_parse(const char *pf) {
         cs_insn **insns = (cs_insn **)calloc(MAX_INSN, sizeof(cs_insn *));
         int insn_cnt = 0;
         /* fprintf(stderr, "0x%lx\n", pc); */
+        pc += elf_loadbias;
         for (int i = 0; i < MAX_INSN; i++) {
             int res =
                 cs_disasm(handle, (const uint8_t *)pc, 15, pc, 1, insns + i);
@@ -83,6 +86,12 @@ void tb_aot_gen(const char *pf) {
     LLVMTranslator *Translator = create_llvm_translator(0, 0);
     llvm_initialize(Translator);
     for (TranslationUnit *TU: TUs) {
+        if (debug_guest_inst(Translator)) {
+            fprintf(stderr, "+--------------------------------------------+\n");
+            fprintf(stderr, "|               Guest Function               |\n");
+            fprintf(stderr, "+--------------------------------------------+\n");
+            TU->dump();
+        }
         llvm_set_tu(Translator, TU);
         llvm_translate(Translator);
         llvm_compile(Translator, true);
