@@ -2,6 +2,7 @@
 #include "errno.h"
 #include "block.h"
 #include "capstone.h"
+#include "frontend.h"
 #include "translation-unit.h"
 #include <assert.h>
 #include <sys/stat.h>
@@ -16,14 +17,18 @@ using std::vector;
 extern "C" uint64_t elf_loadbias;
 
 /* capsthone handler, will be used in some cs API. */
-static csh handle;
+extern csh handle;
 static TranslationUnit *global_tu;
 static vector<TranslationUnit *> TUs;
 
-void cogbt_block_init(void) {
+void capstone_init(void) {
     cs_open(CS_ARCH_X86, CS_MODE_64, &handle);
     cs_option(handle, CS_OPT_SYNTAX, CS_OPT_SYNTAX_ATT);
     cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON);
+}
+
+void cogbt_block_init(void) {
+    capstone_init();
     TUs.clear();
     global_tu = tu_get();
     tu_init(global_tu);

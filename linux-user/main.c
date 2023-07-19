@@ -62,6 +62,7 @@
 #include "block.h"
 #include "function.h"
 #include "cogbt.h"
+csh handle;
 extern AOTParser *parser;
 extern void aot_tb_register(TranslationBlock *tb, CPUState *cpu);
 #endif

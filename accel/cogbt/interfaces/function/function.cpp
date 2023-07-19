@@ -17,7 +17,7 @@ using std::unique_ptr;
 using std::shared_ptr;
 
 // capsthone handler, will be used in some cs API.
-static csh handle;
+extern csh handle;
 static vector<TranslationUnit *> TUs;
 
 static bool func_tu_inst_is_cfi(cs_insn *insn) {
@@ -69,9 +69,7 @@ bool func_tu_inst_is_funcexit(cs_insn *insn) {
 }
 
 void cogbt_function_init(void) {
-    cs_open(CS_ARCH_X86, CS_MODE_64, &handle);
-    cs_option(handle, CS_OPT_SYNTAX, CS_OPT_SYNTAX_ATT);
-    cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON);
+    capstone_init();
     TUs.clear();
 }
 
@@ -133,7 +131,7 @@ void JsonFunc::dump(FILE *ff) const {
     fprintf(ff, "}\n");
 }
 
-static void GenTU(shared_ptr<JsonFunc> JF, TranslationUnit *TU) {
+void GenTU(shared_ptr<JsonFunc> JF, TranslationUnit *TU) {
     tu_init(TU);
     for (auto it = JF->begin(); it != JF->end(); ++it) {
         uint64_t Entry = it->getEntry() + elf_loadbias;
@@ -161,7 +159,7 @@ static void GenTU(shared_ptr<JsonFunc> JF, TranslationUnit *TU) {
 }
 
 // block_parse - Parse path file.
-static void block_parse(const char *pf, vector<shared_ptr<JsonFunc>> &JsonFuncs) {
+void block_parse(const char *pf, vector<shared_ptr<JsonFunc>> &JsonFuncs) {
 #define MAX_INSN 200
     FILE *path = fopen(pf, "r");
     // The file is not exist
@@ -389,8 +387,8 @@ static void partition_funcs(vector<shared_ptr<JsonFunc>> &JsonFuncs) {
     }
 }
 
-static void json_funcs_sort(vector<shared_ptr<JsonFunc>> &JsonFuncs) {
-    std::sort(JsonFuncs.begin(), JsonFuncs.end(),
+void json_funcs_sort(vector<shared_ptr<JsonFunc>> &JsonFuncs, int start) {
+    std::sort(JsonFuncs.begin() + start, JsonFuncs.end(),
             [](const shared_ptr<JsonFunc>& x, const shared_ptr<JsonFunc>& y) {
             return x->getEntryPoint() < y->getEntryPoint();
         });
@@ -444,8 +442,7 @@ static void calculate_func_boundary(vector<shared_ptr<JsonFunc>> &JsonFuncs) {
     }
 }
 
-#ifdef CONFIG_COGBT_DEBUG
-static void check_json_funcs(vector<shared_ptr<JsonFunc>> &JsonFuncs,
+void check_json_funcs(vector<shared_ptr<JsonFunc>> &JsonFuncs,
         const char* message) {
     // 1. Function to check if there are duplicate addresses in vector.
     set<uint64_t> Visited;
@@ -458,35 +455,34 @@ static void check_json_funcs(vector<shared_ptr<JsonFunc>> &JsonFuncs,
         Visited.insert(JF->getEntryPoint());
     }
 }
-#endif
 
 static void first_parse(const char* exec_path, vector<shared_ptr<JsonFunc>> &JsonFuncs) {
     // 1. parse entries in .symtab which TYPE is FUNC
     parse_elf_format(exec_path, JsonFuncs);
-    json_funcs_sort(JsonFuncs);
 #ifdef CONFIG_COGBT_DEBUG
     check_json_funcs(JsonFuncs, "elf parse");
 #endif
+    json_funcs_sort(JsonFuncs);
 
     // 2. parse .json file
     char json_path[255];
     strcpy(json_path, exec_path);
     strcat(json_path, ".json");
     json_parse(json_path, JsonFuncs, JSON_GHIDRA);
-    json_funcs_sort(JsonFuncs);
 #ifdef CONFIG_COGBT_DEBUG
     check_json_funcs(JsonFuncs, "json parse");
 #endif
+    json_funcs_sort(JsonFuncs);
 
     // 3. Calculate the Function Boundary
     calculate_func_boundary(JsonFuncs);
 
     // 4. Partition JsonFuncs
     partition_funcs(JsonFuncs);
-    json_funcs_sort(JsonFuncs);
 #ifdef CONFIG_COGBT_DEBUG
     check_json_funcs(JsonFuncs, "partition funcs");
 #endif
+    json_funcs_sort(JsonFuncs);
 
     // 5. parse .trace
 
@@ -526,6 +522,9 @@ void func_tu_parse(const char *pf) {
     strcpy(block_path, pf);
     strcat(block_path, ".path");
     block_parse(block_path, JsonFuncs);
+#ifdef CONFIG_COGBT_DEBUG
+    check_json_funcs(JsonFuncs, "parsing tb in tu");
+#endif
     json_funcs_sort(JsonFuncs);
 
     // 4. generate TU
