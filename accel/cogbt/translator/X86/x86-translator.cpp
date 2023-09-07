@@ -638,6 +638,7 @@ void X86Translator::AddExternalSyms() {
     /* EE->addGlobalMapping("helper_punpcklwd_mmx", (uint64_t)helper_punpcklwd_mmx_wrapper); */
     EE->addGlobalMapping("helper_pshufd", (uint64_t)helper_pshufd_xmm_wrapper);
     EE->addGlobalMapping("helper_comiss", (uint64_t)helper_comiss_wrapper);
+    EE->addGlobalMapping("helper_comisd", (uint64_t)helper_comisd_wrapper);
     /* EE->addGlobalMapping("helper_paddb_xmm", (uint64_t)helper_paddb_xmm_wrapper); */
     /* EE->addGlobalMapping("helper_paddl_xmm", (uint64_t)helper_paddl_xmm_wrapper); */
     /* EE->addGlobalMapping("helper_paddw_xmm", (uint64_t)helper_paddw_xmm_wrapper); */
@@ -652,6 +653,8 @@ void X86Translator::AddExternalSyms() {
     EE->addGlobalMapping("helper_cvtsd2ss" , (uint64_t)helper_cvtsd2ss_wrapper );
     EE->addGlobalMapping("helper_cvtsi2ss" , (uint64_t)helper_cvtsi2ss_wrapper );
     EE->addGlobalMapping("helper_cvtsq2ss" , (uint64_t)helper_cvtsq2ss_wrapper );
+
+    EE->addGlobalMapping("helper_divsd" , (uint64_t)helper_divsd_wrapper );
 
     EE->addGlobalMapping("helper_fcomi_ST0_FT0_cogbt", (uint64_t)helper_fcomi_ST0_FT0_wrapper);
     EE->addGlobalMapping("helper_fucomi_ST0_FT0_cogbt", (uint64_t)helper_fucomi_ST0_FT0_wrapper);

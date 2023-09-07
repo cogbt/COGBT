@@ -17,6 +17,10 @@ cogbt_ss.add(files(
   'emulator.c',
 ))
 
+plugin_ldflags = ['-Xlinker', '--dynamic-list=' + (meson.project_source_root()
+  / 'accel/cogbt/helpers.symbols')]
+cogbt_ss.add(declare_dependency(link_args: plugin_ldflags))
+
 subdir('interfaces')
 subdir('translator')
 subdir('JIT')

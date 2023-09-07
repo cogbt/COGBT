@@ -7,6 +7,7 @@
 void X86Translator::GenIndirectJmp(Value *GuestTarget) {
     FunctionType *FTy = nullptr;
     Value *Target = nullptr;
+    if (aotmode != 0) {
 #ifdef CONFIG_COGBT_JMP_CACHE
     /* find target_pc from cogbt_jmp_cache first */
     Value *JMPCache = Builder.CreateLoad(Int64PtrTy, JMPCacheAddr);
@@ -34,6 +35,7 @@ void X86Translator::GenIndirectJmp(Value *GuestTarget) {
     // Create fallthrough block due to target_pc is not in cogbt_jmp_cache
     Builder.SetInsertPoint(FallThroughBB);
 #endif
+    }
 
     FTy = FunctionType::get(Int8PtrTy, Int8PtrTy, false);
     Target = CallFunc(FTy, "helper_cogbt_lookup_tb_ptr", CPUEnv);

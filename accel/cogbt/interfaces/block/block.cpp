@@ -1,3 +1,5 @@
+#include "string.h"
+#include "errno.h"
 #include "block.h"
 #include "capstone.h"
 #include "translation-unit.h"
@@ -35,6 +37,11 @@ bool guest_inst_is_terminator(cs_insn *insn) {
 #define MAX_INSN 200
 void block_tu_file_parse(const char *pf) {
     FILE *path = fopen(pf, "r");
+    if (path == NULL) {
+        fprintf(stderr, "%s: %s\n", pf, strerror(errno));
+        exit(-1);
+    }
+
     uint64_t pc;
     while (fscanf(path, "%lx", &pc) != EOF) {
         cs_insn **insns = (cs_insn **)calloc(MAX_INSN, sizeof(cs_insn *));
@@ -130,7 +137,7 @@ int block_gen_code(uint64_t pc, int max_insns, LLVMTranslator *translator,
     llvm_initialize(translator);
     llvm_set_tu(translator, tu);
     llvm_translate(translator);
-    /* llvm_finalize(translator); */
+    llvm_finalize(translator);
     *(uint32_t **)code_cache = (uint32_t *)llvm_compile(translator, true);
     size_t llvm_code_size_after = llvm_get_code_size(translator);
 
