@@ -135,7 +135,7 @@ Value *X86Translator::GetLBTFlag(int mask) {
 }
 
 void X86Translator::GenPrologue() {
-    if (aotmode == 0)  // JIT
+    if (aotmode == JIT)  // JIT
         InitializeModule();
 
     FunctionType *FuncTy = FunctionType::get(VoidTy, false);
@@ -216,7 +216,7 @@ void X86Translator::GenPrologue() {
 }
 
 void X86Translator::GenEpilogue() {
-    if (aotmode == 0)  // JIT
+    if (aotmode == JIT)  // JIT
         InitializeModule();
 
     TransFunc = Mod->getFunction("AOTEpilogue");
@@ -878,15 +878,15 @@ void X86Translator::Translate() {
     std::string Entry(ss.str());
 
     // Initialize function
-    if (aotmode == 0) { // JIT
+    if (aotmode == JIT) { // JIT
         InitializeFunction(Entry);
     }
-    if (aotmode == 1) { // TB AOT mode
+    if (aotmode == TB_AOT) { // TB AOT mode
         std::stringstream ss;
         ss << std::hex << Entry << "." << std::dec << TU->GetTUPCSize();
         InitializeFunction(ss.str());
     }
-    if (aotmode == 2) { // Function AOT mode
+    if (aotmode == TU_AOT) { // TU AOT mode
         std::stringstream ss;
         ss << std::hex << Entry << "." << std::dec << TU->GetTUPCSize();
         InitializeFunction(ss.str());

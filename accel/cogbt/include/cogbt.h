@@ -48,6 +48,16 @@ void cogbt_jmp_cache_add(uint64_t target_pc, uint64_t host_pc);
 void cogbt_jmp_cache_free(void);
 #endif
 
+enum RUNNING_MODE {
+    JIT     = 0 ,
+    TB_AOT      ,
+    TU_AOT      ,
+    TRACE_AOT   ,
+    FUNCTION_AOT,
+    AOT_NUMBER
+};
+
+
 #ifdef __cplusplus
 }
 #endif

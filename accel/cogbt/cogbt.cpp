@@ -34,7 +34,7 @@ void free_llvm_translator(LLVMTranslator *translator) {
 
 void llvm_initialize(LLVMTranslator *translator) {
     translator->InitializeModule();
-    if (aotmode != 0)
+    if (aotmode != JIT)
         translator->TranslateInitialize();
 }
 

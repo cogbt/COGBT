@@ -457,10 +457,14 @@ static void handle_arg_abi_call0(const char *arg)
 static void handle_arg_runmode(const char *arg)
 {
     if (strcmp(arg, "tb_aot") == 0) {
-        aotmode = 1;
+        aotmode = TB_AOT;
+    } else if (strcmp(arg, "tu_aot") == 0) {
+        aotmode = TU_AOT;
+    } else if (strcmp(arg, "trace_aot") == 0) {
+        aotmode = TRACE_AOT;
     } else if (strcmp(arg, "function_aot") == 0) {
-        aotmode = 2;
-    } else aotmode = 0;
+        aotmode = FUNCTION_AOT;
+    } else aotmode = JIT;
 }
 #endif
 static void handle_arg_aot(const char *arg)
@@ -981,7 +985,7 @@ int main(int argc, char **argv, char **envp)
     cogbt_jmp_cache_init(info->start_code, info->end_code);
 #endif
     // Frontend analysis
-    if (aotmode == 1) {     // TB AOT mode
+    if (aotmode == TB_AOT) {     // TB AOT mode
         cogbt_block_init();
         char block_path[255];
         strcpy(block_path, exec_path);
@@ -989,11 +993,19 @@ int main(int argc, char **argv, char **envp)
         block_tu_file_parse(block_path);
         tb_aot_gen(block_path);
         return 0;
-    } else if (aotmode == 2) {  // Function AOT mode
+    } else if (aotmode == TU_AOT) {  // TU AOT mode
         cogbt_function_init();
         func_tu_parse(exec_path);
         func_aot_gen();
         return 0;
+    } else if (aotmode == TRACE_AOT) {  // Trace AOT mode
+        fprintf(stderr, "Trace aot mode is developing, please pay attention"
+                 "to branch `trace` for details.\n");
+        exit(0);
+    } else if (aotmode == FUNCTION_AOT) {   // Function mode
+        fprintf(stderr, "Function aot mode is developing, please pay attention"
+                 "to branch `func` for details.\n");
+        exit(0);
     }
     cogbt_block_init();
 #endif

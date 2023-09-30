@@ -1,39 +1,40 @@
 #include "qemu/osdep.h"
 #include "x86-translator.h"
 #include "emulator.h"
+#include "cogbt.h"
 #include <sstream>
 #include <iostream>
 
 void X86Translator::GenIndirectJmp(Value *GuestTarget) {
     FunctionType *FTy = nullptr;
     Value *Target = nullptr;
-    if (aotmode != 0) {
+    if (aotmode != JIT) {
 #ifdef CONFIG_COGBT_JMP_CACHE
-    /* find target_pc from cogbt_jmp_cache first */
-    Value *JMPCache = Builder.CreateLoad(Int64PtrTy, JMPCacheAddr);
-    Value *HostEntry = Builder.CreateGEP(Int64Ty, JMPCache, GuestTarget);
-    HostEntry = Builder.CreateBitCast(HostEntry, Int64PtrTy);
-    Value *HostTarget = Builder.CreateLoad(Int64Ty, HostEntry);
-    /* Value *HostTarget = ConstInt(Int64Ty, 0x400); */
-    Value *Cond = Builder.CreateICmpNE(HostTarget, ConstInt(Int64Ty, 0));
+        /* find target_pc from cogbt_jmp_cache first */
+        Value *JMPCache = Builder.CreateLoad(Int64PtrTy, JMPCacheAddr);
+        Value *HostEntry = Builder.CreateGEP(Int64Ty, JMPCache, GuestTarget);
+        HostEntry = Builder.CreateBitCast(HostEntry, Int64PtrTy);
+        Value *HostTarget = Builder.CreateLoad(Int64Ty, HostEntry);
+        /* Value *HostTarget = ConstInt(Int64Ty, 0x400); */
+        Value *Cond = Builder.CreateICmpNE(HostTarget, ConstInt(Int64Ty, 0));
 
-    BasicBlock *TargetBB =
-        BasicBlock::Create(Context, "target", TransFunc, ExitBB);
-    BasicBlock *FallThroughBB =
-        BasicBlock::Create(Context, "fallthrough", TransFunc, TargetBB);
-    Builder.CreateCondBr(Cond, TargetBB, FallThroughBB);
+        BasicBlock *TargetBB =
+            BasicBlock::Create(Context, "target", TransFunc, ExitBB);
+        BasicBlock *FallThroughBB =
+            BasicBlock::Create(Context, "fallthrough", TransFunc, TargetBB);
+        Builder.CreateCondBr(Cond, TargetBB, FallThroughBB);
 
-    // Create target block due to target_pc is in cogbt_jmp_cache
-    Builder.SetInsertPoint(TargetBB);
-    FTy = FunctionType::get(VoidTy, false);
-    Target = Builder.CreateIntToPtr(HostTarget, Int8PtrTy);
-    Target = Builder.CreateBitCast(Target, FTy->getPointerTo());
-    BindPhysicalReg();
-    Builder.CreateCall(FTy, Target);
-    Builder.CreateUnreachable();
+        // Create target block due to target_pc is in cogbt_jmp_cache
+        Builder.SetInsertPoint(TargetBB);
+        FTy = FunctionType::get(VoidTy, false);
+        Target = Builder.CreateIntToPtr(HostTarget, Int8PtrTy);
+        Target = Builder.CreateBitCast(Target, FTy->getPointerTo());
+        BindPhysicalReg();
+        Builder.CreateCall(FTy, Target);
+        Builder.CreateUnreachable();
 
-    // Create fallthrough block due to target_pc is not in cogbt_jmp_cache
-    Builder.SetInsertPoint(FallThroughBB);
+        // Create fallthrough block due to target_pc is not in cogbt_jmp_cache
+        Builder.SetInsertPoint(FallThroughBB);
 #endif
     }
 
@@ -54,7 +55,7 @@ void X86Translator::GenIndirectJmp(Value *GuestTarget) {
 
 void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
     X86InstHandler InstHdl(Inst);
-    if (aotmode == 2) {    // Function AOT mode
+    if (aotmode == TU_AOT) {    // TU AOT mode
         std::stringstream ss;
         ss << std::hex << InstHdl.getTargetPC();
         std::string TargetPCStr(ss.str());
@@ -326,7 +327,7 @@ void X86Translator::translate_jmp(GuestInst *Inst) {
     // Create link here, NOTE! Distinguish direct jmp or indirect jmp first.
     X86OperandHandler OpndHdl(InstHdl.getOpnd(0));
     if (OpndHdl.isImm()) {   // direct jmp
-        if (aotmode == 2) {     // Function AOT mode
+        if (aotmode == TU_AOT) {     // Function AOT mode
             std::stringstream ss;
             ss << std::hex << InstHdl.getTargetPC();
             std::string TargetPCStr(ss.str());

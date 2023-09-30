@@ -3,6 +3,7 @@
 
 #include "translation-unit.h"
 #include "x86-opnd-handler.h"
+#include "cogbt.h"
 #include <capstone.h>
 #include <sstream>
 
@@ -78,7 +79,7 @@ public:
     }
 
     bool isTerminator() {
-        if (aotmode == 2)
+        if (aotmode == TU_AOT)
             return func_tu_inst_is_terminator(Inst->guestInst);
         else
             return guest_inst_is_terminator(Inst->guestInst);

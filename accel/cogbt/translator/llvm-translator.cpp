@@ -17,6 +17,7 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "CogbtPass.h"
+#include "cogbt.h"
 #include <memory>
 #include <string>
 #include <sstream>
@@ -146,7 +147,7 @@ void LLVMTranslator::InitializeBlock(GuestBlock &Block) {
     std::stringstream ss;
     ss << std::hex << PC;
     std::string Name(ss.str());
-    if (aotmode == 2) {
+    if (aotmode == TU_AOT) {
         /* CurrBB = GetOrInsertBasicBlock(TransFunc, Name, ExitBB); */
         CurrBB = GetBasicBlock(TransFunc, Name);
         assert(CurrBB && "block does not exist.");
@@ -189,7 +190,7 @@ void LLVMTranslator::CreateIllegalInstruction() {
 void LLVMTranslator::TranslateFinalize() {
     // Finalize DIBuilder to make debug info correct.
     DIB->finalize();
-    if (aotmode != 0) {
+    if (aotmode != JIT) {
 #if 1
         legacy::FunctionPassManager FPM(Mod.get());
         legacy::PassManager MPM;
@@ -335,11 +336,7 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
 
     }
     // TODO: modify it
-    if (aotmode == 2) {
-        return nullptr;
-    }
-    if (aotmode == 1) {
-        /* EmitObjectCode(); */
+    if (aotmode == TB_AOT || aotmode == TU_AOT) {
         return nullptr;
     }
 
