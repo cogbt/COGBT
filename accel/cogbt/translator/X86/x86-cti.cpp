@@ -37,6 +37,12 @@ void X86Translator::GenIndirectJmp(Value *GuestTarget) {
 #endif
     }
 
+    // Store guestpc to env
+    Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
+    Value *EnvEIP = Builder.CreateGEP(Int8Ty, CPUEnv, Off);
+    Value *EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
+    Builder.CreateStore(GuestTarget, EIPAddr);
+
     FTy = FunctionType::get(Int8PtrTy, Int8PtrTy, false);
     Target = CallFunc(FTy, "helper_cogbt_lookup_tb_ptr", CPUEnv);
     FTy = FunctionType::get(VoidTy, false);
@@ -362,10 +368,6 @@ void X86Translator::translate_jmp(GuestInst *Inst) {
         }
     } else {    // indirect jmp
         Value *Target = LoadOperand(InstHdl.getOpnd(0));
-        Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
-        Value *EnvEIP = Builder.CreateGEP(Int8Ty, CPUEnv, Off);
-        Value *EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
-        Builder.CreateStore(Target, EIPAddr);
 
         GenIndirectJmp(Target);
         if (IsExitPC(InstHdl.getPC())) {
@@ -414,11 +416,6 @@ void X86Translator::translate_call(GuestInst *Inst) {
         // do indirect basic block link
         // store target pc into env.
         Value *Target = LoadOperand(InstHdl.getOpnd(0));
-        Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
-        Value *EnvEIP = Builder.CreateGEP(Int8Ty, CPUEnv, Off);
-        Value *EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
-        Builder.CreateStore(Target, EIPAddr);
-        /* Builder.CreateBr(ExitBB); */
 
         GenIndirectJmp(Target);
         if (IsExitPC(InstHdl.getPC())) {
@@ -438,12 +435,6 @@ void X86Translator::translate_ret(GuestInst *Inst) {
     // adjust esp
     Value *NewESP = Builder.CreateAdd(OldESP, ConstInt(Int64Ty, 8));
     StoreGMRValue(NewESP, X86Config::RSP);
-
-    // store return address into env.
-    Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
-    Value *EnvEIP = Builder.CreateGEP(Int8Ty, CPUEnv, Off);
-    Value *EIPAddr = Builder.CreateBitCast(EnvEIP, Int64PtrTy);
-    Builder.CreateStore(RA, EIPAddr);
 
     // sync GMRVals into stack.
     SyncAllGMRValue();
