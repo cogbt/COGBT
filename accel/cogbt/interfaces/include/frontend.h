@@ -2,7 +2,7 @@
 #define JSON_HANDLE_H
 
 #include <memory>
-#include "function.h"
+#include "json_function.h"
 
 enum JSON_MODE {
     JSON_GHIDRA     = 1      ,   // from ghidra

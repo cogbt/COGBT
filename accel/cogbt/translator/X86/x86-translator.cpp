@@ -620,53 +620,8 @@ Value *X86Translator::CallFunc(FunctionType *FuncTy, std::string Name,
 }
 
 void X86Translator::AddExternalSyms() {
-    /* EE->addGlobalMapping("PFTable", X86InstHandler::getPFTable()); */
-    EE->addGlobalMapping("helper_raise_syscall", (uint64_t)helper_raise_syscall);
-    EE->addGlobalMapping("helper_divb_AL", (uint64_t)helper_divb_AL_wrapper);
-    EE->addGlobalMapping("helper_divw_AX", (uint64_t)helper_divw_AX_wrapper);
-    EE->addGlobalMapping("helper_divl_EAX", (uint64_t)helper_divl_EAX_wrapper);
-    EE->addGlobalMapping("helper_divq_EAX", (uint64_t)helper_divq_EAX_wrapper);
-    EE->addGlobalMapping("helper_idivb_AL", (uint64_t)helper_idivb_AL_wrapper);
-    EE->addGlobalMapping("helper_idivw_AX", (uint64_t)helper_idivw_AX_wrapper);
-    EE->addGlobalMapping("helper_idivl_EAX", (uint64_t)helper_idivl_EAX_wrapper);
-    EE->addGlobalMapping("helper_idivq_EAX", (uint64_t)helper_idivq_EAX_wrapper);
-
-    EE->addGlobalMapping("helper_rdtsc", (uint64_t)helper_rdtsc_wrapper);
-    /* EE->addGlobalMapping("helper_pxor_xmm", (uint64_t)helper_pxor_xmm_wrapper); */
-    /* EE->addGlobalMapping("helper_pxor_mmx", (uint64_t)helper_pxor_mmx_wrapper); */
-    /* EE->addGlobalMapping("helper_pcmpeqb_xmm", (uint64_t)helper_pcmpeqb_xmm_wrapper); */
-    /* EE->addGlobalMapping("helper_pcmpeqb_mmx", (uint64_t)helper_pcmpeqb_mmx_wrapper); */
-    EE->addGlobalMapping("helper_pmovmskb_xmm", (uint64_t)helper_pmovmskb_xmm_wrapper);
-    EE->addGlobalMapping("helper_pmovmskb_mmx", (uint64_t)helper_pmovmskb_mmx_wrapper);
-    /* EE->addGlobalMapping("helper_punpcklbw_xmm", (uint64_t)helper_punpcklbw_xmm_wrapper); */
-    /* EE->addGlobalMapping("helper_punpcklbw_mmx", (uint64_t)helper_punpcklbw_mmx_wrapper); */
-    /* EE->addGlobalMapping("helper_punpcklwd_xmm", (uint64_t)helper_punpcklwd_xmm_wrapper); */
-    /* EE->addGlobalMapping("helper_punpcklwd_mmx", (uint64_t)helper_punpcklwd_mmx_wrapper); */
-    EE->addGlobalMapping("helper_pshufd", (uint64_t)helper_pshufd_xmm_wrapper);
-    EE->addGlobalMapping("helper_comiss", (uint64_t)helper_comiss_wrapper);
-    EE->addGlobalMapping("helper_comisd", (uint64_t)helper_comisd_wrapper);
-    /* EE->addGlobalMapping("helper_paddb_xmm", (uint64_t)helper_paddb_xmm_wrapper); */
-    /* EE->addGlobalMapping("helper_paddl_xmm", (uint64_t)helper_paddl_xmm_wrapper); */
-    /* EE->addGlobalMapping("helper_paddw_xmm", (uint64_t)helper_paddw_xmm_wrapper); */
-    /* EE->addGlobalMapping("helper_paddq_xmm", (uint64_t)helper_paddq_xmm_wrapper); */
-    EE->addGlobalMapping("helper_cvtsi2sd" , (uint64_t)helper_cvtsi2sd_wrapper );
-    EE->addGlobalMapping("helper_cvtsq2sd" , (uint64_t)helper_cvtsq2sd_wrapper );
-    EE->addGlobalMapping("helper_cvttsd2si", (uint64_t)helper_cvttsd2si_wrapper);
-    EE->addGlobalMapping("helper_cvttsd2sq", (uint64_t)helper_cvttsd2sq_wrapper);
-    EE->addGlobalMapping("helper_cvttss2si", (uint64_t)helper_cvttss2si_wrapper);
-    EE->addGlobalMapping("helper_cvttss2sq", (uint64_t)helper_cvttss2sq_wrapper);
-    EE->addGlobalMapping("helper_cvtss2sd" , (uint64_t)helper_cvtss2sd_wrapper );
-    EE->addGlobalMapping("helper_cvtsd2ss" , (uint64_t)helper_cvtsd2ss_wrapper );
-    EE->addGlobalMapping("helper_cvtsi2ss" , (uint64_t)helper_cvtsi2ss_wrapper );
-    EE->addGlobalMapping("helper_cvtsq2ss" , (uint64_t)helper_cvtsq2ss_wrapper );
-
-    EE->addGlobalMapping("helper_divsd" , (uint64_t)helper_divsd_wrapper );
-
-    EE->addGlobalMapping("helper_fcomi_ST0_FT0_cogbt", (uint64_t)helper_fcomi_ST0_FT0_wrapper);
-    EE->addGlobalMapping("helper_fucomi_ST0_FT0_cogbt", (uint64_t)helper_fucomi_ST0_FT0_wrapper);
-
-    EE->addGlobalMapping("helper_cogbt_lookup_tb_ptr", (uint64_t)helper_cogbt_lookup_tb_ptr_wrapper);
-    /* EE->addGlobalMapping("helper_rdrand_cogbt", (uint64_t)helper_rdrand_cogbt); */
+    for (int i = 0; i < SymTableSize; i++)
+        EE->addGlobalMapping(SymTable[i].key, (uint64_t)SymTable[i].val);
 }
 
 void X86Translator::GetLBTIntrinsic(StringRef Name, Value *Src0, Value *Src1) {

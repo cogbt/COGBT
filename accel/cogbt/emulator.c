@@ -15,20 +15,6 @@ struct KeyVal SymTable[] = {
 #ifdef CONFIG_COGBT_JMP_CACHE
     {"cogbt_jmp_cache", &cogbt_jmp_cache},
 #endif
-    {"helper_divb_AL", helper_divb_AL_wrapper},
-    {"helper_divw_AX", helper_divw_AX_wrapper},
-    {"helper_divl_EAX", helper_divl_EAX_wrapper},
-    {"helper_divq_EAX", helper_divq_EAX_wrapper},
-    {"helper_idivb_AL", helper_idivb_AL_wrapper},
-    {"helper_idivw_AX", helper_idivw_AX_wrapper},
-    {"helper_idivl_EAX", helper_idivl_EAX_wrapper},
-    {"helper_idivq_EAX", helper_idivq_EAX_wrapper},
-
-    {"helper_rdtsc", helper_rdtsc_wrapper},
-    /* {"helper_pxor_xmm", helper_pxor_xmm_wrapper}, */
-    /* {"helper_pxor_mmx", helper_pxor_mmx_wrapper}, */
-    /* {"helper_pcmpeqb_xmm", helper_pcmpeqb_xmm_wrapper}, */
-    /* {"helper_pcmpeqb_mmx", helper_pcmpeqb_mmx_wrapper}, */
     {"helper_pmovmskb_xmm", helper_pmovmskb_xmm_wrapper},
     {"helper_pmovmskb_mmx", helper_pmovmskb_mmx_wrapper},
     {"helper_punpcklbw_xmm", helper_punpcklbw_xmm_wrapper},
@@ -72,8 +58,6 @@ struct KeyVal SymTable[] = {
     {"helper_andps", helper_andps_wrapper},
     {"helper_pslldq_xmm", helper_pslldq_xmm_wrapper},
     {"helper_psrldq_xmm", helper_psrldq_xmm_wrapper},
-    {"helper_fcomi_ST0_FT0_cogbt", helper_fcomi_ST0_FT0_wrapper},
-    {"helper_fucomi_ST0_FT0_cogbt", helper_fucomi_ST0_FT0_wrapper},
     {"helper_rdrand_cogbt", helper_rdrand_cogbt},
 
     {"helper_raise_syscall", helper_raise_syscall},
@@ -81,8 +65,6 @@ struct KeyVal SymTable[] = {
 };
 
 int SymTableSize = sizeof(SymTable) / sizeof(SymTable[0]);
-
-/* #include "exec/log.h" */
 
 int GetEAXOffset(void) { return GuestStateOffset(R_EAX); }
 int GetEBXOffset(void) { return GuestStateOffset(R_EBX); }
@@ -171,41 +153,6 @@ void helper_raise_syscall(void *p, uint64_t next_eip) {
     env->exception_next_eip = next_eip;
     last_exit_is_llvm = true;
     siglongjmp(cpu->jmp_env, 1);
-}
-
-/* extern void helper_divb_AL(CPUX86State *env, target_ulong t0); */
-/* extern void helper_divw_AX(CPUX86State *env, target_ulong t0); */
-/* extern void helper_divl_EAX(CPUX86State *env, target_ulong t0); */
-/* extern void helper_divq_EAX(CPUX86State *env, target_ulong t0); */
-
-void helper_divb_AL_wrapper(void *p, uint64_t divisor) {
-    helper_divb_AL((CPUX86State *)p, divisor);
-}
-void helper_divw_AX_wrapper(void *p, uint64_t divisor) {
-    helper_divw_AX((CPUX86State *)p, divisor);
-}
-void helper_divl_EAX_wrapper(void *p, uint64_t divisor) {
-    helper_divl_EAX((CPUX86State *)p, divisor);
-}
-void helper_divq_EAX_wrapper(void *p, uint64_t divisor) {
-    helper_divq_EAX((CPUX86State *)p, divisor);
-}
-void helper_idivb_AL_wrapper(void *p, uint64_t divisor) {
-    helper_idivb_AL((CPUX86State *)p, divisor);
-}
-void helper_idivw_AX_wrapper(void *p, uint64_t divisor) {
-    helper_idivw_AX((CPUX86State *)p, divisor);
-}
-void helper_idivl_EAX_wrapper(void *p, uint64_t divisor) {
-    helper_idivl_EAX((CPUX86State *)p, divisor);
-}
-void helper_idivq_EAX_wrapper(void *p, uint64_t divisor) {
-    helper_idivq_EAX((CPUX86State *)p, divisor);
-}
-
-/* extern void helper_rdtsc(CPUArchState *env); */
-void helper_rdtsc_wrapper(void *p) {
-    helper_rdtsc((CPUX86State *)p);
 }
 
 void helper_pxor_xmm_wrapper(void *p, int dest, int src) {
@@ -548,14 +495,6 @@ void helper_andps_wrapper(void *p, int dest, int src) {
     helper_pand_xmm(env, d, s);
 }
 
-void helper_fucomi_ST0_FT0_wrapper(void *p) {
-    helper_fucomi_ST0_FT0_cogbt((CPUX86State *)p);
-}
-
-void helper_fcomi_ST0_FT0_wrapper(void *p) {
-    helper_fcomi_ST0_FT0_cogbt((CPUX86State *)p);
-}
-
 void helper_cogbt_lookup_tb_ptr_wrapper(void *p) {
     helper_cogbt_lookup_tb_ptr((CPUX86State *)p);
 }
@@ -627,7 +566,7 @@ void helper_cvtsq2ss_wrapper(void *p, int dest, int64_t src) {
     ZMMReg *d = &env->xmm_regs[dest];
     helper_cvtsq2ss(env, d, src);
 }
-
+#if 0
 #define SSE_HELPER_CMP_WRAPPER(name)                                           \
 void helper_ ## name ## ps_wrapper(void *p, int dest, int src) {               \
     CPUX86State *env = (CPUX86State *)p;                                       \
@@ -662,3 +601,4 @@ SSE_HELPER_CMP_WRAPPER(cmpneq)
 SSE_HELPER_CMP_WRAPPER(cmpnlt)
 SSE_HELPER_CMP_WRAPPER(cmpnle)
 SSE_HELPER_CMP_WRAPPER(cmpord)
+#endif

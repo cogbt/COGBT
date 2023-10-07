@@ -32,15 +32,6 @@ int GuestST0Offset(void *p);
 int GuestMXCSROffset(void);
 
 void helper_raise_syscall(void *p, uint64_t next_eip);
-void helper_divb_AL_wrapper(void *p, uint64_t divisor);
-void helper_divw_AX_wrapper(void *p, uint64_t divisor);
-void helper_divl_EAX_wrapper(void *p, uint64_t divisor);
-void helper_divq_EAX_wrapper(void *p, uint64_t divisor);
-void helper_idivb_AL_wrapper(void *p, uint64_t divisor);
-void helper_idivw_AX_wrapper(void *p, uint64_t divisor);
-void helper_idivl_EAX_wrapper(void *p, uint64_t divisor);
-void helper_idivq_EAX_wrapper(void *p, uint64_t divisor);
-void helper_rdtsc_wrapper(void *p);
 void helper_pxor_xmm_wrapper(void *p, int dest, int src);
 void helper_pxor_mmx_wrapper(void *p, int dest, int src);
 void helper_pcmpeqb_xmm_wrapper(void *p, int dest, int src);
@@ -82,8 +73,6 @@ void helper_sqrtsd_wrapper(void *p, int dest, int src);
 void helper_sqrtss_wrapper(void *p, int dest, int src);
 void helper_addsd_wrapper(void *p, int dest, int src);
 void helper_addss_wrapper(void *p, int dest, int src);
-void helper_fucomi_ST0_FT0_wrapper(void *p);
-void helper_fcomi_ST0_FT0_wrapper(void *p);
 void helper_cogbt_lookup_tb_ptr_wrapper(void *p);
 void helper_xorpd_wrapper(void *p, int dest, int src);
 void helper_xorps_wrapper(void *p, int dest, int src);
@@ -91,6 +80,7 @@ void helper_andpd_wrapper(void *p, int dest, int src);
 void helper_andps_wrapper(void *p, int dest, int src);
 void helper_pslldq_xmm_wrapper(void *p, int dest, int src);
 void helper_psrldq_xmm_wrapper(void *p, int dest, int src);
+#if 0
 #define SSE_HELPER_CMP_WRAPPER_PROT(name)                       \
 void helper_ ## name ## ps_wrapper(void *p, int dest, int src); \
 void helper_ ## name ## ss_wrapper(void *p, int dest, int src); \
@@ -104,6 +94,7 @@ SSE_HELPER_CMP_WRAPPER_PROT(cmpneq)
 SSE_HELPER_CMP_WRAPPER_PROT(cmpnlt)
 SSE_HELPER_CMP_WRAPPER_PROT(cmpnle)
 SSE_HELPER_CMP_WRAPPER_PROT(cmpord)
+#endif
 
 struct KeyVal {
     const char *key;

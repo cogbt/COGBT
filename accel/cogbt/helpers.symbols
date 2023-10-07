@@ -288,23 +288,17 @@
     helper_daa;
     helper_das;
     helper_divb_AL;
-    helper_divb_AL_wrapper;
     helper_div_i32;
     helper_div_i64;
     helper_divl_EAX;
-    helper_divl_EAX_wrapper;
     helper_divpd;
     helper_divps;
     helper_divq_EAX;
-    helper_divq_EAX_wrapper;
     helper_divsd;
-    helper_divsd_wrapper;
     helper_divss;
-    helper_divss_wrapper;
     helper_divu_i32;
     helper_divu_i64;
     helper_divw_AX;
-    helper_divw_AX_wrapper;
     helper_dppd_xmm;
     helper_dpps_xmm;
     helper_emms;
@@ -322,7 +316,6 @@
     helper_fclex;
     helper_fcomi_ST0_FT0;
     helper_fcomi_ST0_FT0_cogbt;
-    helper_fcomi_ST0_FT0_wrapper;
     helper_fcom_ST0_FT0;
     helper_fcos;
     helper_fdecstp;
@@ -389,7 +382,6 @@
     helper_fsub_STN_ST0;
     helper_fucomi_ST0_FT0;
     helper_fucomi_ST0_FT0_cogbt;
-    helper_fucomi_ST0_FT0_wrapper;
     helper_fucom_ST0_FT0;
     helper_fwait;
     helper_fxam_ST0;
@@ -846,7 +838,6 @@
     helper_rdrand;
     helper_rdtsc;
     helper_rdtscp;
-    helper_rdtsc_wrapper;
     helper_read_eflags;
     helper_rechecking_single_step;
     helper_rem_i32;

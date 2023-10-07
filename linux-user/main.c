@@ -60,7 +60,7 @@
 
 #ifdef CONFIG_COGBT
 #include "block.h"
-#include "function.h"
+#include "json_function.h"
 #include "cogbt.h"
 csh handle;
 extern AOTParser *parser;
