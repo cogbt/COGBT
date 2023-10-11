@@ -141,6 +141,53 @@ private: /// Currently translated instruction.
     /// GenFCMOVHelper - Gen llvm irs to do fcmovcc by using lbt intrinsic \p
     /// LBTIntrinic.
     void GenFCMOVHelper(GuestInst *Inst, std::string LBTIntrinic);
+
+    /// @name SSE
+    // get 64 bit XMM Ptr
+    Value *getXMMPtr(int i, int start_byte,Type * Ty);
+
+    Value *getXMMT0Ptr(int start_byte,Type * Ty);
+
+
+    /// @name X87 FPU translator helper functions.
+    Value *getMMXPtr(int i, int start_byte, Type *Ty);
+
+    Value *getFT0Ptr();
+
+    /// getPrecisonCtrl - Get the precision of x87 floating point calculations.
+    /// 00B float, 10B double, 11B double Ext
+    Value *getPrecisonCtrl(void);
+
+    Value *GetFpusPtr(void);
+
+    Value *GetFpucPtr(void);
+
+    ///   FP64CompareSW - f64 compares with f64 , result show in FPU State Words
+    ///   Note: if LHS > RHS C3:C0 = 00 , LHS = RHS 10 , LHS < RHS 01
+    ///   Usually ST0 is RHS
+    void FP64CompareSW(Value *LHS, Value *RHS);
+
+    ///   FP64CompareEFLAG - f64 compares with f64  , result show in EFlag
+    ///   Note: if LHS > RHS ZF:CF = 00 , LHS = RHS 10 , LHS < RHS 01
+    ///   Usually ST0 is RHS
+    ///   NEEDED TO FLASH GMR
+    void FP64CompareEFLAG(Value *LHS, Value *RHS);
+
+    /// GetFPRPtr - Get the pointer of FPStack[fpi].
+    Value *GetFPRPtr(Value *fpi, Type *FPRType);
+    /// LoadFromFPR - Load value from FPStack[fpi].
+    Value *LoadFromFPR(Value *fpi, Type *FPRType);
+    /// StoreToFPR - Store value V into FPStack[fpi].
+    void StoreToFPR(Value *V, Value *fpi);
+
+    /// GetFPUTop - Get the current FPU stack top value.
+    Value *GetFPUTop(void);
+    /// SetFPUTop - Adjust FPU stack top value to fpi.
+    void SetFPUTop(Value *fpi);
+
+    /// SetFPTag - set FPTag[fpi] to v.
+    /// 0 = valid, 1 = empty
+    void SetFPTag(Value *fpi, uint8_t v);
 };
 
 #endif

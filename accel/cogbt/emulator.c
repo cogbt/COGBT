@@ -95,10 +95,6 @@ int GuestMMXOffset(int idx) {
     return offsetof(CPUX86State, fpregs[idx].mmx);
 }
 
-int GuestFPUOffset(int idx) {
-    return offsetof(CPUX86State, fpregs[idx].d);
-}
-
 int GuestST0Offset(void *p) {
     CPUX86State *env = (CPUX86State *) p;
     return GuestFPUOffset(env->fpstt);
@@ -143,6 +139,30 @@ int GuestMMXRegOffset(int reg_idx, int reg_start_byte) {
 int GuestMXCSROffset(void) {
     return offsetof(CPUX86State, mxcsr);
 }
+
+
+int GuestFPUOffset(int idx) {
+    return offsetof(CPUX86State, fpregs[idx].d);
+}
+
+/* @name X87 FPU */
+int GuestFPRegSize(void) { return sizeof(FPReg); }
+
+int GuestFpTagSize(void) { return sizeof(uint8_t); }
+
+int GuestFpTagOffset(void) { return offsetof(CPUX86State, fptags); }
+
+int GuestFpregsOffset(void) { return offsetof(CPUX86State, fpregs); }
+
+int GuestFpusOffset(void) { return offsetof(CPUX86State, fpus); }
+
+int GuestFpucOffset(void) { return offsetof(CPUX86State, fpuc); }
+
+int GuestFT0Offset(void) { return offsetof(CPUX86State, ft0); }
+
+int GuestFpusSize(void) { return sizeof(uint16_t); };
+
+int GuestFpsttOffset(void) { return offsetof(CPUX86State, fpstt); }
 
 void helper_raise_syscall(void *p, uint64_t next_eip) {
     CPUX86State *env = (CPUX86State *)p;

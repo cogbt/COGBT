@@ -33,6 +33,10 @@ public:
     /// otherwise.
     int GetFPRID();
 
+    /// GetSTRID - If operand is a x87 fpu st register, return its index(0-7),
+    /// -1 otherwise.
+    int GetSTRID();
+
     /// GetBaseReg - If opnd is a memory operand, return the base reg id. -1
     /// otherwise.
     int GetBaseReg();
@@ -82,6 +86,12 @@ public:
     int64_t getIMM() {
         return Opnd->imm;
     }
+
+    /// isMMX - Judeg if Opnd is a ST register.
+    bool isSTR();
+
+    /// isMMX - Judeg if Opnd is a FP register.
+    bool isFPR();
 private:
     X86Operand *Opnd;
 };

@@ -183,7 +183,8 @@ protected:
     /// Basic types that are frequently used.
     Type *Int1Ty, *Int8Ty, *Int16Ty, *Int32Ty, *Int64Ty, *Int128Ty, *Int256Ty,
          *Int512Ty, *VoidTy, *Int8PtrTy, *Int16PtrTy, *Int32PtrTy, *Int64PtrTy,
-         *Int128PtrTy, *CPUX86StatePtrTy, *Int80Ty, *Int80PtrTy;
+         *Int128PtrTy, *CPUX86StatePtrTy, *Int80Ty, *Int80PtrTy,
+         *FP80Ty, *FP80PtrTy, *FP64Ty, *FP64PtrTy, *FP32Ty, *FP32PtrTy;
 
     /// InitializeTypes - Cache some basic types that are frequently used in
     /// translator.

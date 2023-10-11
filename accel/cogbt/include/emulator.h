@@ -26,8 +26,19 @@ int GuestMMXOffset(int idx);
 int GuestZMMRegOffset(int reg_idx, int reg_start_byte);
 int GuestMMXRegOffset(int reg_idx, int reg_start_byte);
 
+int GuestFT0Offset(void);
 int GuestFPUOffset(int idx);
 int GuestST0Offset(void *p);
+
+int GuestFpsttOffset(void);
+int GuestFPRegSize(void);
+int GuestFpregsOffset(void);
+int GuestFpTagOffset(void);
+int GuestFpTagSize(void);
+int GuestFpusOffset(void);
+int GuestFpusSize(void);
+int GuestFpucSize(void);
+int GuestFpucOffset(void);
 
 int GuestMXCSROffset(void);
 

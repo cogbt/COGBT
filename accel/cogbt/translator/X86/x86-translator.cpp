@@ -855,13 +855,6 @@ void X86Translator::Translate() {
 
     for (auto &block : *TU) {
         assert(TU->size() && "TU size is expected to be non-zero!");
-        /* if (aotmode == 1) { */
-        /*     std::stringstream ss; */
-        /*     ss << std::hex << block.GetBlockEntry() << "." << std::dec */
-        /*        << block.GetBlockPCSize(); */
-        /*     InitializeFunction(ss.str()); */
-        /*     dbgs() << ss.str() << "\n"; */
-        /* } */
         InitializeBlock(block);
         for (auto &inst : block) {
             CurrInst = &inst;
@@ -875,30 +868,9 @@ void X86Translator::Translate() {
 #include "x86-inst.def"
             }
         }
-#if 0
-        // In debug mode, ONLY one guest instruction is in a block. So some IRs
-        // should be added to save guest pc and jump to epilogue.
-        X86InstHandler GuestInstHdl(*block.rbegin());
-        if (!GuestInstHdl.isTerminator()) {
-            Value *Target = ConstInt(Int64Ty, GuestInstHdl.getNextPC());
-            Value *EnvEIP = Builder.CreateGEP(
-                Int8Ty, CPUEnv, ConstInt(Int64Ty, GuestEIPOffset()));
-            Value *EIPAddr = Builder.CreateBitCast(
-                EnvEIP, Target->getType()->getPointerTo());
-            Builder.CreateStore(Target, EIPAddr);
 
-            // sync GMRVals into stack.
-            for (int GMRId = 0; GMRId < (int)GMRVals.size(); GMRId++) {
-                if (GMRVals[GMRId].isDirty()) {
-                    Builder.CreateStore(GMRVals[GMRId].getValue(),
-                                        GMRStates[GMRId]);
-                    GMRVals[GMRId].setDirty(false);
-                }
-            }
-            Builder.CreateBr(ExitBB);
-        }
-#endif
-        X86InstHandler GuestInstHdl(&*block.rbegin());
+        /* X86InstHandler GuestInstHdl(&*block.rbegin()); */
+        X86InstHandler GuestInstHdl(CurrInst);
         if (!GuestInstHdl.isTerminator()) {
             std::stringstream ss;
             ss << std::hex << GuestInstHdl.getNextPC();

@@ -67,6 +67,12 @@ void LLVMTranslator::InitializeTypes() {
     Int128PtrTy = Type::getIntNPtrTy(Context, 128);
     Int80Ty = Type::getIntNTy(Context, 80);
     Int80PtrTy = Type::getIntNPtrTy(Context, 80);
+    FP80Ty = Type::getX86_FP80Ty(Context);
+    FP64Ty = Type::getDoubleTy(Context);
+    FP32Ty = Type::getFloatTy(Context);
+    FP80PtrTy = Type::getX86_FP80PtrTy(Context);
+    FP64PtrTy = Type::getDoublePtrTy(Context);
+    FP32PtrTy = Type::getFloatPtrTy(Context);
     CPUX86StatePtrTy = StructType::create(Context)->getPointerTo();
 };
 
