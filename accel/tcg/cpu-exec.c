@@ -1013,6 +1013,8 @@ uint64_t syscall_number = 0;
 
 void dump_path(uint64_t pc);
 extern char *exec_path;
+extern int dump_pc;
+
 FILE *dump_path_file = NULL;
 void dump_path (uint64_t pc) {
     if (!dump_path_file) {
@@ -1135,7 +1137,12 @@ int cpu_exec(CPUState *cpu)
 #if defined(CONFIG_COGBT) || defined(CONFIG_COGBT_DEBUG)
                 tb_not_find++;
 #endif
-                dump_path(pc - elf_loadbias);
+
+                CPUX86State *env = cpu->env_ptr;
+#ifndef CONFIG_COGBT
+                if (dump_pc)
+#endif
+                    dump_path(pc - env->elf_loadbias);
 
                 tb = tb_gen_code(cpu, pc, cs_base, flags, cflags);
                 mmap_unlock();

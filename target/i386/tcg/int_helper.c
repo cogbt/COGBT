@@ -493,6 +493,7 @@ target_ulong HELPER(rdrand)(CPUX86State *env)
     env->cc_src = CC_C;
     return ret;
 }
+
 #ifdef CONFIG_COGBT
 target_ulong HELPER(rdrand_cogbt)(CPUX86State* env) {
     Error *err = NULL;

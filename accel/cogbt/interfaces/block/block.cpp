@@ -105,9 +105,15 @@ void tb_aot_gen(const char *pf) {
     llvm_finalize(Translator);
 }
 
+extern int singlestep;
+
 // JIT mode
 int block_gen_code(uint64_t pc, int max_insns, LLVMTranslator *translator,
                    void **code_cache, int *insn_cnt) {
+#ifdef CONFIG_COGBT_DEBUG
+    if (singlestep == 1)
+        max_insns = 1;
+#endif
     cs_insn **insns = (cs_insn **)calloc(max_insns + 1, sizeof(cs_insn *));
     *insn_cnt = 0;
 
@@ -129,6 +135,11 @@ int block_gen_code(uint64_t pc, int max_insns, LLVMTranslator *translator,
                     insns[i]->mnemonic, insns[i]->op_str);
         }
         ++*insn_cnt;
+
+        // In JIT mode, adjusting the size of a block to debug rapidly is a good
+        // way, such as, ONLY one guest instruction in a block.
+        /* if (insns[i]->address == 0x4043d1) */
+        /*     break; */
 
         // Check wether we have reached the terminator of a basic block
         if (guest_inst_is_terminator(insns[i]))
