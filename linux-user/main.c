@@ -154,12 +154,17 @@ uint64_t debug_pc = 0;
 /* In debug mode, all tbs executed will be recorded. This makes the log file so
  * huge. So we can sample tbs between [debug_start_cnter, debug_end_cnter).
  */
-uint64_t debug_start_cnter = 0, debug_end_cnter = 0;
+uint64_t debug_start_cnter = 0, debug_end_cnter = -1;
 
 /* XXX: on x86 MAP_GROWSDOWN only works if ESP <= address + 32, so
    we allocate a bigger stack. Need a better solution, for example
    by remapping the process stack directly at the right place */
 unsigned long guest_stack_size = 8 * 1024 * 1024UL;
+
+/* Used to record guest pc that is not translated.
+ * We can use the obtained results as input in COGBT TB mode.
+ */
+int dump_pc = 0;
 
 #ifdef CONFIG_COGBT
 /* bias for shared files in memory */
@@ -467,6 +472,9 @@ static void handle_arg_runmode(const char *arg)
     } else aotmode = JIT;
 }
 #endif
+static void handle_arg_dump_pc(const char* arg) {
+    dump_pc = 1;
+}
 static void handle_arg_aot(const char *arg)
 {
     aotfile = arg;
@@ -559,6 +567,8 @@ static const struct qemu_argument arg_table[] = {
     {"m",          "COGBT_RUNMODE",    true, handle_arg_runmode,
      "",           "set cogbt runmode to jit/aot, default is jit"},
 #endif
+    {"dump_pc",    "COGBT_DUMP_PC",    false, handle_arg_dump_pc,
+    "",            "enable recording guest pc that is not translated"},
     {"a",          "COGBT_AOTFILE",    true, handle_arg_aot,
      "",           "set the aot file path"},
     {"debug",      "COGBT_DEBUGPC",    true, handle_arg_debug,
@@ -1008,6 +1018,10 @@ int main(int argc, char **argv, char **envp)
         exit(0);
     }
     cogbt_block_init();
+#endif
+
+#ifndef CONFIG_COGBT
+    env->elf_loadbias = 0;
 #endif
 
     /* Now that we've loaded the binary, GUEST_BASE is fixed.  Delay

@@ -105,9 +105,15 @@ void tb_aot_gen(const char *pf) {
     llvm_finalize(Translator);
 }
 
+extern int singlestep;
+
 // JIT mode
 int block_gen_code(uint64_t pc, int max_insns, LLVMTranslator *translator,
                    void **code_cache, int *insn_cnt) {
+#ifdef CONFIG_COGBT_DEBUG
+    if (singlestep == 1)
+        max_insns = 1;
+#endif
     cs_insn **insns = (cs_insn **)calloc(max_insns + 1, sizeof(cs_insn *));
     *insn_cnt = 0;
 
