@@ -335,10 +335,40 @@ void X86Translator::translate_fchs(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fcomp(GuestInst *Inst) {
-    GenFPUHelper(Inst, "fcom", DEST_IS_ST0 | SHOULD_POP_ONCE);
+    /* GenFPUHelper(Inst, "fcom", DEST_IS_ST0 | SHOULD_POP_ONCE); */
+    X86InstHandler InstHdl(Inst);
+    Value *LHS = nullptr;
+    Value *St0 = GetFPUTop();
+
+    if (InstHdl.getOpndNum() == 0) {
+        Value *ST1 = Builder.CreateAdd(St0, ConstInt(Int32Ty, 1));
+        ST1 = Builder.CreateAnd(ST1, ConstInt(Int32Ty, 7));
+        LHS = LoadFromFPR(ST1, FP64Ty);
+    } else if (InstHdl.getOpndNum() == 1) {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+
+        if (SrcOpnd.getOpndSize() == 8 || SrcOpnd.isSTR()) {
+            LHS = Builder.CreateBitCast(MemVal, FP64Ty);
+        } else if (SrcOpnd.getOpndSize() == 4) {
+            LHS = Builder.CreateBitCast(MemVal, FP32Ty);
+            LHS = Builder.CreateFPExt(LHS, FP64Ty);
+        } else {
+            llvm_unreachable("fcomp: Opnd Bitwidth\n");
+        }
+    } else {
+        llvm_unreachable("fcomp: Opnd num err\n");
+    }
+    Value *RHS = LoadFromFPR(St0, FP64Ty);
+    FP64CompareSW(LHS, RHS);
+    SetFPTag(St0, 1);
+    St0 = Builder.CreateAdd(St0, ConstInt(Int32Ty, 1));
+    St0 = Builder.CreateAnd(St0, ConstInt(Int32Ty, 7));
+    SetFPUTop(St0);
 }
 
 void X86Translator::translate_fcompp(GuestInst *Inst) {
+#if 0
     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     FunctionType *Binary32FunTy =
         FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
@@ -347,9 +377,30 @@ void X86Translator::translate_fcompp(GuestInst *Inst) {
     CallFunc(UnaryFunTy, "helper_fcom_ST0_FT0", CPUEnv);
     CallFunc(UnaryFunTy, "helper_fpop", CPUEnv);
     CallFunc(UnaryFunTy, "helper_fpop", CPUEnv);
+#else
+    X86InstHandler InstHdl(Inst);
+    if (InstHdl.getOpndNum() != 0) {
+        llvm_unreachable("fcompp: only handle no Opnd\n");
+    }
+
+    Value *St0 = GetFPUTop();
+    Value *St1 = Builder.CreateAdd(St0, ConstInt(Int32Ty, 1));
+    St1 = Builder.CreateAnd(St1, ConstInt(Int32Ty, 7));
+    Value *RHS = LoadFromFPR(St0, FP64Ty);
+    Value *LHS = LoadFromFPR(St1, FP64Ty);
+
+    FP64CompareSW(LHS, RHS);
+
+    SetFPTag(St0, 1);
+    SetFPTag(St1, 1);
+    St1 = Builder.CreateAdd(St1, ConstInt(Int32Ty, 1));
+    St1 = Builder.CreateAnd(St1, ConstInt(Int32Ty, 7));
+    SetFPUTop(St1);
+#endif
 }
 
 void X86Translator::translate_fcomip(GuestInst *Inst) {
+#if 0
     X86InstHandler InstHdl(Inst);
     assert(InstHdl.getOpndNum() == 1);
 
@@ -366,9 +417,29 @@ void X86Translator::translate_fcomip(GuestInst *Inst) {
     CallFunc(FCOMITy, "helper_fcomi_ST0_FT0_cogbt", CPUEnv);
     CallFunc(FPOPTy, "helper_fpop", CPUEnv);
     ReloadGMRValue(X86Config::EFLAG);
+#else
+    X86InstHandler InstHdl(Inst);
+    if (InstHdl.getOpndNum() != 1) {
+        llvm_unreachable("fcomip: only handle one Opnd\n");
+    }
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+
+    Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+    Value *LHS = Builder.CreateBitCast(MemVal, FP64Ty);
+    Value *St0 = GetFPUTop();
+    Value *RHS = LoadFromFPR(St0, FP64Ty);
+
+    FP64CompareEFLAG(LHS, RHS);
+
+    SetFPTag(St0, 1);
+    St0 = Builder.CreateAdd(St0, ConstInt(Int32Ty, 1));
+    St0 = Builder.CreateAnd(St0, ConstInt(Int32Ty, 7));
+    SetFPUTop(St0);
+#endif
 }
 
 void X86Translator::translate_fcomi(GuestInst *Inst) {
+#if 0
     X86InstHandler InstHdl(Inst);
     assert(InstHdl.getOpndNum() == 1);
 
@@ -383,10 +454,49 @@ void X86Translator::translate_fcomi(GuestInst *Inst) {
     CallFunc(FMOVTy, "helper_fmov_FT0_STN", {CPUEnv, SrcFPRID});
     CallFunc(FCOMITy, "helper_fcomi_ST0_FT0_cogbt", CPUEnv);
     ReloadGMRValue(X86Config::EFLAG);
+#else
+    X86InstHandler InstHdl(Inst);
+    if (InstHdl.getOpndNum() != 1) {
+        llvm_unreachable("fcomi: only handle one Opnd\n");
+    }
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+
+    Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+    MemVal = Builder.CreateBitCast(MemVal, FP64Ty);
+    Value *St0 = GetFPUTop();
+    Value *RHS = LoadFromFPR(St0, FP64Ty);
+
+    FP64CompareEFLAG(MemVal, RHS);
+#endif
 }
 
 void X86Translator::translate_fcom(GuestInst *Inst) {
-    GenFPUHelper(Inst, "fcom", DEST_IS_ST0);
+    /* GenFPUHelper(Inst, "fcom", DEST_IS_ST0); */
+    X86InstHandler InstHdl(Inst);
+    Value *LHS = nullptr;
+    Value *St0 = GetFPUTop();
+
+    if (InstHdl.getOpndNum() == 0) {
+        Value *ST1 = Builder.CreateAdd(St0, ConstInt(Int32Ty, 1));
+        ST1 = Builder.CreateAnd(ST1, ConstInt(Int32Ty, 7));
+        LHS = LoadFromFPR(ST1, FP64Ty);
+    } else if (InstHdl.getOpndNum() == 1) {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+
+        if (SrcOpnd.getOpndSize() == 8 || SrcOpnd.isSTR()) {
+            LHS = Builder.CreateBitCast(MemVal, FP64Ty);
+        } else if (SrcOpnd.getOpndSize() == 4) {
+            LHS = Builder.CreateBitCast(MemVal, FP32Ty);
+            LHS = Builder.CreateFPExt(LHS, FP64Ty);
+        } else {
+            llvm_unreachable("fcom: Opnd Bitwidth\n");
+        }
+    } else {
+        llvm_unreachable("fcom Opnd num err\n");
+    }
+    Value *RHS = LoadFromFPR(St0, FP64Ty);
+    FP64CompareSW(LHS, RHS);
 }
 
 void X86Translator::translate_fcos(GuestInst *Inst) {
@@ -1320,6 +1430,7 @@ void X86Translator::translate_ftst(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fucomip(GuestInst *Inst) {
+#if 0
     X86InstHandler InstHdl(Inst);
     assert(InstHdl.getOpndNum() == 1);
 
@@ -1337,9 +1448,29 @@ void X86Translator::translate_fucomip(GuestInst *Inst) {
     CallFunc(FUCOMITy, "helper_fucomi_ST0_FT0_cogbt", CPUEnv);
     CallFunc(FPOPTy, "helper_fpop", CPUEnv);
     ReloadGMRValue(X86Config::EFLAG);
+#else
+    X86InstHandler InstHdl(Inst);
+    if (InstHdl.getOpndNum() != 1) {
+        llvm_unreachable("fucomip: only handle one Opnd\n");
+    }
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+
+    Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+    MemVal = Builder.CreateBitCast(MemVal, FP64Ty);
+
+    Value *St0 = GetFPUTop();
+    Value *RHS = LoadFromFPR(St0, FP64Ty);
+    FP64CompareEFLAG(MemVal, RHS);
+
+    SetFPTag(St0, 1);
+    St0 = Builder.CreateAdd(St0, ConstInt(Int32Ty, 1));
+    St0 = Builder.CreateAnd(St0, ConstInt(Int32Ty, 7));
+    SetFPUTop(St0);
+#endif
 }
 
 void X86Translator::translate_fucomi(GuestInst *Inst) {
+#if 0
     X86InstHandler InstHdl(Inst);
     assert(InstHdl.getOpndNum() == 1);
 
@@ -1355,9 +1486,22 @@ void X86Translator::translate_fucomi(GuestInst *Inst) {
     CallFunc(FMOVTy, "helper_fmov_FT0_STN", {CPUEnv, SrcFPRID});
     CallFunc(FUCOMITy, "helper_fucomi_ST0_FT0_cogbt", CPUEnv);
     ReloadGMRValue(X86Config::EFLAG);
+#else
+    X86InstHandler InstHdl(Inst);
+    if (InstHdl.getOpndNum() != 1) {
+        llvm_unreachable("fucomi: only handle one Opnd\n");
+    }
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+    MemVal = Builder.CreateBitCast(MemVal, FP64Ty);
+    Value *St0 = GetFPUTop();
+    Value *RHS = LoadFromFPR(St0, FP64Ty);
+    FP64CompareEFLAG(MemVal, RHS);
+#endif
 }
 
 void X86Translator::translate_fucompp(GuestInst *Inst) {
+#if 0
     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     FunctionType *Binary32FunTy =
         FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
@@ -1366,14 +1510,83 @@ void X86Translator::translate_fucompp(GuestInst *Inst) {
     CallFunc(UnaryFunTy, "helper_fucom_ST0_FT0", CPUEnv);
     CallFunc(UnaryFunTy, "helper_fpop", CPUEnv);
     CallFunc(UnaryFunTy, "helper_fpop", CPUEnv);
+#else
+    X86InstHandler InstHdl(Inst);
+    if (InstHdl.getOpndNum() != 0) {
+        llvm_unreachable("fucompp: only handle no Opnd\n");
+    }
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    Value *St0 = GetFPUTop();
+    Value *St1 = Builder.CreateAdd(St0, ConstInt(Int32Ty, 1));
+    St1 = Builder.CreateAnd(St1, ConstInt(Int32Ty, 7));
+    Value *RHS = LoadFromFPR(St0, FP64Ty);
+    Value *LHS = LoadFromFPR(St1, FP64Ty);
+    FP64CompareSW(LHS, RHS);
+    SetFPTag(St0, 1);
+    SetFPTag(St1, 1);
+    St1 = Builder.CreateAdd(St1, ConstInt(Int32Ty, 1));
+    St1 = Builder.CreateAnd(St1, ConstInt(Int32Ty, 7));
+    SetFPUTop(St1);
+#endif
 }
 
 void X86Translator::translate_fucomp(GuestInst *Inst) {
-    GenFPUHelper(Inst, "fucom", DEST_IS_ST0 | SHOULD_POP_ONCE);
+    /* GenFPUHelper(Inst, "fucom", DEST_IS_ST0 | SHOULD_POP_ONCE); */
+    X86InstHandler InstHdl(Inst);
+    Value *LHS = nullptr;
+    Value *St0 = GetFPUTop();
+
+    if (InstHdl.getOpndNum() == 0) {
+        Value *ST1 = Builder.CreateAdd(St0, ConstInt(Int32Ty, 1));
+        ST1 = Builder.CreateAnd(ST1, ConstInt(Int32Ty, 7));
+        LHS = LoadFromFPR(ST1, FP64Ty);
+    } else if (InstHdl.getOpndNum() == 1) {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+        if (SrcOpnd.getOpndSize() == 8) {
+            LHS = Builder.CreateBitCast(MemVal, FP64Ty);
+        } else if (SrcOpnd.getOpndSize() == 4) {
+            LHS = Builder.CreateBitCast(MemVal, FP32Ty);
+            LHS = Builder.CreateFPExt(LHS, FP64Ty);
+        } else {
+            llvm_unreachable("fucomp Opnd Bitwidth err\n");
+        }
+    } else {
+        llvm_unreachable("fucomp Opnd num err\n");
+    }
+    Value *RHS = LoadFromFPR(St0, FP64Ty);
+    FP64CompareSW(LHS, RHS);
 }
 
 void X86Translator::translate_fucom(GuestInst *Inst) {
+#if 0
     GenFPUHelper(Inst, "fucom", DEST_IS_ST0);
+#else
+    X86InstHandler InstHdl(Inst);
+    Value *LHS = nullptr;
+    Value *St0 = GetFPUTop();
+    if (InstHdl.getOpndNum() == 0) {
+        Value *ST1 = Builder.CreateAdd(St0, ConstInt(Int32Ty, 1));
+        ST1 = Builder.CreateAnd(ST1, ConstInt(Int32Ty, 7));
+        LHS = LoadFromFPR(ST1, FP64Ty);
+    } else if (InstHdl.getOpndNum() == 1) {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+
+        if (SrcOpnd.getOpndSize() == 8) {
+            LHS = Builder.CreateBitCast(MemVal, FP64Ty);
+        } else if (SrcOpnd.getOpndSize() == 4) {
+            LHS = Builder.CreateBitCast(MemVal, FP32Ty);
+            LHS = Builder.CreateFPExt(LHS, FP64Ty);
+        } else {
+            llvm_unreachable("fucomp Opnd Bitwidth err\n");
+        }
+    } else {
+        llvm_unreachable("fucomp Opnd num err\n");
+    }
+    Value *RHS = LoadFromFPR(St0, FP64Ty);
+    FP64CompareSW(LHS, RHS);
+#endif
 }
 
 void X86Translator::translate_wait(GuestInst *Inst) {
