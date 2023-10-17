@@ -330,8 +330,12 @@ void X86Translator::translate_faddp(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fchs(GuestInst *Inst) {
-    FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(UnaryFunTy, "helper_fchs_ST0", {CPUEnv});
+    /* FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false); */
+    /* CallFunc(UnaryFunTy, "helper_fchs_ST0", {CPUEnv}); */
+    Value *top = GetFPUTop();
+    Value *Vst0 = LoadFromFPR(top, FP64Ty);
+    Vst0 = Builder.CreateFNeg(Vst0);
+    StoreToFPR(Vst0, top);
 }
 
 void X86Translator::translate_fcomp(GuestInst *Inst) {
@@ -537,8 +541,12 @@ void X86Translator::translate_fbstp(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fdecstp(GuestInst *Inst) {
-    FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(UnaryFunTy, "helper_fdecstp", CPUEnv);
+    /* FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false); */
+    /* CallFunc(UnaryFunTy, "helper_fdecstp", CPUEnv); */
+    Value *newtop = GetFPUTop();
+    newtop = Builder.CreateSub(newtop, ConstInt(Int32Ty, 1));
+    newtop = Builder.CreateAnd(newtop, ConstInt(Int32Ty, 7));
+    SetFPUTop(newtop);
 }
 
 void X86Translator::translate_femms(GuestInst *Inst) {
@@ -563,8 +571,12 @@ void X86Translator::translate_ficomp(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fincstp(GuestInst *Inst) {
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fincstp", CPUEnv);
+    /* FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false); */
+    /* CallFunc(FTy, "helper_fincstp", CPUEnv); */
+    Value *newtop = GetFPUTop();
+    newtop = Builder.CreateAdd(newtop, ConstInt(Int32Ty, 1));
+    newtop = Builder.CreateAnd(newtop, ConstInt(Int32Ty, 7));
+    SetFPUTop(newtop);
 }
 
 void X86Translator::translate_fldcw(GuestInst *Inst) {
@@ -1228,12 +1240,35 @@ void X86Translator::translate_fstpnce(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fxch(GuestInst *Inst) {
+#if 0
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     FunctionType *FTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
 
     Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
     CallFunc(FTy, "helper_fxchg_ST0_STN", {CPUEnv, SrcFPRID});
+#else
+    X86InstHandler InstHdl(Inst);
+    assert(InstHdl.getOpndNum() == 1 && "fxch: need one Opnd");
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    Value *St0 = GetFPUTop();
+    Value *Vst0 = LoadFromFPR(St0, Int64Ty);
+    Value *DestSTRID = nullptr;
+    if (InstHdl.getOpndNum() > 1) {
+        llvm_unreachable("fxch: Opnd should be 0 or 1");
+    } else if (InstHdl.getOpndNum() == 0) {
+        DestSTRID = ConstInt(Int32Ty, 1);
+    } else if (SrcOpnd.isSTR()) {
+        DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
+    } else {
+        llvm_unreachable("\nfxch:is not FPR\n");
+    }
+    Value *DestFPRID = Builder.CreateAdd(St0, DestSTRID);
+    DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty, 7));
+    Value *V = LoadFromFPR(DestFPRID, Int64Ty);
+    StoreToFPR(V, St0);
+    StoreToFPR(Vst0, DestFPRID);
+#endif
 }
 
 void X86Translator::translate_fsubr(GuestInst *Inst) {
