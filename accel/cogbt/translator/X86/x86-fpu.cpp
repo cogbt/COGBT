@@ -390,38 +390,87 @@ void X86Translator::translate_fldenv(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fldl2e(GuestInst *Inst) {
+#if 0
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fpush", {CPUEnv});
     CallFunc(FTy, "helper_fldl2e_ST0", {CPUEnv});
+#else
+    Value *newtop = GetFPUTop();
+    newtop = Builder.CreateSub(newtop, ConstInt(Int32Ty, 1));
+    newtop = Builder.CreateAnd(newtop, ConstInt(Int32Ty, 7));
+    StoreToFPR(ConstantFP::get(Context, APFloat(1.4426950408889633870)),
+               newtop);
+    SetFPTag(newtop, 0);
+    SetFPUTop(newtop);
+#endif
 }
 
 void X86Translator::translate_fldl2t(GuestInst *Inst) {
+#if 0
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fpush", {CPUEnv});
     CallFunc(FTy, "helper_fldl2t_ST0", {CPUEnv});
+#else
+    Value *newtop = GetFPUTop();
+    newtop = Builder.CreateSub(newtop, ConstInt(Int32Ty, 1));
+    newtop = Builder.CreateAnd(newtop, ConstInt(Int32Ty, 7));
+    StoreToFPR(ConstantFP::get(Context, APFloat(3.3219280948873621817)),
+               newtop);
+    SetFPTag(newtop, 0);
+    SetFPUTop(newtop);
+#endif
 }
 
 void X86Translator::translate_fldlg2(GuestInst *Inst) {
+#if 0
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fpush", {CPUEnv});
     CallFunc(FTy, "helper_fldlg2_ST0", {CPUEnv});
+#else
+    Value *newtop = GetFPUTop();
+    newtop = Builder.CreateSub(newtop, ConstInt(Int32Ty, 1));
+    newtop = Builder.CreateAnd(newtop, ConstInt(Int32Ty, 7));
+    StoreToFPR(ConstantFP::get(Context, APFloat(0.3010299956639811980)),
+               newtop);
+    SetFPTag(newtop, 0);
+    SetFPUTop(newtop);
+#endif
 }
 
 void X86Translator::translate_fldln2(GuestInst *Inst) {
+#if 0
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fpush", {CPUEnv});
     CallFunc(FTy, "helper_fldln2_ST0", {CPUEnv});
+#else
+    Value *newtop = GetFPUTop();
+    newtop = Builder.CreateSub(newtop, ConstInt(Int32Ty, 1));
+    newtop = Builder.CreateAnd(newtop, ConstInt(Int32Ty, 7));
+    StoreToFPR(ConstantFP::get(Context, APFloat(0.6931471805599452862)),
+               newtop);
+    SetFPTag(newtop, 0);
+    SetFPUTop(newtop);
+#endif
 }
 
 void X86Translator::translate_fldpi(GuestInst *Inst) {
+#if 0
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fpush", {CPUEnv});
     CallFunc(FTy, "helper_fldpi_ST0", {CPUEnv});
+#else
+    Value *newtop = GetFPUTop();
+    newtop = Builder.CreateSub(newtop, ConstInt(Int32Ty, 1));
+    newtop = Builder.CreateAnd(newtop, ConstInt(Int32Ty, 7));
+    StoreToFPR(ConstantFP::get(Context, APFloat(3.14159265358979323)), newtop);
+    SetFPTag(newtop, 0);
+    SetFPUTop(newtop);
+#endif
 }
 
 void X86Translator::translate_fnclex(GuestInst *Inst) {
