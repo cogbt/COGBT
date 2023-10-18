@@ -65,6 +65,8 @@ struct KeyVal SymTable[] = {
 
     {"helper_fcom_ST0_zero_64", helper_fcom_ST0_zero_64},
     {"helper_fpatan_math_64", helper_fpatan_math_64},
+    {"helper_fstt_ST0_From64", helper_fstt_ST0_From64},
+    {"helper_fldt_ST0_To64", helper_fldt_ST0_To64},
 };
 
 int SymTableSize = sizeof(SymTable) / sizeof(SymTable[0]);

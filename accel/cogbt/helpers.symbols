@@ -896,4 +896,6 @@
     helper_xsetbv;
     helper_fcom_ST0_zero_64;
     helper_fpatan_math_64;
+    helper_fstt_ST0_From64;
+    helper_fldt_ST0_To64;
 };

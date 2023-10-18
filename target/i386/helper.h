@@ -149,6 +149,8 @@ DEF_HELPER_1(fcomi_ST0_FT0_cogbt, void, env)
 DEF_HELPER_1(fucomi_ST0_FT0_cogbt, void, env)
 DEF_HELPER_1(fcom_ST0_zero_64, void, env)
 DEF_HELPER_1(fpatan_math_64, void, env)
+DEF_HELPER_2(fstt_ST0_From64, void, env, tl)
+DEF_HELPER_2(fldt_ST0_To64, void, env, tl)
 #endif
 DEF_HELPER_1(fadd_ST0_FT0, void, env)
 DEF_HELPER_1(fmul_ST0_FT0, void, env)

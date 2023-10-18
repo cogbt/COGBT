@@ -1381,7 +1381,7 @@ void X86Translator::translate_fld(GuestInst *Inst) {
             Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
             FunctionType *FLDTTy =
                 FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false);
-            CallFunc(FLDTTy, "helper_fldt_ST0", {CPUEnv, Addr});
+            CallFunc(FLDTTy, "helper_fldt_ST0_To64", {CPUEnv, Addr});
             return;
         } else {
             llvm_unreachable("fld: unknow bit width\n");
