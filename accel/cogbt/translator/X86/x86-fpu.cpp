@@ -824,8 +824,15 @@ void X86Translator::translate_fnstsw(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fpatan(GuestInst *Inst) {
+    /* FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false); */
+    /* CallFunc(FTy, "helper_fpatan", CPUEnv); */
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fpatan", CPUEnv);
+    CallFunc(FTy, "helper_fpatan_math_64", CPUEnv);
+    Value *newtop = GetFPUTop();
+    SetFPTag(newtop, 1);
+    newtop = Builder.CreateAdd(newtop, ConstInt(Int32Ty, 1));
+    newtop = Builder.CreateAnd(newtop, ConstInt(Int32Ty, 7));
+    SetFPUTop(newtop);
 }
 
 void X86Translator::translate_fprem(GuestInst *Inst) {
@@ -1818,9 +1825,11 @@ void X86Translator::translate_fsubp(GuestInst *Inst) {
 }
 
 void X86Translator::translate_ftst(GuestInst *Inst) {
+    /* FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false); */
+    /* CallFunc(UnaryFunTy, "helper_fldz_FT0", CPUEnv); */
+    /* CallFunc(UnaryFunTy, "helper_fcom_ST0_FT0", CPUEnv); */
     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(UnaryFunTy, "helper_fldz_FT0", CPUEnv);
-    CallFunc(UnaryFunTy, "helper_fcom_ST0_FT0", CPUEnv);
+    CallFunc(UnaryFunTy, "helper_fcom_ST0_zero_64", CPUEnv);
 }
 
 void X86Translator::translate_fucomip(GuestInst *Inst) {

@@ -463,6 +463,24 @@ void helper_fcom_ST0_FT0(CPUX86State *env)
     merge_exception_flags(env, old_flags);
 }
 
+#ifdef CONFIG_COGBT
+void helper_fcom_ST0_zero_64(CPUX86State *env) {
+    uint8_t old_flags = save_exception_flags(env);
+    FloatRelation ret;
+    double st0 = ST0.low, ft0 = 0.0;
+    ret = float64_compare(st0, ft0, &env->fp_status);
+    env->fpus = (env->fpus & ~0x4500) | fcom_ccval[ret + 1];
+    merge_exception_flags(env, old_flags);
+}
+
+void helper_fpatan_math_64(CPUX86State *env)
+{
+    void *p_st0 = &(ST0.low);
+    void *p_st1 = &(ST1.low);
+    (*(double *)p_st1) = atan2((*(double *)p_st1), (*(double *)p_st0));
+}
+#endif
+
 void helper_fucom_ST0_FT0(CPUX86State *env)
 {
     uint8_t old_flags = save_exception_flags(env);
