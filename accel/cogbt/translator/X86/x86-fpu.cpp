@@ -220,8 +220,26 @@ void X86Translator::SetFPTag(Value *fpi, uint8_t v) {
 }
 
 void X86Translator::translate_fabs(GuestInst *Inst) {
+#if 0
     FunctionType *FuncTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FuncTy, "helper_fabs_ST0", CPUEnv);
+#else
+    Value *top = GetFPUTop();
+    Value *Vst0 = LoadFromFPR(top, FP64Ty);
+    Value *absVal = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::fabs,
+            Vst0->getType()),
+        Vst0);
+    StoreToFPR(absVal, top);
+
+    // set C1 to 0
+    Value *FpusPtr = GetFpusPtr();
+    Value *old_flag = Builder.CreateLoad(Int16Ty, FpusPtr);
+    Value *C_1 = ConstInt(Int16Ty, 0xfdff);
+    old_flag = Builder.CreateAnd(old_flag, C_1);
+    Builder.CreateStore(old_flag, FpusPtr);
+#endif
 }
 
 void X86Translator::translate_fadd(GuestInst *Inst) {
@@ -504,13 +522,81 @@ void X86Translator::translate_fcom(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fcos(GuestInst *Inst) {
-    FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(UnaryFunTy, "helper_fcos", CPUEnv);
+    /* FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false); */
+    /* CallFunc(UnaryFunTy, "helper_fcos", CPUEnv); */
+    Value *top = GetFPUTop();
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+
+    Value *ABS = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::fabs,
+            MemVal->getType()),
+        MemVal);
+
+    BasicBlock *LessBB = BasicBlock::Create(Context, "Less", TransFunc, ExitBB);
+    BasicBlock *LargBB = BasicBlock::Create(Context, "Larg", TransFunc, ExitBB);
+    BasicBlock *EndBB = BasicBlock::Create(Context, "End", TransFunc, ExitBB);
+    Value *Cond = Builder.CreateFCmpOLT(
+        ABS, ConstantFP::get(FP64Ty, APFloat(9223372036854775808.0)));
+
+    Builder.CreateCondBr(Cond, LessBB, LargBB);
+
+    /*---------------------------------------------*/
+    Builder.SetInsertPoint(LessBB);
+
+    Value *TOP = GetFPUTop();
+    Value *V = LoadFromFPR(TOP, FP64Ty);
+
+    Value *FpusPtr_1 = GetFpusPtr();
+    Value *old_flag_1 = Builder.CreateLoad(Int16Ty, FpusPtr_1);
+    Value *C_2_1 = nullptr;
+
+    V = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::cos,
+            V->getType()),
+        V);
+
+    // set C2 to 0
+
+    C_2_1 = ConstInt(Int16Ty, 0xfbff);
+    old_flag_1 = Builder.CreateAnd(old_flag_1, C_2_1);
+    Builder.CreateStore(old_flag_1, FpusPtr_1);
+
+    StoreToFPR(V, TOP);
+
+    Builder.CreateBr(EndBB);
+    /*---------------------------------------------*/
+    Builder.SetInsertPoint(LargBB);
+
+    // set C2 to 1
+    Value *FpusPtr = GetFpusPtr();
+    Value *old_flag = Builder.CreateLoad(Int16Ty, FpusPtr);
+    Value *C_2 = nullptr;
+    C_2 = ConstInt(Int16Ty, 0x0400);
+    old_flag = Builder.CreateOr(old_flag, C_2);
+    Builder.CreateStore(old_flag, FpusPtr);
+
+    Builder.CreateBr(EndBB);
+
+    /*---------------------------------------------*/
+
+    Builder.SetInsertPoint(EndBB);
 }
 
 void X86Translator::translate_f2xm1(GuestInst *Inst) {
-    FunctionType *FuncTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FuncTy, "helper_f2xm1", {CPUEnv});
+    /* FunctionType *FuncTy = FunctionType::get(VoidTy, Int8PtrTy, false); */
+    /* CallFunc(FuncTy, "helper_f2xm1", {CPUEnv}); */
+    Value *top = GetFPUTop();
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+    MemVal = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::exp2,
+            MemVal->getType()),
+        MemVal);
+    MemVal = Builder.CreateFSub(MemVal, ConstantFP::get(FP64Ty, APFloat(1.0)));
+
+    StoreToFPR(MemVal, top);
 }
 
 void X86Translator::translate_fbld(GuestInst *Inst) {
@@ -555,11 +641,18 @@ void X86Translator::translate_femms(GuestInst *Inst) {
 }
 
 void X86Translator::translate_ffree(GuestInst *Inst) {
+#if 0
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     FunctionType *FTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
     Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetSTRID());
     CallFunc(FTy, "helper_ffree_STN", {CPUEnv, SrcFPRID});
+#else
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    Value *SrcFPRID = ConstInt(Int8Ty, SrcOpnd.GetSTRID());
+    SetFPTag(SrcFPRID, 1);
+#endif
 }
 
 void X86Translator::translate_ficom(GuestInst *Inst) {
@@ -736,18 +829,96 @@ void X86Translator::translate_fpatan(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fprem(GuestInst *Inst) {
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fprem", CPUEnv);
+    /* FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false); */
+    /* CallFunc(FTy, "helper_fprem", CPUEnv); */
+    Value *top = GetFPUTop();
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+    Value *st1 = Builder.CreateAdd(top, ConstInt(Int32Ty, 1));
+    st1 = Builder.CreateAnd(st1, ConstInt(Int32Ty, 7));
+    Value *res = LoadFromFPR(st1, FP64Ty);
+    res = Builder.CreateFRem(MemVal, res);
+    StoreToFPR(res, top);
 }
 
 void X86Translator::translate_fprem1(GuestInst *Inst) {
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fprem1", CPUEnv);
+    /* FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false); */
+    /* CallFunc(FTy, "helper_fprem1", CPUEnv); */
+    Value *top = GetFPUTop();
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+    MemVal = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::exp2,
+            MemVal->getType()),
+        MemVal);
+    MemVal = Builder.CreateFSub(MemVal, ConstantFP::get(FP64Ty, APFloat(1.0)));
+
+    StoreToFPR(MemVal, top);
 }
 
 void X86Translator::translate_fptan(GuestInst *Inst) {
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fptan", CPUEnv);
+    /* FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false); */
+    /* CallFunc(FTy, "helper_fptan", CPUEnv); */
+    Value *Top = GetFPUTop();
+    Value *Val = LoadFromFPR(Top, FP64Ty);
+
+    BasicBlock *LessBB = BasicBlock::Create(Context, "Less", TransFunc, ExitBB);
+    BasicBlock *LargBB = BasicBlock::Create(Context, "Larg", TransFunc, ExitBB);
+    BasicBlock *EndBB = BasicBlock::Create(Context, "End", TransFunc, ExitBB);
+    Value *Cond = Builder.CreateFCmpOLT(
+        Val, ConstantFP::get(FP64Ty, APFloat(9223372036854775808.0)));
+
+    Builder.CreateCondBr(Cond, LessBB, LargBB);
+
+    /*---------------------------------------------*/
+    Builder.SetInsertPoint(LessBB);
+
+    Value *top = GetFPUTop();
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+    Value *Vcos = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::cos,
+            MemVal->getType()),
+        MemVal);
+
+    MemVal = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::sin,
+            MemVal->getType()),
+        MemVal);
+
+    MemVal = Builder.CreateFDiv(MemVal, Vcos);
+    StoreToFPR(MemVal, top);
+
+    top = Builder.CreateSub(top, ConstInt(Int32Ty, 1));
+    top = Builder.CreateAnd(top, ConstInt(Int32Ty, 7));
+    StoreToFPR(ConstantFP::get(FP64Ty, APFloat(1.0)), top);
+    SetFPUTop(top);
+    SetFPTag(top, 0);
+
+    // set C2 to 0
+    Value *FpusPtr_1 = GetFpusPtr();
+    Value *old_flag_1 = Builder.CreateLoad(Int16Ty, FpusPtr_1);
+    Value *C_2_1 = ConstInt(Int16Ty, 0xfbff);
+    old_flag_1 = Builder.CreateAnd(old_flag_1, C_2_1);
+    Builder.CreateStore(old_flag_1, FpusPtr_1);
+
+    Builder.CreateBr(EndBB);
+    /*---------------------------------------------*/
+    Builder.SetInsertPoint(LargBB);
+
+    // set C2 to 1
+    Value *FpusPtr = GetFpusPtr();
+    Value *old_flag = Builder.CreateLoad(Int16Ty, FpusPtr);
+    Value *C_2 = nullptr;
+    C_2 = ConstInt(Int16Ty, 0x0400);
+    old_flag = Builder.CreateOr(old_flag, C_2);
+    Builder.CreateStore(old_flag, FpusPtr);
+
+    Builder.CreateBr(EndBB);
+
+    /*---------------------------------------------*/
+
+    Builder.SetInsertPoint(EndBB);
 }
 
 void X86Translator::translate_ffreep(GuestInst *Inst) {
@@ -756,8 +927,19 @@ void X86Translator::translate_ffreep(GuestInst *Inst) {
 }
 
 void X86Translator::translate_frndint(GuestInst *Inst) {
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_frndint", CPUEnv);
+    /* FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false); */
+    /* CallFunc(FTy, "helper_frndint", CPUEnv); */
+    Value *top = GetFPUTop();
+
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+
+    MemVal = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(),
+            Intrinsic::round, MemVal->getType()),
+        MemVal);
+    MemVal = Builder.CreateFPToSI(MemVal, Int64Ty);
+    StoreToFPR(MemVal, top);
 }
 
 void X86Translator::translate_frstor(GuestInst *Inst) {
@@ -777,8 +959,25 @@ void X86Translator::translate_fnsave(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fscale(GuestInst *Inst) {
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fscale", CPUEnv);
+    /* FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false); */
+    /* CallFunc(FTy, "helper_fscale", CPUEnv); */
+    Value *top = GetFPUTop();
+    Value *STi = Builder.CreateAdd(top, ConstInt(Int32Ty, 1));
+    STi = Builder.CreateAnd(STi, ConstInt(Int32Ty, 7));
+    Value *ST1 = LoadFromFPR(STi, FP64Ty);
+    ST1 = Builder.CreateFPToSI(ST1, Int64Ty);
+
+    ST1 = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::exp2,
+            ST1->getType()),
+        ST1);
+
+    ST1 = Builder.CreateSIToFP(ST1, FP64Ty);
+
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+
+    StoreToFPR(MemVal, top);
 }
 
 void X86Translator::translate_fsetpm(GuestInst *Inst) {
@@ -787,8 +986,72 @@ void X86Translator::translate_fsetpm(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fsincos(GuestInst *Inst) {
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fsincos", CPUEnv);
+    /* FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false); */
+    /* CallFunc(FTy, "helper_fsincos", CPUEnv); */
+    Value *top = GetFPUTop();
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+
+    BasicBlock *LessBB = BasicBlock::Create(Context, "Less", TransFunc, ExitBB);
+    BasicBlock *LargBB = BasicBlock::Create(Context, "Larg", TransFunc, ExitBB);
+    BasicBlock *EndBB = BasicBlock::Create(Context, "End", TransFunc, ExitBB);
+
+    Value *Cond = Builder.CreateFCmpOLT(
+        MemVal, ConstantFP::get(FP64Ty, APFloat(9223372036854775808.0)));
+    Builder.CreateCondBr(Cond, LessBB, LargBB);
+
+    /*---------------------------------------------*/
+    Builder.SetInsertPoint(LessBB);
+
+    Value *TOP = GetFPUTop();
+    Value *V = LoadFromFPR(TOP, FP64Ty);
+
+    Value *FpusPtr_1 = GetFpusPtr();
+    Value *old_flag_1 = Builder.CreateLoad(Int16Ty, FpusPtr_1);
+    Value *C_2_1 = nullptr;
+
+    Value *Vsin = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::sin,
+            V->getType()),
+        V);
+
+    StoreToFPR(Vsin, TOP);
+
+    V = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::cos,
+            V->getType()),
+        V);
+
+    TOP = Builder.CreateSub(TOP, ConstInt(Int32Ty, 1));
+    TOP = Builder.CreateAnd(TOP, ConstInt(Int32Ty, 7));
+    SetFPUTop(TOP);
+    SetFPTag(TOP, 0);
+    StoreToFPR(V, TOP);
+
+    // set C2 to 0
+
+    C_2_1 = ConstInt(Int16Ty, 0xfbff);
+    old_flag_1 = Builder.CreateAnd(old_flag_1, C_2_1);
+    Builder.CreateStore(old_flag_1, FpusPtr_1);
+
+    Builder.CreateBr(EndBB);
+    /*---------------------------------------------*/
+    Builder.SetInsertPoint(LargBB);
+
+    // set C2 to 1
+    Value *FpusPtr = GetFpusPtr();
+    Value *old_flag = Builder.CreateLoad(Int16Ty, FpusPtr);
+    Value *C_2 = nullptr;
+    C_2 = ConstInt(Int16Ty, 0x0400);
+    old_flag = Builder.CreateOr(old_flag, C_2);
+    Builder.CreateStore(old_flag, FpusPtr);
+
+    Builder.CreateBr(EndBB);
+
+    /*---------------------------------------------*/
+
+    Builder.SetInsertPoint(EndBB);
 }
 
 void X86Translator::translate_fnstenv(GuestInst *Inst) {
@@ -810,13 +1073,42 @@ void X86Translator::translate_fxtract(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fyl2x(GuestInst *Inst) {
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fyl2x", CPUEnv);
+    /* FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false); */
+    /* CallFunc(FTy, "helper_fyl2x", CPUEnv); */
+    Value *top = GetFPUTop();
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+    MemVal = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::log2,
+            MemVal->getType()),
+        MemVal);
+    Value *sti = Builder.CreateAdd(top, ConstInt(Int32Ty, 1));
+    sti = Builder.CreateAnd(sti, ConstInt(Int32Ty, 7));
+    Value *ST1 = LoadFromFPR(sti, FP64Ty);
+    MemVal = Builder.CreateFMul(ST1, MemVal);
+    StoreToFPR(MemVal, sti);
+    SetFPTag(top, 1);
+    SetFPUTop(sti);
 }
 
 void X86Translator::translate_fyl2xp1(GuestInst *Inst) {
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fyl2xp1", CPUEnv);
+    /* FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false); */
+    /* CallFunc(FTy, "helper_fyl2xp1", CPUEnv); */
+    Value *top = GetFPUTop();
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+    MemVal = Builder.CreateFAdd(MemVal, ConstantFP::get(Context, APFloat(1.0)));
+    MemVal = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::log2,
+            MemVal->getType()),
+        MemVal);
+    Value *sti = Builder.CreateAdd(top, ConstInt(Int32Ty, 1));
+    sti = Builder.CreateAnd(sti, ConstInt(Int32Ty, 7));
+    Value *ST1 = LoadFromFPR(sti, FP64Ty);
+    MemVal = Builder.CreateFMul(ST1, MemVal);
+    StoreToFPR(MemVal, sti);
+    SetFPTag(top, 1);
+    SetFPUTop(sti);
 }
 
 void X86Translator::translate_fild(GuestInst *Inst) {
@@ -1114,13 +1406,80 @@ void X86Translator::translate_fld(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fsin(GuestInst *Inst) {
-    FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(UnaryFunTy, "helper_fsin", CPUEnv);
+    /* FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false); */
+    /* CallFunc(UnaryFunTy, "helper_fsin", CPUEnv); */
+    Value *top = GetFPUTop();
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+
+    Value *ABS = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::fabs,
+            MemVal->getType()),
+        MemVal);
+
+    BasicBlock *LessBB = BasicBlock::Create(Context, "Less", TransFunc, ExitBB);
+    BasicBlock *LargBB = BasicBlock::Create(Context, "Larg", TransFunc, ExitBB);
+    BasicBlock *EndBB = BasicBlock::Create(Context, "End", TransFunc, ExitBB);
+    Value *Cond = Builder.CreateFCmpOLT(
+        ABS, ConstantFP::get(FP64Ty, APFloat(9223372036854775808.0)));
+
+    Builder.CreateCondBr(Cond, LessBB, LargBB);
+
+    /*---------------------------------------------*/
+    Builder.SetInsertPoint(LessBB);
+
+    Value *TOP = GetFPUTop();
+    Value *V = LoadFromFPR(TOP, FP64Ty);
+
+    Value *FpusPtr_1 = GetFpusPtr();
+    Value *old_flag_1 = Builder.CreateLoad(Int16Ty, FpusPtr_1);
+    Value *C_2_1 = nullptr;
+
+    V = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::sin,
+            V->getType()),
+        V);
+
+    // set C2 to 0
+
+    C_2_1 = ConstInt(Int16Ty, 0xfbff);
+    old_flag_1 = Builder.CreateAnd(old_flag_1, C_2_1);
+    Builder.CreateStore(old_flag_1, FpusPtr_1);
+
+    StoreToFPR(V, TOP);
+
+    Builder.CreateBr(EndBB);
+    /*---------------------------------------------*/
+    Builder.SetInsertPoint(LargBB);
+
+    // set C2 to 1
+    Value *FpusPtr = GetFpusPtr();
+    Value *old_flag = Builder.CreateLoad(Int16Ty, FpusPtr);
+    Value *C_2 = nullptr;
+    C_2 = ConstInt(Int16Ty, 0x0400);
+    old_flag = Builder.CreateOr(old_flag, C_2);
+    Builder.CreateStore(old_flag, FpusPtr);
+
+    Builder.CreateBr(EndBB);
+
+    /*---------------------------------------------*/
+
+    Builder.SetInsertPoint(EndBB);
 }
 
 void X86Translator::translate_fsqrt(GuestInst *Inst) {
-    FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(UnaryFunTy, "helper_fsqrt", CPUEnv);
+    /* FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false); */
+    /* CallFunc(UnaryFunTy, "helper_fsqrt", CPUEnv); */
+    Value *top = GetFPUTop();
+    Value *MemVal = LoadFromFPR(top, FP64Ty);
+    MemVal = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::sqrt,
+            MemVal->getType()),
+        MemVal);
+
+    StoreToFPR(MemVal, top);
 }
 
 void X86Translator::translate_fst(GuestInst *Inst) {
