@@ -26,8 +26,8 @@ void X86Translator::translate_cmpsb(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         RSI = Builder.CreateIntToPtr(RSI, Int8PtrTy);
         RDI = Builder.CreateIntToPtr(RDI, Int8PtrTy);
-        Value *Src1 = Builder.CreateLoad(RSI);
-        Value *Src0 = Builder.CreateLoad(RDI);
+        Value *Src1 = Builder.CreateLoad(Int64Ty, RSI);
+        Value *Src0 = Builder.CreateLoad(Int64Ty, RDI);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RSI and RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -68,8 +68,8 @@ void X86Translator::translate_cmpsb(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         Value *Src1 = Builder.CreateIntToPtr(RSI, Int8PtrTy);
         Value *Src0 = Builder.CreateIntToPtr(RDI, Int8PtrTy);
-        Src1 = Builder.CreateLoad(Src1);
-        Src0 = Builder.CreateLoad(Src0);
+        Src1 = Builder.CreateLoad(Int64Ty, Src1);
+        Src0 = Builder.CreateLoad(Int64Ty, Src0);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RSI and RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -111,8 +111,8 @@ void X86Translator::translate_cmpsw(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         RSI = Builder.CreateIntToPtr(RSI, Int16PtrTy);
         RDI = Builder.CreateIntToPtr(RDI, Int16PtrTy);
-        Value *Src1 = Builder.CreateLoad(RSI);
-        Value *Src0 = Builder.CreateLoad(RDI);
+        Value *Src1 = Builder.CreateLoad(Int64Ty, RSI);
+        Value *Src0 = Builder.CreateLoad(Int64Ty, RDI);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RSI and RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -153,8 +153,8 @@ void X86Translator::translate_cmpsw(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         Value *Src1 = Builder.CreateIntToPtr(RSI, Int16PtrTy);
         Value *Src0 = Builder.CreateIntToPtr(RDI, Int16PtrTy);
-        Src1 = Builder.CreateLoad(Src1);
-        Src0 = Builder.CreateLoad(Src0);
+        Src1 = Builder.CreateLoad(Int64Ty, Src1);
+        Src0 = Builder.CreateLoad(Int64Ty, Src0);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RSI and RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -203,8 +203,8 @@ void X86Translator::translate_cmpsd(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         RSI = Builder.CreateIntToPtr(RSI, Int32PtrTy);
         RDI = Builder.CreateIntToPtr(RDI, Int32PtrTy);
-        Value *Src1 = Builder.CreateLoad(RSI);
-        Value *Src0 = Builder.CreateLoad(RDI);
+        Value *Src1 = Builder.CreateLoad(Int64Ty, RSI);
+        Value *Src0 = Builder.CreateLoad(Int64Ty, RDI);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RSI and RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -245,8 +245,8 @@ void X86Translator::translate_cmpsd(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         Value *Src1 = Builder.CreateIntToPtr(RSI, Int32PtrTy);
         Value *Src0 = Builder.CreateIntToPtr(RDI, Int32PtrTy);
-        Src1 = Builder.CreateLoad(Src1);
-        Src0 = Builder.CreateLoad(Src0);
+        Src1 = Builder.CreateLoad(Int64Ty, Src1);
+        Src0 = Builder.CreateLoad(Int64Ty, Src0);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RSI and RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -288,8 +288,8 @@ void X86Translator::translate_cmpsq(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         RSI = Builder.CreateIntToPtr(RSI, Int64PtrTy);
         RDI = Builder.CreateIntToPtr(RDI, Int64PtrTy);
-        Value *Src1 = Builder.CreateLoad(RSI);
-        Value *Src0 = Builder.CreateLoad(RDI);
+        Value *Src1 = Builder.CreateLoad(Int64Ty, RSI);
+        Value *Src0 = Builder.CreateLoad(Int64Ty, RDI);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RSI and RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -330,8 +330,8 @@ void X86Translator::translate_cmpsq(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         Value *Src1 = Builder.CreateIntToPtr(RSI, Int64PtrTy);
         Value *Src0 = Builder.CreateIntToPtr(RDI, Int64PtrTy);
-        Src1 = Builder.CreateLoad(Src1);
-        Src0 = Builder.CreateLoad(Src0);
+        Src1 = Builder.CreateLoad(Int64Ty, Src1);
+        Src0 = Builder.CreateLoad(Int64Ty, Src0);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RSI and RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -373,7 +373,7 @@ void X86Translator::translate_scasb(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         RDI = Builder.CreateIntToPtr(RDI, Int8PtrTy);
         Value *Src1 = AL;
-        Value *Src0 = Builder.CreateLoad(RDI);
+        Value *Src0 = Builder.CreateLoad(Int64Ty, RDI);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -411,7 +411,7 @@ void X86Translator::translate_scasb(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         Value *Src1 = AL;
         Value *Src0 = Builder.CreateIntToPtr(RDI, Int8PtrTy);
-        Src0 = Builder.CreateLoad(Src0);
+        Src0 = Builder.CreateLoad(Int64Ty, Src0);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -451,7 +451,7 @@ void X86Translator::translate_scasw(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         RDI = Builder.CreateIntToPtr(RDI, Int16PtrTy);
         Value *Src1 = AX;
-        Value *Src0 = Builder.CreateLoad(RDI);
+        Value *Src0 = Builder.CreateLoad(Int64Ty, RDI);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -489,7 +489,7 @@ void X86Translator::translate_scasw(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         Value *Src1 = AX;
         Value *Src0 = Builder.CreateIntToPtr(RDI, Int16PtrTy);
-        Src0 = Builder.CreateLoad(Src0);
+        Src0 = Builder.CreateLoad(Int64Ty, Src0);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -529,7 +529,7 @@ void X86Translator::translate_scasd(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         RDI = Builder.CreateIntToPtr(RDI, Int32PtrTy);
         Value *Src1 = EAX;
-        Value *Src0 = Builder.CreateLoad(RDI);
+        Value *Src0 = Builder.CreateLoad(Int64Ty, RDI);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -567,7 +567,7 @@ void X86Translator::translate_scasd(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         Value *Src1 = EAX;
         Value *Src0 = Builder.CreateIntToPtr(RDI, Int32PtrTy);
-        Src0 = Builder.CreateLoad(Src0);
+        Src0 = Builder.CreateLoad(Int64Ty, Src0);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -607,7 +607,7 @@ void X86Translator::translate_scasq(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         RDI = Builder.CreateIntToPtr(RDI, Int64PtrTy);
         Value *Src1 = RAX;
-        Value *Src0 = Builder.CreateLoad(RDI);
+        Value *Src0 = Builder.CreateLoad(Int64Ty, RDI);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -645,7 +645,7 @@ void X86Translator::translate_scasq(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         Value *Src1 = RAX;
         Value *Src0 = Builder.CreateIntToPtr(RDI, Int64PtrTy);
-        Src0 = Builder.CreateLoad(Src0);
+        Src0 = Builder.CreateLoad(Int64Ty, Src0);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);

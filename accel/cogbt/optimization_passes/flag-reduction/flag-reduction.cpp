@@ -67,7 +67,7 @@ namespace {
         IR_WITHOUT_TY(x86mtflag, __NONE, __ALL_FLAGS, __NONE)
     };
 
-#define COGBT_PROFILE
+/* #define COGBT_PROFILE */
 
 #ifdef COGBT_PROFILE
     static uint64_t NumberRemoveInstr = 0;
@@ -82,8 +82,8 @@ namespace {
             TranslationInst(Instruction *Instr, uint8_t FlagBits = __INSTR_REMOVE): 
                 Instr(Instr), GenFlagBits(FlagBits) {
                     const CallInst *CI = dyn_cast<CallInst>(Instr);
-                    const Value *Operand = CI->getCalledValue();
-                    InstrName = Operand->getName();
+                    const Value *Operand = CI->getCalledOperand();
+                    InstrName = Operand->getName().data();
 #ifdef COGBT_PROFILE
                     NumberTotalInstr++;
 #endif
@@ -161,7 +161,7 @@ namespace {
                         // Only add instruction related with FLAG register into Instrs.
                         if (!strcmp("call", Instr.getOpcodeName())) {
                             const CallInst *CI = dyn_cast<CallInst>(&Instr);
-                            const Value *Operand = CI->getCalledValue();
+                            const Value *Operand = CI->getCalledOperand();
                             if (Operand->hasName() && 
                                     Operand->getName().startswith("llvm.loongarch") &&
                                     Operand->getName() != "llvm.loongarch.cogbtexit") {

@@ -6,6 +6,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/IR/Constants.h"
 #include "cogbt-x86-flag.h"
 #include <vector>
 #include <iostream>
@@ -107,7 +108,7 @@ namespace {
         [JNP] = IR_WITHOUT_TY(x86setjnp, __PF, __NONE, __NONE)
     };
 
-#define COGBT_PROFILE
+/* #define COGBT_PROFILE */
 
 #ifdef COGBT_PROFILE
     static uint64_t NumberTESTJCC = 0;
@@ -144,7 +145,8 @@ namespace {
         CallInst* patternFlagIns[FLAG_BUFF_SIZE] = {nullptr};
 
         void collectFlagsBuff(CallInst* CI) {
-            int index = getIndexWareHouse(CI->getCalledValue()->getName());
+            int index = getIndexWareHouse(
+                    CI->getCalledOperand()->getName().data());
             assert(index != -1 && "collect failed");
             // insert into the end of buff
             for (int i = FLAG_BUFF_SIZE - 1; i > 0; i--) {
@@ -182,7 +184,7 @@ namespace {
 
             assert(Src != nullptr);
             *Src = AndInst->getOperand(0);
-            AndInst->dump();
+            /* AndInst->dump(); */
 
             return true;
         }
@@ -208,7 +210,7 @@ namespace {
             /* if (reg0 || reg1) */
             /*     return false; */
 
-            SubInst->dump();
+            /* SubInst->dump(); */
 
             assert(Src0 != nullptr);
             *Src0 = SubInst->getOperand(0);
@@ -228,13 +230,13 @@ namespace {
                 int mode) {
             int ret = false;
             if (Icmp->getPredicate() != ICmpInst::ICMP_EQ) {
-                Icmp->dump();
+                /* Icmp->dump(); */
                 /* assert(0); */
                 return false; 
             }
 
             if (mode == TEST_JCC) {
-                Icmp->dump();
+                /* Icmp->dump(); */
                 switch (x86setindex) {
                     case JA  :
                     case JAE :
@@ -297,11 +299,11 @@ namespace {
 #endif
                 ret |= true;
                 dbgs() << "modify: ========== ";
-                Icmp->dump();
+                /* Icmp->dump(); */
             }
 
             if (mode == CMP_JCC) {
-                Icmp->dump();
+                /* Icmp->dump(); */
                 switch (x86setindex) {
                     case JA  :
                         Icmp->setPredicate(ICmpInst::ICMP_ULE);
@@ -368,7 +370,7 @@ namespace {
 #endif
                 ret |= true;
                 dbgs() << "modify: ========== ";
-                Icmp->dump();
+                /* Icmp->dump(); */
 
             }
 
@@ -377,7 +379,7 @@ namespace {
 
 
         bool handlePattern(CallInst *CI) {
-            std::string InstName = CI->getCalledValue()->getName();
+            std::string InstName = CI->getCalledOperand()->getName().data();
             bool ret = false;
 
             // x86setjxx
@@ -401,7 +403,7 @@ namespace {
                         if (!imm || imm->getValue() != 0)
                             goto give_up;
                         // modify icmp instruction
-                        CI->dump();
+                        /* CI->dump(); */
                         if (modifyIcmp(icmp, Src0, Src1, x86setindex, TEST_JCC)) {
                             ret = true;
                             RemoveIns.push_back(CI);
@@ -424,7 +426,7 @@ namespace {
                         if (!imm || imm->getValue() != 0)
                             goto give_up;
                         // modify icmp instruction
-                        CI->dump();
+                        /* CI->dump(); */
                         if (modifyIcmp(icmp, Src0, Src1, x86setindex, CMP_JCC)) {
                             ret = true;
                             RemoveIns.push_back(CI);
@@ -461,7 +463,7 @@ give_up:
                     CallInst *CI = dyn_cast<CallInst>(&Instr);
                     if (!CI)
                         continue;
-                    Value *Operand = CI->getCalledValue();
+                    Value *Operand = CI->getCalledOperand();
                     if (Operand->hasName() && 
                             Operand->getName().startswith("llvm.loongarch")) {
                         if (Operand->getName().find("cogbtexit") != std::string::npos) 

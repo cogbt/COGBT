@@ -2,22 +2,22 @@
 export CFLAGS="-Wno-error=unused-but-set-variable -Wno-error=unused-function"
 make_configure=0
 opt_level=1
+LLVM_HOME=$LLVM_HOME
 
 help() {
     echo "Usage:"
     echo "  -c              configure"
     echo "  -O              [options]"
-    echo "                  defaule: -O 1"
-    echo "                  -O 0 : Disable all optimization, include basic"
+    echo "                  default: -O 1"
+    echo "                  -O 0 : Disable all optimization, include jmp_cache, custom_pass_optimization"
     echo "                  -O 1 : Open stable optimization"
-    echo "                  -O 2 : Open unstable optimization, include O1"
-    echo "                  -O 3 : Open testing optimization, include O2"
-    echo "                  -O fast : Open fast optimization, include O2"
+	echo "  -l				[LLVM_HOME]"
+	echo "					default: using environment variables: LLVM_HOME"
     echo "  -h              help"
 }
 
 parseArgs() {
-    while getopts "cO:h" opt; do
+    while getopts "cO:l:h" opt; do
         case ${opt} in
         c)
             make_configure=1
@@ -25,6 +25,9 @@ parseArgs() {
         O)
             opt_level="$OPTARG"
             ;;
+		l)
+			LLVM_HOME="$OPTARG"
+			;;
         h)
             help
             exit
@@ -49,9 +52,25 @@ make_cmd() {
     cd build64-dbg
 
     if [ $make_configure -eq 1 ] ; then
-        ../configure --target-list=x86_64-linux-user --enable-cogbt \
-            --enable-debug --enable-cogbt-debug --enable-cogbt-jmp-cache \
-			--extra-ldflags=-lcapstone
+		if [ -z $LLVM_HOME ] ; then
+			echo "using -l option or set environment variables LLVM_HOME"
+			exit
+		fi
+
+		if [ "$opt_level" = "0" ] ; then
+			../configure --target-list=x86_64-linux-user --llvm-home=$LLVM_HOME \
+				--enable-cogbt --enable-debug --enable-cogbt-debug \
+				--disable-custom-pass-optimization \
+				--extra-ldflags=-lcapstone
+		elif [ "$opt_level" = "1" ] ; then
+			../configure --target-list=x86_64-linux-user --llvm-home=$LLVM_HOME \
+				--enable-cogbt --enable-debug --enable-cogbt-debug \
+				--enable-cogbt-jmp-cache \
+				--extra-ldflags=-lcapstone
+		else
+			echo "invalid options"
+            exit
+		fi
     fi
 
     if [ ! -f "/usr/bin/ninja" ]; then

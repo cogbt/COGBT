@@ -140,7 +140,7 @@ void X86Translator::translate_movsb(GuestInst *Inst) {
     Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
     RSI = Builder.CreateIntToPtr(RSI, Int8PtrTy);
     RDI = Builder.CreateIntToPtr(RDI, Int8PtrTy);
-    Value *V = Builder.CreateLoad(RSI);
+    Value *V = Builder.CreateLoad(Int64Ty, RSI);
     Builder.CreateStore(V, RDI);
     // 2. Update RSI, RDI
     Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -191,7 +191,7 @@ void X86Translator::translate_movsw(GuestInst *Inst) {
     Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
     RSI = Builder.CreateIntToPtr(RSI, Int16PtrTy);
     RDI = Builder.CreateIntToPtr(RDI, Int16PtrTy);
-    Value *V = Builder.CreateLoad(RSI);
+    Value *V = Builder.CreateLoad(Int64Ty, RSI);
     Builder.CreateStore(V, RDI);
     // 2. Update RSI, RDI
     Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -252,7 +252,7 @@ void X86Translator::translate_movsd(GuestInst *Inst) {
     Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
     RSI = Builder.CreateIntToPtr(RSI, Int32PtrTy);
     RDI = Builder.CreateIntToPtr(RDI, Int32PtrTy);
-    Value *V = Builder.CreateLoad(RSI);
+    Value *V = Builder.CreateLoad(Int64Ty, RSI);
     Builder.CreateStore(V, RDI);
     // 2. Update RSI, RDI
     Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -303,7 +303,7 @@ void X86Translator::translate_movsq(GuestInst *Inst) {
     Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
     RSI = Builder.CreateIntToPtr(RSI, Int64PtrTy);
     RDI = Builder.CreateIntToPtr(RDI, Int64PtrTy);
-    Value *V = Builder.CreateLoad(RSI);
+    Value *V = Builder.CreateLoad(Int64Ty, RSI);
     Builder.CreateStore(V, RDI);
     // 2. Update RSI, RDI
     Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -494,8 +494,8 @@ void X86Translator::translate_cmova(GuestInst *Inst) {
     // CF == 0 && ZF == 0
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setja", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setja");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
@@ -510,8 +510,8 @@ void X86Translator::translate_cmovae(GuestInst *Inst) {
     // CF == 0
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjae", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjae");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
@@ -526,8 +526,8 @@ void X86Translator::translate_cmovb(GuestInst *Inst) {
     // CF == 1
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjb", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjb");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
@@ -542,8 +542,8 @@ void X86Translator::translate_cmovbe(GuestInst *Inst) {
     // CF == 1 OR ZF == 1
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjbe", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjbe");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
@@ -558,8 +558,8 @@ void X86Translator::translate_cmove(GuestInst *Inst) {
     // ZF == 1
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setje", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setje");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
@@ -574,8 +574,8 @@ void X86Translator::translate_cmovg(GuestInst *Inst) {
     // ZF == 0 AND SF == OF
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjg", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjg");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
@@ -590,8 +590,8 @@ void X86Translator::translate_cmovge(GuestInst *Inst) {
     // SF == OF
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjge", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjge");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
@@ -606,8 +606,8 @@ void X86Translator::translate_cmovl(GuestInst *Inst) {
     // SF != OF
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjl", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjl");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
@@ -622,8 +622,8 @@ void X86Translator::translate_cmovle(GuestInst *Inst) {
     // ZF == 1 OR SF != OF
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjle", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjle");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
@@ -638,8 +638,8 @@ void X86Translator::translate_cmovne(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     // ZF == 0
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjne", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjne");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
@@ -654,8 +654,8 @@ void X86Translator::translate_cmovno(GuestInst *Inst) {
     // OF == 0
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjno", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjno");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
@@ -670,8 +670,8 @@ void X86Translator::translate_cmovnp(GuestInst *Inst) {
     // PF == 0
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjnp", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjnp");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
@@ -686,8 +686,8 @@ void X86Translator::translate_cmovns(GuestInst *Inst) {
     // SF == 0
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjns", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjns");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
@@ -702,8 +702,8 @@ void X86Translator::translate_cmovo(GuestInst *Inst) {
     // OF == 1
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjo", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjo");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
@@ -718,8 +718,8 @@ void X86Translator::translate_cmovp(GuestInst *Inst) {
     // PF == 1
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjp", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjp");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
@@ -734,8 +734,8 @@ void X86Translator::translate_cmovs(GuestInst *Inst) {
     // SF == 1
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjs", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjs");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
 
     // if condition is satisfied, prepare src value.
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));

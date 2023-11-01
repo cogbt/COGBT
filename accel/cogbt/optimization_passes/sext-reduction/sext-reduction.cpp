@@ -13,7 +13,7 @@ using namespace llvm;
 
 namespace {
 
-#define COGBT_PROFILE
+/* #define COGBT_PROFILE */
 
 #ifdef COGBT_PROFILE
     static uint64_t NumberTotal = 0;

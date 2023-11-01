@@ -1,11 +1,11 @@
 cogbt_ss = ss.source_set()
 
 # llvm_dep = dependency('llvm', version : '>=8.0')
-llvm_dep = meson.get_compiler('cpp').find_library('LLVM-8',
-	dirs: '/home/loongson/llvm_install_cross/lib',
+llvm_dep = meson.get_compiler('cpp').find_library('LLVM',
+	dirs: LLVM_HOME + '/lib',
 	required: true)
 pass_dep = meson.get_compiler('cpp').find_library('LLVMCustomReduction',
-	dirs: '/home/loongson/llvm_install_cross/lib',
+	dirs: LLVM_HOME + '/lib',
 	required: true)
 cogbt_ss.add(llvm_dep)
 cogbt_ss.add(pass_dep)

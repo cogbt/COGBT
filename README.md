@@ -3,9 +3,24 @@
 
 QEMU基于 git (commit a8cc5842b5cb863e46a2d009151c6ccbdecadaba)开发。
 
-LLVM基于 LLVM release/8.x-loongarch (commit 2057f50dd78523679a66429449edfa790e0577ae)开发。
+LLVM目前测试通过 LLVM release/8.x-loongarch 和 LLVM release/15.x-loongarch。
+
+> 对于**向量**实现，需要LLVM release/15.x-loongarch。
 
 ## Quick Start
+### Prerequisites
+本仓库在编译前需要以下支持：
+- capstone version v5.0.0
+- 环境变量`$LLVM_HOME`，或者可以通过`./configure --llvm-home=<path>`进行设置。(后者的优先级高于前者)
+    - `$LLVM_HOME/include/`: 该目录下需要包含对应版本的LLVM头文件。
+        - `CogbtPass.h`: 可选文件，声明了目前所有实现的自定义优化pass。
+    - `$LLVM_HOME/lib/`
+        - `libLLVM.so`: 必须包含，其应该是`libLLVM-x.so`的一个软连接。
+        > 建立软链接指令：ln -sf libLLVM.so libLLVM-x.so
+        - `libLLVMCustomReduction.so`: 可选文件，实现了目前所有的自定义优化pass。
+> `CogbtPass.h` 和 `libLLVMCustomReduction.so` 文件可通过`cogbt/accel/cogbt/optimization_passes`目录生成。
+> 当使用`--disable-custom-pass-optimization`选项，关掉自定义优化pass时，以上可选文件是不需要的。
+
 ### Compiler
 本仓库在`build-shell`文件夹中默认自带了三个编译脚本。
 - `build64.sh`: 生成cogbt可执行文件。

@@ -73,8 +73,6 @@ void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
         if (TargetPCBB && NextPCBB) {
             Builder.CreateCondBr(Cond, TargetPCBB, NextPCBB);
         } else {
-            FunctionType *FTy = FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
-            Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
             Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
             uint8_t flag = 0;
 #define TARGETPCBB_FLAG  ((uint8_t) (1U << 0))
@@ -97,7 +95,7 @@ void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
                 BindPhysicalReg();
                 Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
                 // Create target link slot
-                Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
+                Instruction *LinkSlot = GetCogbtExitIntrinsic({TargetPC, Off});
                 AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());
                 // Jump back qemu.
                 Builder.CreateCall(Mod->getFunction("epilogue"));
@@ -108,7 +106,7 @@ void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
                 Builder.SetInsertPoint(NextPCBB);
                 BindPhysicalReg();
                 Value *NextPC = ConstInt(Int64Ty, InstHdl.getNextPC());
-                Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {NextPC, Off});
+                Instruction *LinkSlot = GetCogbtExitIntrinsic({NextPC, Off});
                 AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());
                 // Jump back qemu.
                 Builder.CreateCall(Mod->getFunction("epilogue"));
@@ -129,14 +127,12 @@ void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
         BindPhysicalReg();
         Builder.CreateCondBr(Cond, TargetBB, FallThroughBB);
 
-        FunctionType *FTy = FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
-        Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
         Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
 
         // Create fallthrough link slot.
         Builder.SetInsertPoint(FallThroughBB);
         Value *NextPC = ConstInt(Int64Ty, InstHdl.getNextPC());
-        Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {NextPC, Off});
+        Instruction *LinkSlot = GetCogbtExitIntrinsic({NextPC, Off});
         AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());
         // Jump back qemu.
         Builder.CreateCall(Mod->getFunction("epilogue"));
@@ -145,7 +141,7 @@ void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
         Builder.SetInsertPoint(TargetBB);
         Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
         // Create target link slot
-        LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
+        LinkSlot = GetCogbtExitIntrinsic({TargetPC, Off});
         AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());
         // Jump back qemu.
         Builder.CreateCall(Mod->getFunction("epilogue"));
@@ -158,8 +154,8 @@ void X86Translator::GenJCCExit(GuestInst *Inst, Value *Cond) {
 void X86Translator::translate_jae(GuestInst *Inst) {
     // CF == 0
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjae", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjae");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
     SyncAllGMRValue();
     GenJCCExit(Inst, Cond);
 }
@@ -167,8 +163,8 @@ void X86Translator::translate_jae(GuestInst *Inst) {
 void X86Translator::translate_ja(GuestInst *Inst) {
     // CF == 0 && ZF == 0
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setja", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setja");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
     SyncAllGMRValue();
     GenJCCExit(Inst, Cond);
 }
@@ -176,8 +172,8 @@ void X86Translator::translate_ja(GuestInst *Inst) {
 void X86Translator::translate_jbe(GuestInst *Inst) {
     // CF == 1 or ZF == 1
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjbe", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjbe");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
     SyncAllGMRValue();
     GenJCCExit(Inst, Cond);
 }
@@ -185,8 +181,8 @@ void X86Translator::translate_jbe(GuestInst *Inst) {
 void X86Translator::translate_jb(GuestInst *Inst) {
     // CF == 1
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjb", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjb");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
     SyncAllGMRValue();
     GenJCCExit(Inst, Cond);
 }
@@ -194,8 +190,8 @@ void X86Translator::translate_jb(GuestInst *Inst) {
 void X86Translator::translate_je(GuestInst *Inst) {
     // ZF == 1
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setje", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setje");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
     SyncAllGMRValue();
     GenJCCExit(Inst, Cond);
 }
@@ -203,8 +199,8 @@ void X86Translator::translate_je(GuestInst *Inst) {
 void X86Translator::translate_jge(GuestInst *Inst) {
     // SF == OF
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjge", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjge");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
     SyncAllGMRValue();
     GenJCCExit(Inst, Cond);
 }
@@ -212,8 +208,8 @@ void X86Translator::translate_jge(GuestInst *Inst) {
 void X86Translator::translate_jg(GuestInst *Inst) {
     // ZF == 0 AND SF == OF
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjg", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjg");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
     SyncAllGMRValue();
     GenJCCExit(Inst, Cond);
 }
@@ -221,8 +217,8 @@ void X86Translator::translate_jg(GuestInst *Inst) {
 void X86Translator::translate_jle(GuestInst *Inst) {
     // ZF == 1 OR SF != OF
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjle", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjle");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
     SyncAllGMRValue();
     GenJCCExit(Inst, Cond);
 }
@@ -230,16 +226,16 @@ void X86Translator::translate_jle(GuestInst *Inst) {
 void X86Translator::translate_jl(GuestInst *Inst) {
     // SF != OF
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjl", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjl");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
     SyncAllGMRValue();
     GenJCCExit(Inst, Cond);
 }
 
 void X86Translator::translate_jne(GuestInst *Inst) {
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjne", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjne");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
     SyncAllGMRValue();
     GenJCCExit(Inst, Cond);
 }
@@ -247,8 +243,8 @@ void X86Translator::translate_jne(GuestInst *Inst) {
 void X86Translator::translate_jno(GuestInst *Inst) {
     // OF == 0
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjno", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjno");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
     SyncAllGMRValue();
     GenJCCExit(Inst, Cond);
 }
@@ -256,8 +252,8 @@ void X86Translator::translate_jno(GuestInst *Inst) {
 void X86Translator::translate_jnp(GuestInst *Inst) {
     // PF == 0
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjnp", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjnp");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
     SyncAllGMRValue();
     GenJCCExit(Inst, Cond);
 }
@@ -265,8 +261,8 @@ void X86Translator::translate_jnp(GuestInst *Inst) {
 void X86Translator::translate_jns(GuestInst *Inst) {
     // SF == 0
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjns", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjns");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
     SyncAllGMRValue();
     GenJCCExit(Inst, Cond);
 }
@@ -274,16 +270,16 @@ void X86Translator::translate_jns(GuestInst *Inst) {
 void X86Translator::translate_jo(GuestInst *Inst) {
     // OF == 1
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjo", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjo");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
     SyncAllGMRValue();
     GenJCCExit(Inst, Cond);
 }
 
 void X86Translator::translate_jp(GuestInst *Inst) {
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjp", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjp");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
     SyncAllGMRValue();
     GenJCCExit(Inst, Cond);
 }
@@ -291,8 +287,8 @@ void X86Translator::translate_jp(GuestInst *Inst) {
 void X86Translator::translate_js(GuestInst *Inst) {
     // SF = 1
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86setjs", FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, "llvm.loongarch.x86setjs");
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
     SyncAllGMRValue();
     GenJCCExit(Inst, Cond);
 }
@@ -338,14 +334,11 @@ void X86Translator::translate_jmp(GuestInst *Inst) {
             if (TargetBB) {
                 Builder.CreateBr(TargetBB);
             } else {    // this label does not in this function, go to epilogue
-                FunctionType *FTy =
-                    FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
-                Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
                 Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
                 Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
 
                 BindPhysicalReg();
-                Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
+                Instruction *LinkSlot = GetCogbtExitIntrinsic({TargetPC, Off});
                 AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());
                 Builder.CreateCall(Mod->getFunction("epilogue"));
                 Builder.CreateUnreachable();
@@ -354,14 +347,11 @@ void X86Translator::translate_jmp(GuestInst *Inst) {
                 ExitBB->eraseFromParent();
             }
         } else {    // JIT or TB AOT mode
-            FunctionType *FTy =
-                FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
-            Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
             Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
             Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
 
             BindPhysicalReg();
-            Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
+            Instruction *LinkSlot = GetCogbtExitIntrinsic({TargetPC, Off});
             AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());
             Builder.CreateCall(Mod->getFunction("epilogue"));
             Builder.CreateUnreachable();
@@ -396,14 +386,11 @@ void X86Translator::translate_call(GuestInst *Inst) {
     X86OperandHandler OpndHdl(InstHdl.getOpnd(0));
     if (OpndHdl.isImm()) {
         // do direct basic block link
-        FunctionType *FTy =
-            FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
-        Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
         Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
         Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());
 
         BindPhysicalReg();
-        Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {TargetPC, Off});
+        Instruction *LinkSlot = GetCogbtExitIntrinsic({TargetPC, Off});
         /* if (aotmode == 2) */
         AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());
         /* else */

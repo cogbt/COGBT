@@ -30,6 +30,7 @@ SKIP_OPTIONS = {
     "fuzzing_engine",
     "qemu_suffix",
     "smbd",
+    "llvm_home",
 }
 
 OPTION_NAMES = {

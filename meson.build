@@ -30,6 +30,9 @@ static_kwargs = enable_static ? {'static': true} : {}
 # it when configure exits.)
 tmpdir = meson.current_build_dir() / 'meson-private/temp'
 
+LLVM_HOME = get_option('llvm_home')
+message('LLVM_HOME: ' + LLVM_HOME)
+
 if get_option('qemu_suffix').startswith('/')
   error('qemu_suffix cannot start with a /')
 endif
@@ -3433,7 +3436,7 @@ foreach target : target_dirs
       if 'CONFIG_COGBT' in config_target
         target_inc += include_directories('accel/cogbt/include')
         target_inc += include_directories('accel/cogbt/interfaces/include')
-        target_inc += include_directories('/home/loongson/llvm_install_cross/include')
+        target_inc += include_directories(LLVM_HOME + '/include')
       endif
     endif
     if 'CONFIG_BSD_USER' in config_target

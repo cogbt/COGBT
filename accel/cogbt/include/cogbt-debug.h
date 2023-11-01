@@ -1,6 +1,7 @@
 #ifndef COGBT_DEBUG_H
 #define COGBT_DEBUG_H
 
+#include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/MC/MCInstPrinter.h"
 #include "llvm/MC/MCInstrAnalysis.h"
 #include "llvm/MC/MCDisassembler/MCDisassembler.h"

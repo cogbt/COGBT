@@ -123,15 +123,12 @@ void X86Translator::BindPhysicalReg() {
 
 void X86Translator::SetLBTFlag(Value *FV, int mask) {
     FunctionType *FuncTy = FunctionType::get(VoidTy, {Int64Ty, Int32Ty}, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86mtflag", FuncTy);
-    Builder.CreateCall(FuncTy, Func, {FV, ConstInt(Int32Ty, mask)});
+    CallFunc(FuncTy, "llvm.loongarch.x86mtflag", {FV, ConstInt(Int32Ty, mask)});
 }
 
 Value *X86Translator::GetLBTFlag(int mask) {
     FunctionType *FuncTy = FunctionType::get(Int64Ty, Int32Ty, false);
-    Value *Func = Mod->getOrInsertFunction("llvm.loongarch.x86mfflag", FuncTy);
-    Value *V = Builder.CreateCall(FuncTy, Func, ConstInt(Int32Ty, mask));
-    return V;
+    return CallFunc(FuncTy, "llvm.loongarch.x86mfflag", ConstInt(Int32Ty, mask));
 }
 
 void X86Translator::GenPrologue() {
@@ -607,17 +604,19 @@ void X86Translator::FlushMMXT0(Value *MMXV, Type *FlushTy) {
     Builder.CreateStore(MMXV, Addr);
 }
 
-Value *X86Translator::CallFunc(FunctionType *FuncTy, std::string Name,
+CallInst *X86Translator::CallFunc(FunctionType *FuncTy, StringRef Name,
         ArrayRef<Value *> Args) {
 #if (LLVM_VERSION_MAJOR > 8)
     FunctionCallee F = Mod->getOrInsertFunction(Name, FuncTy);
-    Value *CallInst = Builder.CreateCall(FuncTy, F.getCallee(), Args);
+    CallInst *callInst = Builder.CreateCall(FuncTy, F.getCallee(), Args);
 #else
     Value *Func = Mod->getOrInsertFunction(Name, FuncTy);
-    Value *CallInst = Builder.CreateCall(Func, Args);
+    CallInst *callInst = Builder.CreateCall(Func, Args);
 #endif
-    return CallInst;
+    return callInst;
 }
+
+
 
 void X86Translator::AddExternalSyms() {
     for (int i = 0; i < SymTableSize; i++)
@@ -628,15 +627,17 @@ void X86Translator::GetLBTIntrinsic(StringRef Name, Value *Src0, Value *Src1) {
     if (Src1) {
         FunctionType *FTy =
             FunctionType::get(VoidTy, {Src1->getType(), Src0->getType()}, false);
-        Value *Func = Mod->getOrInsertFunction(Name, FTy);
-        Builder.CreateCall(FTy, Func, {Src1, Src0});
+        CallFunc(FTy, Name, {Src1, Src0});
     } else {
         FunctionType *FTy =
             FunctionType::get(VoidTy, {Src0->getType()}, false);
-        Value *Func = Mod->getOrInsertFunction(Name, FTy);
-        Builder.CreateCall(FTy, Func, {Src0});
-
+        CallFunc(FTy, Name, {Src0});
     }
+}
+
+CallInst *X86Translator::GetCogbtExitIntrinsic(ArrayRef<Value *> Args) {
+    FunctionType *FTy = FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
+    return CallFunc(FTy, "llvm.loongarch.cogbtexit", Args);
 }
 
 std::string GetSuffixAccordingType(Type *Ty) {
@@ -910,14 +911,11 @@ void X86Translator::Translate() {
             if (NextBB)
                 Builder.CreateBr(NextBB);
             else {    // this label does not in this function, go to epilogue
-                FunctionType *FTy =
-                    FunctionType::get(VoidTy, {Int64Ty, Int64Ty}, false);
-                Value *Func = Mod->getOrInsertFunction("llvm.loongarch.cogbtexit", FTy);
                 Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
                 Value *NextPC = ConstInt(Int64Ty, GuestInstHdl.getNextPC());
 
                 BindPhysicalReg();
-                Instruction *LinkSlot = Builder.CreateCall(FTy, Func, {NextPC, Off});
+                Instruction *LinkSlot = GetCogbtExitIntrinsic({NextPC, Off});
                 AttachLinkInfoToIR(LinkSlot, LI_TBLINK, GetNextSlotNum());
                 /* Builder.CreateBr(ExitBB); */
                 Builder.CreateCall(Mod->getFunction("epilogue"));

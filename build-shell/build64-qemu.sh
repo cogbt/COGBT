@@ -1,29 +1,18 @@
 #!/bin/sh
 export CFLAGS="-Wno-error=unused-but-set-variable -Wno-error=unused-function"
 make_configure=0
-opt_level=1
 
 help() {
     echo "Usage:"
     echo "  -c              configure"
-    echo "  -O              [options]"
-    echo "                  defaule: -O 1"
-    echo "                  -O 0 : Disable all optimization, include basic"
-    echo "                  -O 1 : Open stable optimization"
-    echo "                  -O 2 : Open unstable optimization, include O1"
-    echo "                  -O 3 : Open testing optimization, include O2"
-    echo "                  -O fast : Open fast optimization, include O2"
     echo "  -h              help"
 }
 
 parseArgs() {
-    while getopts "cO:h" opt; do
+    while getopts "ch" opt; do
         case ${opt} in
         c)
             make_configure=1
-            ;;
-        O)
-            opt_level="$OPTARG"
             ;;
         h)
             help

@@ -74,7 +74,7 @@ AOTParser::AOTParser(uintptr_t CacheBegin, size_t CacheSize, const char *AOT)
             NameOrErr.get() == "AOTEpilogue")
             continue;
 
-        FuncInfos.emplace_back(NameOrErr.get(), AddrOrErr.get(), Sym.getSize());
+        FuncInfos.emplace_back(NameOrErr.get().data(), AddrOrErr.get(), Sym.getSize());
     }
 
     std::sort(FuncInfos.begin(), FuncInfos.end());
@@ -85,13 +85,21 @@ AOTParser::AOTParser(uintptr_t CacheBegin, size_t CacheSize, const char *AOT)
         if (R.IsStmt && R.PrologueEnd) {
             /* fprintf(stderr, "DWARFAddr 0x%08lx, %d, %d\n", */
             /*         (uint64_t)R.Address, R.Line, R.Column); */
-            RegisterLinkSlot(R.Address, R.Line, R.Column);
+#if LLVM_VERSION_MAJOR > 8
+            RegisterLinkSlot(R.Address.Address, (int) R.Line, (int) R.Column);
+#else
+            RegisterLinkSlot(R.Address, (int) R.Line, (int) R.Column);
+#endif
             continue;
         }
         if (R.Column == LI_TBLINK) {
             /* fprintf(stderr, "DWARFAddr 0x%08lx, %d, %d\n", */
             /*         (uint64_t)R.Address, R.Line, R.Column); */
-            RegisterLinkSlot(R.Address, R.Line, R.Column);
+#if LLVM_VERSION_MAJOR > 8
+            RegisterLinkSlot(R.Address.Address, (int) R.Line, (int) R.Column);
+#else
+            RegisterLinkSlot(R.Address, (int) R.Line, (int) R.Column);
+#endif
         }
     }
 

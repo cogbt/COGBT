@@ -79,6 +79,9 @@ private: /// Currently translated instruction.
     /// GetLBTIntrinsic - Generate a LBT Intrinsic to calculate eflag.
     void GetLBTIntrinsic(StringRef Name, Value *Src0, Value *Src1);
 
+    /// GetCogbtExitIntrinsic - Gnenrate a cogbtexit Intrinisc.
+    CallInst *GetCogbtExitIntrinsic(ArrayRef<Value *> Args);
+
     /// GenCF/OF - Generate llvm IRs to define CF/OF eflag.
     void GenCF(GuestInst *Inst, Value *Dest, Value *Src1, Value *Src2);
     void GenOF(GuestInst *Inst, Value *Dest, Value *Src1, Value *Src2);
@@ -112,8 +115,8 @@ private: /// Currently translated instruction.
     Value *ReloadFPRValue(std::string FPR, int LoadSize, bool isInt);
 
     /// CallFunc - Generate llvm IRs to call a llvm function, maybe a helper.
-    Value *CallFunc(FunctionType *FuncTy, std::string Name,
-                    ArrayRef<Value *> Args);
+    CallInst *CallFunc(FunctionType *FuncTy, StringRef Name,
+                    ArrayRef<Value *> Args = None);
 
     /// SetLBTFlag - Move value \p FV into inner LBT Flag register.
     void SetLBTFlag(Value *FV, int mask = 0x3f);

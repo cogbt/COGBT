@@ -734,8 +734,8 @@ void X86Translator::translate_fdivp(GuestInst *Inst) {
 void X86Translator::GenFCMOVHelper(GuestInst *Inst, std::string LBTIntrinic) {
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(Int32Ty, None, false);
-    Value *Func = Mod->getOrInsertFunction(LBTIntrinic, FTy);
-    Value *Cond = Builder.CreateTrunc(Builder.CreateCall(FTy, Func), Int1Ty);
+    Value *Val = CallFunc(FTy, LBTIntrinic);
+    Value *Cond = Builder.CreateTrunc(Val, Int1Ty);
 
     BasicBlock *MovBB = BasicBlock::Create(Context, "MovBB", TransFunc, ExitBB);
     BasicBlock *NotMovBB =

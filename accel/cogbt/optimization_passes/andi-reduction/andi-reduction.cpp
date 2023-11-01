@@ -6,6 +6,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/IR/Constants.h"
 #include <iostream>
 #include <vector>
 #include <map>
@@ -14,7 +15,7 @@ using namespace llvm;
 
 namespace {
 
-#define COGBT_PROFILE
+/* #define COGBT_PROFILE */
 
     struct AndiReductionPass : public FunctionPass {
         static char ID;

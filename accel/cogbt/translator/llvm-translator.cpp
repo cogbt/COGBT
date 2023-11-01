@@ -16,11 +16,14 @@
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
-#include "CogbtPass.h"
 #include "cogbt.h"
 #include <memory>
 #include <string>
 #include <sstream>
+
+#ifdef CONFIG_CUSTOM_PASS_OPTIMIZATION
+#include "CogbtPass.h"
+#endif
 
 void LLVMTranslator::InitializeTarget() {
     // Initialize the target registry etc.
@@ -201,9 +204,11 @@ void LLVMTranslator::TranslateFinalize() {
         Builder.SLPVectorize = true;
         Builder.populateFunctionPassManager(FPM);
         Builder.populateModulePassManager(MPM);
+#ifdef CONFIG_CUSTOM_PASS_OPTIMIZATION
         MPM.add(createAndiReductionPass());
         MPM.add(createDeadCodeEliminationPass());
         MPM.add(createPatternReductionPass());
+#endif
 
         MPM.run(*Mod.get());
 #else
@@ -222,8 +227,10 @@ void LLVMTranslator::Optimize() {
     /* legacy::PassManager MPM; */
 
     // TODO: optimize populateModulePassManager
+#ifdef CONFIG_CUSTOM_PASS_OPTIMIZATION
     FPM.add(createFlagReductionPass());
     FPM.add(createSextReductionPass());
+#endif
     PassManagerBuilder Builder;
     Builder.OptLevel = 2;
     Builder.LoopVectorize = true;
