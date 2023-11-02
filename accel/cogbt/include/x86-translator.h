@@ -6,6 +6,8 @@
 #include "x86-inst-handler.h"
 #include "x86-opnd-handler.h"
 
+using std::pair;
+
 class X86Translator final : public LLVMTranslator, public X86Config {
 public:
     X86Translator(uintptr_t CacheBegin, size_t CacheSize)
@@ -44,6 +46,12 @@ private: /// Currently translated instruction.
 #include "x86-inst.def"
 #undef HANDLE_X86_INST
 
+    virtual void GMRStatesResize(vector<pair<int, int>> arr) override;
+    virtual Value* GetGMRStates(int type, int gid) override;
+    virtual void SetGMRStates(int type, int gid, Value* value) override;
+    virtual GMRValue GetGMRVals(int type, int gid) override;
+    virtual void SetGMRVals(int type, int gid, Value* value, bool dirty) override;
+
     /// ConstInt - Get a integer constant value.
     Value *ConstInt(Type *Ty, uint64_t Val) {
         return ConstantInt::get(Ty, Val);
@@ -56,11 +64,11 @@ private: /// Currently translated instruction.
     /// LoadGMRValue - Load the GMR value from GMRStates. If GMRVals have cached
     /// this value, return it directly. Otherwise load it from GMRStates first.
     /// NOTE! \p Ty should be integer type.
-    Value *LoadGMRValue(Type *Ty, int GMRId, bool isHSubReg = false);
+    Value *LoadGMRValue(Type *Ty, X86MappedRegsId GMRId, bool isHSubReg = false);
 
     /// StoreGMRValue - Store value V to GMRVals, Assuming that V won't touch
     /// other part of GMR[GMRId]
-    void StoreGMRValue(Value *V, int GMRId, bool isHSubReg = false);
+    void StoreGMRValue(Value *V, X86MappedRegsId GMRId, bool isHSubReg = false);
 
     /// CalcMemAddr - Generate llvm IRs to calculate memory address of a memory
     /// operand.
@@ -88,15 +96,17 @@ private: /// Currently translated instruction.
 
     /// FlushGMRValue - Flush GMR value into CPUX86State.
     /// ReloadGMRValue - Reload GMR value from CPUX86State.
-    void FlushGMRValue(int GMRId);
-    void ReloadGMRValue(int GMRId);
+    void FlushGMRValue(X86MappedRegsId GMRId);
+    void ReloadGMRValue(X86MappedRegsId GMRId);
 
     /// SyncGMRValue - Sync GMR value into GMRStates.
+    /// GMRValue should be invalidated once branch.
     void SyncGMRValue(int GMRId);
     void SyncAllGMRValue();
 
     /// BindPhysicalReg - Bind latest guest register values to mapped host
-    /// physical registers
+    /// physical registers. It is always used before the function exits, and
+    /// `SyncAllGMRValue()` shouble be executed before it.
     void BindPhysicalReg();
 
     /// FlushXMMT0 - In qemu, some simd helper use xmm_t0 and mmx_t0 as implicit
@@ -144,6 +154,9 @@ private: /// Currently translated instruction.
     /// GenFCMOVHelper - Gen llvm irs to do fcmovcc by using lbt intrinsic \p
     /// LBTIntrinic.
     void GenFCMOVHelper(GuestInst *Inst, std::string LBTIntrinic);
+
+    /// Convert X86RegType to LLVM Type
+    Type* X86RegTyToLLVMTy(X86RegType type);
 };
 
 #endif

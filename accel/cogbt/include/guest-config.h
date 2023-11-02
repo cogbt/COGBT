@@ -12,13 +12,14 @@ public:
     /// llvm stack object is allocated to cache its state.
     virtual int GetNumGMRs() = 0;
 
-    virtual int GetNumSpecialGMRs() = 0;
+    /* virtual int GetNumSpecialGMRs() = 0; */
 
+    // TODO Design an inheritable enum class
     /// GetGMRName - Get the name of the GMR.
-    virtual const char *GetGMRName(int id) = 0;
+    /* virtual const char *GetGMRName(int id) = 0; */
 
     /// GMRToHMR - Get the host mapped register of a guest mapped register.
-    virtual int GMRToHMR(int gid) = 0;
+    /* virtual int GMRToHMR(int gid) = 0; */
 };
 
 #endif

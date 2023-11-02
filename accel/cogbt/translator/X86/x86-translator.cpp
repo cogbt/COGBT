@@ -20,6 +20,99 @@ void X86Translator::DeclareExternalSymbols() {
     /* EpilogFunc->addFnAttr(Attribute::NoReturn); */
 }
 
+Type* X86Translator::X86RegTyToLLVMTy(X86RegType type) {
+    switch (type) {
+        default:
+            fprintf(stderr, "unsupported x86 reg size(%d).\n", GetRegTypeBits(type));
+            exit(-1);
+        case X86RegGPRType:
+            return Int64Ty;
+        case X86RegXMMType:
+            return V2F64Ty;
+    }
+}
+
+void X86Translator::GMRStatesResize(vector<pair<int, int>> arr) {
+    int nums = 0;
+    for (auto &t: arr)
+        nums += t.second;
+    GMRStates.resize(nums);
+    GMRVals.resize(nums);
+
+    int i = 0;
+    for (auto &t: arr) {
+        for (int j = 0; j < t.second; ++j) {
+            X86RegType type = (X86RegType) t.first;
+            assert(type >= 0 && type < GetNumX86RegType());
+            GMRStates[i] = Builder.CreateAlloca(X86RegTyToLLVMTy(type),
+                    nullptr, GetGRegName(type, j));
+            GMRVals[i].clear();
+            ++i;
+        }
+    }
+    assert(i == nums);
+}
+
+Value* X86Translator::GetGMRStates(int type, int gid) {
+    switch (type) {
+        default:
+            fprintf(stderr, "unsupported x86 reg type.\n");
+            exit(-1);
+        case X86RegGPRType:
+            assert(gid >= 0 && gid < GetNumGPRs());
+            return GMRStates[gid];
+        case X86RegXMMType:
+            assert(gid >= 0 && gid < GetNumGXMMs());
+            return GMRStates[gid + GetNumGPRs()];
+    }
+}
+
+void X86Translator::SetGMRStates(int type, int gid, Value* value) {
+    switch (type) {
+        default:
+            fprintf(stderr, "unsupported x86 reg type.\n");
+            exit(-1);
+        case X86RegGPRType:
+            assert(gid >= 0 && gid < GetNumGPRs());
+            GMRStates[gid] = value;
+            break;
+        case X86RegXMMType:
+            assert(gid >= 0 && gid < GetNumGXMMs());
+            GMRStates[gid + GetNumGPRs()] = value;
+            break;
+    }
+}
+
+GMRValue X86Translator::GetGMRVals(int type, int gid) {
+    switch (type) {
+        default:
+            fprintf(stderr, "unsupported x86 reg type.\n");
+            exit(-1);
+        case X86RegGPRType:
+            assert(gid >= 0 && gid < GetNumGPRs());
+            return GMRVals[gid];
+        case X86RegXMMType:
+            assert(gid >= 0 && gid < GetNumGXMMs());
+            return GMRVals[gid + GetNumGPRs()];
+    }
+}
+
+void X86Translator::SetGMRVals(int type, int gid, Value* value, bool dirty) {
+    switch (type) {
+        default:
+            fprintf(stderr, "unsupported x86 reg type.\n");
+            exit(-1);
+        case X86RegGPRType:
+            assert(gid >= 0 && gid < GetNumGPRs());
+            GMRVals[gid].set(value, dirty);
+            break;
+        case X86RegXMMType:
+            assert(gid >= 0 && gid < GetNumGXMMs());
+            GMRVals[gid + GetNumGPRs()].set(value, dirty);
+            break;
+    }
+}
+
 void X86Translator::InitializeFunction(StringRef Name) {
     TransFunc = nullptr;
     for (auto &V : GMRStates)
@@ -51,31 +144,40 @@ void X86Translator::InitializeFunction(StringRef Name) {
     Builder.SetInsertPoint(EntryBB);
 
     // Allocate stack objects for guest mapped registers.
-    GMRStates.resize(GetNumGMRs());
-    GMRVals.resize(GetNumGMRs());
-    for (int i = 0; i < GetNumGMRs(); i++) {
-        GMRStates[i] = Builder.CreateAlloca(Int64Ty, nullptr, GetGMRName(i));
-        GMRVals[i].clear();
-    }
+    GMRStatesResize({{X86RegGPRType, GetNumGPRs()},
+                     {X86RegXMMType, GetNumGXMMs()}});
 
     // Binds all mapped host physical registers with llvm value.
-    for (int i = 0; i < GetNumGMRs() - GetNumSpecialGMRs(); i++) {
-        Value *GMRVal = GetPhysicalRegValue(HostRegNames[GMRToHMR(i)]);
-        GMRVals[i].set(GMRVal, false);
+    for (int i = 0; i < GetNumGPRs() - GetNumSpecialGPRs(); i++) {
+        Value *GMRVal = GetPhysicalRegValue(HostRegNames[GPRToHMR(i)],
+                X86RegTyToLLVMTy(X86RegGPRType));
+        SetGMRVals(X86RegGPRType, i, GMRVal, false);
     }
-    GMRVals[X86Config::EFLAG].set(
-        GetPhysicalRegValue(HostRegNames[GMRToHMR(EFLAG)]), true);
+    SetGMRVals(X86RegGPRType, X86Config::EFLAG,
+        GetPhysicalRegValue(HostRegNames[GPRToHMR(X86Config::EFLAG)],
+            X86RegTyToLLVMTy(X86RegGPRType)), true);
+    for (int i = 0; i < GetNumGXMMs(); i++) {
+        Value *GMRVal = GetPhysicalRegValue(HostLSXRegNames[GXMMToHMR(i)],
+                X86RegTyToLLVMTy(X86RegXMMType));
+        SetGMRVals(X86RegXMMType, i, GMRVal, false);
+    }
 
     // Initialize cpu env register.
-    CPUEnv = GetPhysicalRegValue(HostRegNames[ENVReg]);
+    CPUEnv = GetPhysicalRegValue(HostRegNames[ENVReg], Int64Ty);
     CPUEnv = Builder.CreateIntToPtr(CPUEnv, Int8PtrTy);
 
     // Store physical register value(a.k.a guest state) into stack object.
-    for (int i = 0; i < GetNumGMRs(); i++) {
-        Builder.CreateStore(GMRVals[i].getValue(), GMRStates[i]);
+    for (int i = 0; i < GetNumGPRs(); i++) {
+        Builder.CreateStore(GetGMRVals(X86RegGPRType, i).getValue(),
+                GetGMRStates(X86RegGPRType, i));
+    }
+    for (int i = 0; i < GetNumGXMMs(); i++) {
+        Builder.CreateStore(GetGMRVals(X86RegXMMType, i).getValue(),
+                GetGMRStates(X86RegXMMType, i));
     }
 
-    // Create exit Block. This block loads values in stack object and sync these
+    // Create exit Block. It is only used as a label at the end of a function.
+    // This block loads values in stack object and sync these
     // values into physical registers.
     ExitBB = BasicBlock::Create(Context, "exit", TransFunc);
     Builder.SetInsertPoint(ExitBB);
@@ -110,15 +212,24 @@ void X86Translator::InitializeFunction(StringRef Name) {
 }
 
 void X86Translator::BindPhysicalReg() {
-    for (int i = 0; i < GetNumGMRs(); i++) {
+    for (int i = 0; i < GetNumGPRs(); i++) {
         // Load latest guest state values.
-        Value *GMRVal = Builder.CreateLoad(Int64Ty, GMRStates[i]);
+        Value *GMRVal = Builder.CreateLoad(X86RegTyToLLVMTy(X86RegGPRType),
+                GetGMRStates(X86RegGPRType, i));
 
         // Sync these values into mapped host physical registers.
-        SetPhysicalRegValue(HostRegNames[GMRToHMR(i)], GMRVal);
+        SetPhysicalRegValue(HostRegNames[GPRToHMR(i)], GMRVal,
+                X86RegTyToLLVMTy(X86RegGPRType));
     }
     Value *IntEnv = Builder.CreatePtrToInt(CPUEnv, Int64Ty);
-    SetPhysicalRegValue(HostRegNames[HostS2], IntEnv);
+    SetPhysicalRegValue(HostRegNames[ENVReg], IntEnv, Int64Ty);
+
+    for (int i = 0; i < GetNumGXMMs(); i++) {
+        Value *GMRVal = Builder.CreateLoad(X86RegTyToLLVMTy(X86RegXMMType),
+                GetGMRStates(X86RegXMMType, i));
+        SetPhysicalRegValue(HostLSXRegNames[GXMMToHMR(i)], GMRVal,
+                X86RegTyToLLVMTy(X86RegXMMType));
+    }
 }
 
 void X86Translator::SetLBTFlag(Value *FV, int mask) {
@@ -149,12 +260,20 @@ void X86Translator::GenPrologue() {
 
     // Bind all needed physical reg to value
     Value *HostRegValues[NumHostRegs] = {nullptr};
-    HostRegValues[HostSP] = GetPhysicalRegValue(HostRegNames[HostSP]);
-    HostRegValues[HostA0] = GetPhysicalRegValue(HostRegNames[HostA0]);
-    HostRegValues[HostA1] = GetPhysicalRegValue(HostRegNames[HostA1]);
+    HostRegValues[HostSP] = GetPhysicalRegValue(HostRegNames[HostSP], Int64Ty);
+    HostRegValues[HostA0] = GetPhysicalRegValue(HostRegNames[HostA0], Int64Ty);
+    HostRegValues[HostA1] = GetPhysicalRegValue(HostRegNames[HostA1], Int64Ty);
     for (int i = 0; i < NumHostCSRs; i++) {
         int RegID = HostCSRs[i];
-        HostRegValues[RegID] = GetPhysicalRegValue(HostRegNames[RegID]);
+        HostRegValues[RegID] = GetPhysicalRegValue(HostRegNames[RegID],
+                X86RegTyToLLVMTy(X86RegGPRType));
+    }
+
+    Value *HostLSXValues[NumHostLSXRegs] = {nullptr};
+    for (int i = 0; i < NumHostLSXCSRs; i++) {
+        int RegID = HostLSXCSRs[i];
+        HostLSXValues[RegID] = GetPhysicalRegValue(HostLSXRegNames[RegID],
+                X86RegTyToLLVMTy(X86RegXMMType));
     }
 
     // Adjust $sp
@@ -163,7 +282,8 @@ void X86Translator::GenPrologue() {
     HostRegValues[HostSP] = NewSP;
 
     // Save Callee-Saved-Registers, including $s0-$s8, $fp and $ra
-    Type *CSRArrayTy = ArrayType::get(Int64Ty, NumHostCSRs);
+    Type *CSRArrayTy = ArrayType::get(
+            X86RegTyToLLVMTy(X86RegGPRType), NumHostCSRs);
     Value *CSRPtrs = Builder.CreateIntToPtr(NewSP, CSRArrayTy->getPointerTo());
     for (int i = 0; i < NumHostCSRs; i++) {
         Value *CurrCSRPtr = Builder.CreateGEP(
@@ -172,13 +292,25 @@ void X86Translator::GenPrologue() {
         Builder.CreateStore(HostRegValues[HostCSRs[i]], CurrCSRPtr);
     }
 
+    Value *LSXSP = Builder.CreateAdd(NewSP, ConstantInt::get(Int64Ty, 12 * 8));
+                /* NumHostCSRs * 8)); */
+    Type *LSXCSRArrayTy = ArrayType::get(
+            X86RegTyToLLVMTy(X86RegXMMType), NumHostLSXCSRs);
+    Value *LSXCSRPtrs = Builder.CreateIntToPtr(LSXSP, LSXCSRArrayTy->getPointerTo());
+    for (int i = 0; i < NumHostLSXCSRs; i++) {
+        Value *CurrLSXCSRPtr = Builder.CreateGEP(
+                LSXCSRArrayTy, LSXCSRPtrs,
+                {ConstantInt::get(Int64Ty, 0), ConstantInt::get(Int64Ty, i)});
+        Builder.CreateStore(HostLSXValues[HostLSXCSRs[i]], CurrLSXCSRPtr);
+    }
+
     // Get transalted code entry and ENV value
     Value *CodeEntry = HostRegValues[HostA1];
     Value *ENV = Builder.CreateIntToPtr(HostRegValues[HostA0], Int8PtrTy);
 
-    // Load guest state into mapped registers
-    vector<Value *> GuestVals(GetNumGMRs());
-    for (int i = 0; i < GetNumGMRs(); i++) {
+    // Load guest state into mapped registers from env
+    vector<Value *> GuestVals(GetNumGPRs());
+    for (int i = 0; i < GetNumGPRs(); i++) {
         int Off = 0;
         if (i < EFLAG)
             Off = GuestStateOffset(i);
@@ -187,22 +319,38 @@ void X86Translator::GenPrologue() {
         Value *Addr =
             Builder.CreateGEP(Int8Ty, ENV, ConstantInt::get(Int64Ty, Off));
         Value *Ptr = Builder.CreateBitCast(Addr, Int64PtrTy);
-        GuestVals[i] = Builder.CreateLoad(Int64Ty, Ptr);
+        GuestVals[i] = Builder.CreateLoad(
+                X86RegTyToLLVMTy(X86RegGPRType), Ptr);
+    }
+    vector<Value *> GuestXMMVals(GetNumGXMMs());
+    for (int i = 0; i < GetNumGXMMs(); i++) {
+        int Off = GuestXMMOffset(i);
+        Value *Addr = Builder.CreateGEP(Int8Ty, ENV,
+                ConstantInt::get(Int64Ty, Off));
+        Value *Ptr = Builder.CreateBitCast(Addr, V2F64PtrTy);
+        GuestXMMVals[i] = Builder.CreateLoad(
+                X86RegTyToLLVMTy(X86RegXMMType), Ptr);
     }
 
     // Sync GuestVals, EFLAG, ENV, CodeEntry, HostSp to mapped regs
     for (int i = 0; i < EFLAG; i++) {
-        SetPhysicalRegValue(HostRegNames[GMRToHMR(i)], GuestVals[i]);
+        SetPhysicalRegValue(HostRegNames[GPRToHMR(i)], GuestVals[i],
+                X86RegTyToLLVMTy(X86RegGPRType));
     }
-    SetPhysicalRegValue(HostRegNames[EFLAGReg], GuestVals[EFLAG]);
+    SetPhysicalRegValue(HostRegNames[EFLAGReg], GuestVals[EFLAG], Int64Ty);
     SetLBTFlag(GuestVals[EFLAG]);
-    SetPhysicalRegValue(HostRegNames[ENVReg], HostRegValues[HostA0]);
+    SetPhysicalRegValue(HostRegNames[ENVReg], HostRegValues[HostA0], Int64Ty);
     // $r4 maybe modified, sync it.
-    SetPhysicalRegValue(HostRegNames[HostA1], CodeEntry);
-    SetPhysicalRegValue(HostRegNames[HostSP], NewSP);
+    SetPhysicalRegValue(HostRegNames[HostA1], CodeEntry, Int64Ty);
+    SetPhysicalRegValue(HostRegNames[HostSP], NewSP, Int64Ty);
+
+    for (int i = 0; i < GetNumGXMMs(); i++) {
+        SetPhysicalRegValue(HostLSXRegNames[GXMMToHMR(i)], GuestXMMVals[i],
+                X86RegTyToLLVMTy(X86RegXMMType));
+    }
 
     // Jump to CodeEntry
-    CodeEntry = GetPhysicalRegValue(HostRegNames[HostA1]);
+    CodeEntry = GetPhysicalRegValue(HostRegNames[HostA1], Int64Ty);
     CodeEntry = Builder.CreateIntToPtr(CodeEntry, FuncTy->getPointerTo());
     Builder.CreateCall(FuncTy, CodeEntry);
     Builder.CreateUnreachable();
@@ -230,10 +378,11 @@ void X86Translator::GenEpilogue() {
     Builder.SetInsertPoint(EntryBB);
 
     // Store GMR into CPUX86State
-    Value *OldSP = GetPhysicalRegValue(HostRegNames[HostSP]);
-    vector<Value *> GuestVals(GetNumGMRs());
-    for (int i = 0; i < GetNumGMRs(); i++) {
-        GuestVals[i] = GetPhysicalRegValue(HostRegNames[GMRToHMR(i)]);
+    Value *OldSP = GetPhysicalRegValue(HostRegNames[HostSP], Int64Ty);
+    vector<Value *> GuestVals(GetNumGPRs());
+    for (int i = 0; i < GetNumGPRs(); i++) {
+        GuestVals[i] = GetPhysicalRegValue(HostRegNames[GPRToHMR(i)],
+                X86RegTyToLLVMTy(X86RegGPRType));
         if (i == X86Config::EFLAG) {
             Value *LBTFlag = GetLBTFlag();
             Value *DF =
@@ -241,10 +390,15 @@ void X86Translator::GenEpilogue() {
             GuestVals[i] = Builder.CreateOr(LBTFlag, DF);
         }
     }
+    vector<Value *> GuestXMMVals(GetNumGXMMs());
+    for (int i = 0; i < GetNumGXMMs(); i++) {
+        GuestXMMVals[i] = GetPhysicalRegValue(HostLSXRegNames[GXMMToHMR(i)],
+                X86RegTyToLLVMTy(X86RegXMMType));
+    }
 
-    CPUEnv = GetPhysicalRegValue(HostRegNames[ENVReg]);
+    CPUEnv = GetPhysicalRegValue(HostRegNames[ENVReg], Int64Ty);
     CPUEnv = Builder.CreateIntToPtr(CPUEnv, Int8PtrTy);
-    for (int i = 0; i < GetNumGMRs(); i++) {
+    for (int i = 0; i < GetNumGPRs(); i++) {
         int Off = 0;
         if (i < X86Config::EFLAG)
             Off = GuestStateOffset(i);
@@ -256,25 +410,53 @@ void X86Translator::GenEpilogue() {
         Builder.CreateStore(GuestVals[i], Ptr, true);
     }
 
+    for (int i = 0; i < GetNumGXMMs(); i++) {
+        int off = GuestXMMOffset(i);
+        Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv,
+                ConstantInt::get(Int64Ty, off));
+        Value *Ptr = Builder.CreateBitCast(Addr, V2F64PtrTy);
+        Builder.CreateStore(GuestXMMVals[i], Ptr, true);
+    }
+
     // Load CSRs.
     Value *HostRegValues[NumHostRegs] = {nullptr};
     Value *NewSP = Builder.CreateAdd(OldSP, ConstInt(Int64Ty, 256));
-    Type *CSRArrayTy = ArrayType::get(Int64Ty, NumHostCSRs);
+    Type *CSRArrayTy = ArrayType::get(
+            X86RegTyToLLVMTy(X86RegGPRType),NumHostCSRs);
     Value *CSRPtrs = Builder.CreateIntToPtr(OldSP, CSRArrayTy->getPointerTo());
     for (int i = 0; i < NumHostCSRs; i++) {
         Value *CurrCSRPtr = Builder.CreateGEP(
             CSRArrayTy, CSRPtrs,
             {ConstantInt::get(Int64Ty, 0), ConstantInt::get(Int64Ty, i)});
-        HostRegValues[HostCSRs[i]] = Builder.CreateLoad(Int64Ty, CurrCSRPtr);
+        HostRegValues[HostCSRs[i]] = Builder.CreateLoad(
+                X86RegTyToLLVMTy(X86RegGPRType), CurrCSRPtr);
+    }
+
+    Value *HostLSXRegValues[NumHostLSXRegs] = {nullptr};
+    /* Value *LSXSP = Builder.CreateAdd(OldSP, ConstInt(Int64Ty, NumHostCSRs * 8)); */
+    Value *LSXSP = Builder.CreateAdd(OldSP, ConstInt(Int64Ty, 12 * 8));
+    Type *LSXCSRArrayTy = ArrayType::get(
+            X86RegTyToLLVMTy(X86RegXMMType), NumHostLSXCSRs);
+    Value *LSXCSRPtrs = Builder.CreateIntToPtr(LSXSP, LSXCSRArrayTy->getPointerTo());
+    for (int i = 0; i < NumHostLSXCSRs; i++) {
+        Value *CurrLSXCSRPtr = Builder.CreateGEP(
+                LSXCSRArrayTy, LSXCSRPtrs,
+                {ConstantInt::get(Int64Ty, 0), ConstantInt::get(Int64Ty, i)});
+        HostLSXRegValues[HostLSXCSRs[i]] = Builder.CreateLoad(
+                X86RegTyToLLVMTy(X86RegXMMType), CurrLSXCSRPtr);
     }
 
     // Bind all CSR values with physical regs.
     for (int i = 0; i < NumHostCSRs; i++) {
         SetPhysicalRegValue(HostRegNames[HostCSRs[i]],
-                            HostRegValues[HostCSRs[i]]);
+            HostRegValues[HostCSRs[i]], X86RegTyToLLVMTy(X86RegGPRType));
     }
-    SetPhysicalRegValue(HostRegNames[HostSP], NewSP);
-    SetPhysicalRegValue(HostRegNames[HostA0], ConstInt(Int64Ty, -1));
+    SetPhysicalRegValue(HostRegNames[HostSP], NewSP, Int64Ty);
+    SetPhysicalRegValue(HostRegNames[HostA0], ConstInt(Int64Ty, -1), Int64Ty);
+    for (int i = 0; i < NumHostLSXCSRs; i++) {
+        SetPhysicalRegValue(HostLSXRegNames[HostLSXCSRs[i]],
+            HostLSXRegValues[HostLSXCSRs[i]], X86RegTyToLLVMTy(X86RegXMMType));
+    }
 
     // Return dbt.
     Builder.CreateRetVoid();
@@ -292,23 +474,26 @@ void X86Translator::SyncAllGMRValue() {
 void X86Translator::SyncGMRValue(int GMRId) {
     if (GMRVals[GMRId].hasValue()) {
         Builder.CreateStore(GMRVals[GMRId].getValue(), GMRStates[GMRId]);
-        /* GMRVals[GMRId].setDirty(false); */
         // GMRValue should be invalidated once branch.
         GMRVals[GMRId].clear();
     }
 }
 
-void X86Translator::FlushGMRValue(int GMRId) {
-    assert(GMRId < (int)GMRVals.size());
+void X86Translator::FlushGMRValue(X86MappedRegsId GMRId) {
+    assert((unsigned) GMRId >=0 && (unsigned) GMRId < GMRVals.size()
+            && "GMRId is too large!");
     int Off = 0;
-    if (GMRId < X86Config::EFLAG)
-        Off = GuestStateOffset(GMRId);
+    if (X86MappedRegsIdToRegTy(GMRId) == X86RegGPRType)
+        Off = GMRId < X86Config::EFLAG ? GuestStateOffset(GMRId)
+            : GuestEflagOffset();
     else
-        Off = GuestEflagOffset();
+        Off = GuestXMMOffset(GMRId - GetNumGPRs());
+
     Value *Addr =
         Builder.CreateGEP(Int8Ty, CPUEnv, ConstantInt::get(Int64Ty, Off));
-    Value *Ptr = Builder.CreateBitCast(Addr, Int64PtrTy);
-    Value *GMRV = LoadGMRValue(Int64Ty, GMRId);
+    Type *Ty = X86RegTyToLLVMTy(X86MappedRegsIdToRegTy(GMRId));
+    Value *Ptr = Builder.CreateBitCast(Addr, Ty->getPointerTo());
+    Value *GMRV = LoadGMRValue(Ty, GMRId);
     if (GMRId == X86Config::EFLAG) {
         Value *Flag = GetLBTFlag();
         GMRV = Builder.CreateAnd(GMRV, ConstInt(Int64Ty, DF_BIT|0x202));
@@ -317,16 +502,19 @@ void X86Translator::FlushGMRValue(int GMRId) {
     Builder.CreateStore(GMRV, Ptr, true);
 }
 
-void X86Translator::ReloadGMRValue(int GMRId) {
-    assert(GMRId < (int)GMRVals.size());
+void X86Translator::ReloadGMRValue(X86MappedRegsId GMRId) {
+    assert((unsigned) GMRId >=0 && (unsigned) GMRId < GMRVals.size()
+            && "GMRId is too large!");
     int Off = 0;
-    if (GMRId < X86Config::EFLAG)
-        Off = GuestStateOffset(GMRId);
+    if (X86MappedRegsIdToRegTy(GMRId) == X86RegGPRType)
+        Off = GMRId < X86Config::EFLAG ? GuestStateOffset(GMRId)
+            : GuestEflagOffset();
     else
-        Off = GuestEflagOffset();
+        Off = GuestXMMOffset(GMRId - GetNumGPRs());
     Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, Off));
-    Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
-    Value *V = Builder.CreateLoad(Int64Ty, Addr);
+    Type *Ty = X86RegTyToLLVMTy(X86MappedRegsIdToRegTy(GMRId));
+    Addr = Builder.CreateBitCast(Addr, Ty->getPointerTo());
+    Value *V = Builder.CreateLoad(Ty , Addr);
     StoreGMRValue(V, GMRId); // EFLAG DF also should be reload
     if (GMRId == X86Config::EFLAG) {
         // sync to inner lbt flag register
@@ -370,13 +558,17 @@ Type *X86Translator::GetOpndLLVMType(int size) {
     }
 }
 
-Value *X86Translator::LoadGMRValue(Type *Ty, int GMRId, bool isHSubReg) {
-    assert(Ty->isIntegerTy() && "Type is not a integer type!");
+Value *X86Translator::LoadGMRValue(Type *Ty, X86MappedRegsId GMRId,
+        bool isHSubReg) {
+    /* assert(Ty->isIntegerTy() && "Type is not a integer type!"); */
+    assert((unsigned) GMRId >=0 && (unsigned) GMRId < GMRVals.size()
+            && "GMRId is too large!");
     if (GMRVals[GMRId].hasValue()) {
         Value *V = GMRVals[GMRId].getValue();
-        if (Ty->isIntegerTy(64)) {
+        /* if (Ty->isIntegerTy(64)) { */
+        if (Ty == V->getType()) {
             return V;
-        } else {
+        } else if (V->getType()->isIntegerTy() && Ty->isIntegerTy()) {
             if (isHSubReg) {
                 assert(Ty->getIntegerBitWidth() == 8 && "HSubReg should be 8 bit");
                 V = Builder.CreateLShr(V, ConstInt(V->getType(), 8));
@@ -384,36 +576,48 @@ Value *X86Translator::LoadGMRValue(Type *Ty, int GMRId, bool isHSubReg) {
             }
             V = Builder.CreateTrunc(V, Ty);
             return V;
+        } else {
+            fprintf(stderr, "unsupported type.\n");
+            Ty->dump();
+            exit(-1);
         }
     }
-    assert(GMRVals.size() > (unsigned)GMRId);
 
-    /* auto CurrBB = Builder.GetInsertBlock(); */
-    /* if (!CurrBB->empty()) { */
-    /*     Builder.SetInsertPoint(&CurrBB->front()); */
-    /* } */
+    X86RegType type = X86MappedRegsIdToRegTy(GMRId);
+    int gid = X86MappedRegsIdToId(GMRId);
+    Value *V = Builder.CreateLoad(X86RegTyToLLVMTy(type),
+            GetGMRStates(type, gid));
+    SetGMRVals(type, gid, V, false);
 
-    Value *V = Builder.CreateLoad(Int64Ty, GMRStates[GMRId]);
-    GMRVals[GMRId].set(V, false);
-
-    /* Builder.SetInsertPoint(CurrBB); */
-
-    if (!Ty->isIntegerTy(64)) {
+    if (Ty == V->getType()) {
+        return V;
+    } else if (V->getType()->isIntegerTy() && Ty->isIntegerTy()) {
         if (isHSubReg)
             V = Builder.CreateAShr(V, ConstInt(Int64Ty, 8));
         V = Builder.CreateTrunc(V, Ty);
+        return V;
+    } else {
+        fprintf(stderr, "unsupported type.\n");
+        Ty->dump();
+        exit(-1);
     }
-    return V;
 }
 
-void X86Translator::StoreGMRValue(Value *V, int GMRId, bool isHSubReg) {
-    assert(V->getType()->isIntegerTy() && "V is not a interger type!");
-    assert((unsigned)GMRId < GMRVals.size() && "GMRId is too large!");
+void X86Translator::StoreGMRValue(Value *V, X86MappedRegsId GMRId, bool isHSubReg) {
+    /* assert(V->getType()->isIntegerTy() && "V is not a interger type!"); */
+    assert((unsigned) GMRId >=0 && (unsigned) GMRId < GMRVals.size()
+            && "GMRId is too large!");
 
-    if (V->getType()->isIntegerTy(64)) {
-        GMRVals[GMRId].set(V, true);
+    X86RegType type = X86MappedRegsIdToRegTy(GMRId);
+    int gid = X86MappedRegsIdToId(GMRId);
+
+    /* if (V->getType()->isIntegerTy(64)) { */
+    if (V->getType() == X86RegTyToLLVMTy(type)) {
+        SetGMRVals(type, gid, V, true);
     } else {
+        assert(type == X86RegGPRType);
         if (GMRVals[GMRId].hasValue()) {
+            assert(V->getType()->isIntegerTy() && "V is not a interger type!");
             uint64_t mask = ~((1ULL << V->getType()->getIntegerBitWidth()) - 1);
             if (isHSubReg) {
                 mask = 0xffffffffffff00ff;
@@ -425,7 +629,8 @@ void X86Translator::StoreGMRValue(Value *V, int GMRId, bool isHSubReg) {
             Value *OldV = Builder.CreateAnd(GMRVals[GMRId].getValue(),
                                             ConstantInt::get(Int64Ty, mask));
             Value *Res = Builder.CreateOr(OldV, V);
-            GMRVals[GMRId].set(Res, true);
+            SetGMRVals(type, GMRId, Res, true);
+            /* GMRVals[GMRId].set(Res, true); */
         } else {
             // GMRVals haven't cached GMRId, so store V into GMRStates directly.
             Value *Addr = Builder.CreateBitCast(GMRStates[GMRId],
@@ -461,7 +666,9 @@ Value *X86Translator::CalcMemAddr(X86Operand *Opnd) {
             X86InstHandler InstHdl(CurrInst);
             Base = ConstInt(Int64Ty, InstHdl.getNextPC());
         } else {
-            int baseReg = OpndHdl.GetBaseReg();
+            /* int baseReg = OpndHdl.GetBaseReg(); */
+            X86MappedRegsId baseReg = IdToX86MappedRegsId(
+                    X86RegGPRType, OpndHdl.GetBaseReg());
             Base = LoadGMRValue(Int64Ty, baseReg);
         }
         if (!MemAddr)
@@ -482,7 +689,7 @@ Value *X86Translator::CalcMemAddr(X86Operand *Opnd) {
             case 8: shift = 3; break;
             default: llvm_unreachable("scale should be power of 2");
         }
-        Index = LoadGMRValue(Int64Ty, indexReg);
+        Index = LoadGMRValue(Int64Ty, IdToX86MappedRegsId(X86RegGPRType, indexReg));
         Index = Builder.CreateShl(Index, ConstantInt::get(Int64Ty, shift));
         if (!MemAddr)
             MemAddr = Index;
@@ -516,15 +723,21 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd, Type *LoadTy) {
         /*                         ConstantInt::get(LLVMTy, Opnd->imm)); */
     } else if (OpndHdl.isReg()) {
         if (OpndHdl.isGPR()) {
-            Res = LoadGMRValue(LLVMTy, OpndHdl.GetGMRID(), OpndHdl.isHSubReg());
+            Res = LoadGMRValue(LLVMTy, (X86MappedRegsId) OpndHdl.GetGMR(),
+                    OpndHdl.isHSubReg());
         } else if (OpndHdl.isXMM()) {
             // The current implementation is to read xmm reg from CPUX86State
             // directly.
+#if 1
             int off = GuestXMMOffset(OpndHdl.GetXMMID());
             Value *Addr =
                 Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
             Addr = Builder.CreateBitCast(Addr, LLVMTy->getPointerTo());
             Res = Builder.CreateLoad(LLVMTy, Addr);
+#else
+            Res = LoadGMRValue(LLVMTy, (X86MappedRegsId) OpndHdl.GetGMR(),
+                    OpndHdl.isHSubReg());
+#endif
         } else {
             llvm_unreachable("Unhandled register operand type!");
         }
@@ -567,7 +780,7 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
                 ResVal = Builder.CreateZExt(ResVal, Int64Ty);
             }
         }
-        StoreGMRValue(ResVal, OpndHdl.GetGMRID(), OpndHdl.isHSubReg());
+        StoreGMRValue(ResVal, (X86MappedRegsId) OpndHdl.GetGMR(), OpndHdl.isHSubReg());
     } else if (OpndHdl.isMem()) {
         Value *MemAddr = CalcMemAddr(DestOpnd);
         /* if (!ResVal->getType()->isIntegerTy(64)) { */
@@ -577,12 +790,16 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
             Builder.CreateIntToPtr(MemAddr, ResVal->getType()->getPointerTo());
         Builder.CreateStore(ResVal, MemAddr);
     } else if (OpndHdl.isXMM()) {
+#if 1
         // Current implementation is to store value into CPUX86State directly.
         int off = GuestXMMOffset(OpndHdl.GetXMMID());
         Value *Addr =
             Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
         Addr = Builder.CreateBitCast(Addr, ResVal->getType()->getPointerTo());
         Builder.CreateStore(ResVal, Addr);
+#else
+        StoreGMRValue(ResVal, (X86MappedRegs) OpndHdl.GetGMR(), OpndHdl.isHSubReg());
+#endif
     } else {
         llvm_unreachable("Unhandled StoreOperand type!");
     }
@@ -615,8 +832,6 @@ CallInst *X86Translator::CallFunc(FunctionType *FuncTy, StringRef Name,
 #endif
     return callInst;
 }
-
-
 
 void X86Translator::AddExternalSyms() {
     for (int i = 0; i < SymTableSize; i++)

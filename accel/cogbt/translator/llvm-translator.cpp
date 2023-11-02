@@ -7,6 +7,7 @@
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/DerivedTypes.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
@@ -70,6 +71,14 @@ void LLVMTranslator::InitializeTypes() {
     Int128PtrTy = Type::getIntNPtrTy(Context, 128);
     Int80Ty = Type::getIntNTy(Context, 80);
     Int80PtrTy = Type::getIntNPtrTy(Context, 80);
+    FloatTy = Type::getFloatTy(Context);
+    DoubleTy = Type::getDoubleTy(Context);
+    FloatPtrTy = Type::getFloatPtrTy(Context);
+    DoublePtrTy = Type::getDoublePtrTy(Context);
+    V2I64Ty = FixedVectorType::get(Int64Ty, 2);
+    V2F64Ty = FixedVectorType::get(DoubleTy, 2);
+    V2I64PtrTy = V2I64Ty->getPointerTo();
+    V2F64PtrTy = V2F64Ty->getPointerTo();
     CPUX86StatePtrTy = StructType::create(Context)->getPointerTo();
 };
 
@@ -166,9 +175,9 @@ void LLVMTranslator::InitializeBlock(GuestBlock &Block) {
     Builder.SetInsertPoint(CurrBB);
 }
 
-Value *LLVMTranslator::GetPhysicalRegValue(const char *RegName) {
+Value *LLVMTranslator::GetPhysicalRegValue(const char *RegName, Type* type) {
     // Prepare inline asm type and inline constraints.
-    FunctionType *InlineAsmTy = FunctionType::get(Int64Ty, false);
+    FunctionType *InlineAsmTy = FunctionType::get(type, false);
     std::string Constraints(std::string("={") + RegName + "}");
 
     // Create corresponding inline asm IR.
@@ -177,17 +186,21 @@ Value *LLVMTranslator::GetPhysicalRegValue(const char *RegName) {
     return HostRegValue;
 }
 
-void LLVMTranslator::SetPhysicalRegValue(const char *RegName, Value *RegValue) {
-    FunctionType *InlineAsmTy = FunctionType::get(VoidTy, Int64Ty, false);
+void LLVMTranslator::SetPhysicalRegValue(const char *RegName, Value *RegValue, Type* type) {
+    FunctionType *InlineAsmTy = FunctionType::get(VoidTy, type, false);
     std::string Constraints = std::string("{") + RegName + "}";
     InlineAsm *IA = InlineAsm::get(InlineAsmTy, "", Constraints, true);
     Builder.CreateCall(InlineAsmTy, IA, {RegValue});
 }
 
 void LLVMTranslator::CreateIllegalInstruction() {
+#if 0
     FunctionType *InlineAsmTy = FunctionType::get(VoidTy, false);
     InlineAsm *IA = InlineAsm::get(InlineAsmTy, ".word 0", "", true);
     Builder.CreateCall(InlineAsmTy, IA);
+#endif
+    printf("stderr, instruction is not transalted\n");
+    exit(-1);
 }
 
 void LLVMTranslator::TranslateFinalize() {

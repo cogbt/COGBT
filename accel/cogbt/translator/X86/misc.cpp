@@ -1807,7 +1807,7 @@ void X86Translator::translate_syscall(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     // Sync all GMR value into env.
     for (int GMRId = 0; GMRId < GetNumGMRs(); GMRId++) {
-        FlushGMRValue(GMRId);
+        FlushGMRValue((X86MappedRegsId) GMRId);
     }
 
     // Call helper_raise_syscall to go back qemu.

@@ -19,7 +19,7 @@ public:
 
     /// GetGMRID - If operand is a x86 mapped register, return its id, otherwise
     /// return -1.
-    int GetGMRID();
+    int GetGMR();
 
     /// GetXMMID - If operand is a x86 xmm register, return its index(0-15), -1
     /// otherwise.

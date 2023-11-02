@@ -49,6 +49,28 @@ int X86OperandHandler::NormalizeGuestReg(int GuestRegID) {
     HANDLE_REG(R14)
     HANDLE_REG(R15)
 #undef HANDLE_REG
+
+#define  HANDLE_REG(name)           \
+    case X86_REG_##name:            \
+        return X86Config::name;
+
+    HANDLE_REG(XMM0)
+    HANDLE_REG(XMM1)
+    HANDLE_REG(XMM2)
+    HANDLE_REG(XMM3)
+    HANDLE_REG(XMM4)
+    HANDLE_REG(XMM5)
+    HANDLE_REG(XMM6)
+    HANDLE_REG(XMM7)
+    HANDLE_REG(XMM8)
+    HANDLE_REG(XMM9)
+    HANDLE_REG(XMM10)
+    HANDLE_REG(XMM11)
+    HANDLE_REG(XMM12)
+    HANDLE_REG(XMM13)
+    HANDLE_REG(XMM14)
+    HANDLE_REG(XMM15)
+#undef HANDLE_REG
     }
 }
 
@@ -67,7 +89,7 @@ bool X86OperandHandler::isHSubReg() {
     }
 }
 
-int X86OperandHandler::GetGMRID() {
+int X86OperandHandler::GetGMR() {
     if (Opnd->type != X86_OP_REG) {
         llvm_unreachable("x86 operand is not a reg!");
     }

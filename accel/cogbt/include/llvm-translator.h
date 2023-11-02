@@ -22,6 +22,8 @@
 #endif
 
 using namespace llvm;
+using std::vector;
+using std::pair;
 
 //===----------------------------------------------------------------------===//
 // The value of a GMR during translation.
@@ -173,6 +175,16 @@ protected:
     DISubroutineType *STy;          ///< Debug info subroutine type of function.
     /* DIGlobalVariableExpression* DIGV; */
 
+    // TODO: Customize an inheritable enum class.
+    /// GMRStatesResize - Stack objects and GMRVal initialization.
+    /// Each item of `arr` contains Guest RegType and the number of registers
+    /// of corresponding type.
+    virtual void GMRStatesResize(vector<pair<int, int>> arr) = 0;
+    virtual Value* GetGMRStates(int type, int gid) = 0;
+    virtual void SetGMRStates(int type, int gid, Value* value) = 0;
+    virtual GMRValue GetGMRVals(int type, int gid) = 0;
+    virtual void SetGMRVals(int type, int gid, Value* value, bool dirty) = 0;
+
     /// AttachLinkInfoToIR - Attach some tb link information to the IR. These
     /// information will be retained in the ELF dwarf and we can parse them to
     /// obtain the machine instruction address and link information.
@@ -183,7 +195,9 @@ protected:
     /// Basic types that are frequently used.
     Type *Int1Ty, *Int8Ty, *Int16Ty, *Int32Ty, *Int64Ty, *Int128Ty, *Int256Ty,
          *Int512Ty, *VoidTy, *Int8PtrTy, *Int16PtrTy, *Int32PtrTy, *Int64PtrTy,
-         *Int128PtrTy, *CPUX86StatePtrTy, *Int80Ty, *Int80PtrTy;
+         *Int128PtrTy, *CPUX86StatePtrTy, *Int80Ty, *Int80PtrTy,
+         *FloatTy, *DoubleTy, *FloatPtrTy, *DoublePtrTy,
+         *V2I64Ty, *V2F64Ty, *V2I64PtrTy, *V2F64PtrTy;
 
     /// InitializeTypes - Cache some basic types that are frequently used in
     /// translator.
@@ -198,9 +212,9 @@ protected:
     /// implement, like jumping to `epilogue` or return translator.
     virtual void InitializeFunction(StringRef FuncName) = 0;
 
-    Value *GetPhysicalRegValue(const char *RegName);
+    Value *GetPhysicalRegValue(const char *RegName, Type *type);
 
-    void SetPhysicalRegValue(const char *RegName, Value *RegValue);
+    void SetPhysicalRegValue(const char *RegName, Value *RegValue, Type *type);
 
     /// CreateIllegalInstruction - Gen an illegal instruction.
     /// It is used when some instruction is not translated,
