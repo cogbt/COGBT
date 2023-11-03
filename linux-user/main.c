@@ -1004,7 +1004,7 @@ int main(int argc, char **argv, char **envp)
         tb_aot_gen(block_path);
         return 0;
     } else if (aotmode == TU_AOT) {  // TU AOT mode
-        cogbt_function_init();
+        cogbt_tu_init();
         func_tu_parse(exec_path);
         func_aot_gen();
         return 0;
