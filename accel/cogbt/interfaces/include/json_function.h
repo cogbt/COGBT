@@ -1,5 +1,5 @@
-#ifndef FUNCTION_H
-#define FUNCTION_H
+#ifndef JSON_FUNCTION_H
+#define JSON_FUNCTION_H
 
 #ifdef __cplusplus
 
@@ -148,12 +148,10 @@ typedef struct BitMap BitMap;
 extern "C" {
 #endif
 
-/// cogbt_function_init - Initialze cogbt function tu mode.
-void cogbt_function_init(void);
-/// cogbt_function_fini - Finalize cogbt function tu mode.
-void cogbt_function_fini(void);
+/// cogbt_tu_init - Initialze cogbt tu mode.
+void cogbt_tu_init(void);
 
-/// func_tu_parse - Parse function translation unit file,
+/// func_tu_parse - Parse tu translation unit file,
 /// include json, path file.
 void func_tu_parse(const char *pf);
 
@@ -164,4 +162,4 @@ void func_aot_gen(void);
 }
 #endif
 
-#endif  // FUNCTION_H
+#endif  // JSON_FUNCTION_H

@@ -68,7 +68,7 @@ bool func_tu_inst_is_funcexit(cs_insn *insn) {
             insn->detail->x86.operands[0].type != X86_OP_IMM);
 }
 
-void cogbt_function_init(void) {
+void cogbt_tu_init(void) {
     capstone_init();
     TUs.clear();
 }
