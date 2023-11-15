@@ -197,7 +197,8 @@ protected:
          *Int512Ty, *VoidTy, *Int8PtrTy, *Int16PtrTy, *Int32PtrTy, *Int64PtrTy,
          *Int128PtrTy, *CPUX86StatePtrTy, *Int80Ty, *Int80PtrTy,
          *FloatTy, *DoubleTy, *FloatPtrTy, *DoublePtrTy,
-         *V2I64Ty, *V2F64Ty, *V2I64PtrTy, *V2F64PtrTy;
+         *V2I64Ty, *V2F64Ty, *V2I64PtrTy, *V2F64PtrTy,
+         *V4I32Ty, *V4F32Ty, *V4I32PtrTy, *V4F32PtrTy;
 
     /// InitializeTypes - Cache some basic types that are frequently used in
     /// translator.

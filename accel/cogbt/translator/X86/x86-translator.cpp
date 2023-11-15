@@ -563,42 +563,47 @@ Value *X86Translator::LoadGMRValue(Type *Ty, X86MappedRegsId GMRId,
     /* assert(Ty->isIntegerTy() && "Type is not a integer type!"); */
     assert((unsigned) GMRId >=0 && (unsigned) GMRId < GMRVals.size()
             && "GMRId is too large!");
-    if (GMRVals[GMRId].hasValue()) {
-        Value *V = GMRVals[GMRId].getValue();
-        /* if (Ty->isIntegerTy(64)) { */
-        if (Ty == V->getType()) {
-            return V;
-        } else if (V->getType()->isIntegerTy() && Ty->isIntegerTy()) {
-            if (isHSubReg) {
-                assert(Ty->getIntegerBitWidth() == 8 && "HSubReg should be 8 bit");
-                V = Builder.CreateLShr(V, ConstInt(V->getType(), 8));
-                V = Builder.CreateAnd(V, ConstInt(V->getType(), 0xff));
-            }
-            V = Builder.CreateTrunc(V, Ty);
-            return V;
-        } else {
-            fprintf(stderr, "unsupported type.\n");
-            Ty->dump();
-            exit(-1);
-        }
-    }
 
     X86RegType type = X86MappedRegsIdToRegTy(GMRId);
     int gid = X86MappedRegsIdToId(GMRId);
-    Value *V = Builder.CreateLoad(X86RegTyToLLVMTy(type),
-            GetGMRStates(type, gid));
-    SetGMRVals(type, gid, V, false);
+
+    Value *V = nullptr;
+    bool hasValue = true;
+    if (GMRVals[GMRId].hasValue()) {
+        V = GMRVals[GMRId].getValue();
+    } else {
+        V = Builder.CreateLoad(X86RegTyToLLVMTy(type), GetGMRStates(type, gid));
+        SetGMRVals(type, gid, V, false);
+        hasValue = false;
+    }
+    if (Ty == V4F32Ty && V->getType() == V2F64Ty) {
+        V = Builder.CreateBitCast(V, V4F32Ty);
+    }
 
     if (Ty == V->getType()) {
         return V;
-    } else if (V->getType()->isIntegerTy() && Ty->isIntegerTy()) {
-        if (isHSubReg)
-            V = Builder.CreateAShr(V, ConstInt(Int64Ty, 8));
+    } else if (type == X86RegGPRType) {
+        assert(V->getType()->isIntegerTy() && Ty->isIntegerTy());
+        if (isHSubReg) {
+            assert(Ty->getIntegerBitWidth() == 8 && "HSubReg should be 8 bit");
+            if (hasValue) {
+                V = Builder.CreateLShr(V, ConstInt(V->getType(), 8));
+                V = Builder.CreateAnd(V, ConstInt(V->getType(), 0xff));
+            } else {
+                V = Builder.CreateAShr(V, ConstInt(Int64Ty, 8));
+            }
+        }
         V = Builder.CreateTrunc(V, Ty);
+        return V;
+    } else if (type == X86RegXMMType) {
+        assert(Ty->isFloatTy() || Ty->isDoubleTy());
+        if (Ty->isFloatTy()) {
+            V = Builder.CreateBitCast(V, V4F32Ty);
+        }
+        V = Builder.CreateExtractElement(V, ConstantInt::get(Int32Ty, 0));
         return V;
     } else {
         fprintf(stderr, "unsupported type.\n");
-        Ty->dump();
         exit(-1);
     }
 }
@@ -611,11 +616,13 @@ void X86Translator::StoreGMRValue(Value *V, X86MappedRegsId GMRId, bool isHSubRe
     X86RegType type = X86MappedRegsIdToRegTy(GMRId);
     int gid = X86MappedRegsIdToId(GMRId);
 
-    /* if (V->getType()->isIntegerTy(64)) { */
+    if (V->getType() == V4F32Ty) {
+        V = Builder.CreateBitCast(V, V2F64Ty);
+    }
+
     if (V->getType() == X86RegTyToLLVMTy(type)) {
         SetGMRVals(type, gid, V, true);
-    } else {
-        assert(type == X86RegGPRType);
+    } else if (type == X86RegGPRType) {
         if (GMRVals[GMRId].hasValue()) {
             assert(V->getType()->isIntegerTy() && "V is not a interger type!");
             uint64_t mask = ~((1ULL << V->getType()->getIntegerBitWidth()) - 1);
@@ -641,6 +648,39 @@ void X86Translator::StoreGMRValue(Value *V, X86MappedRegsId GMRId, bool isHSubRe
             }
             Builder.CreateStore(V, Addr);
         }
+    } else if (type == X86RegXMMType) {
+        assert(V->getType()->isFloatTy() || V->getType()->isDoubleTy());
+        if (V->getType() == V4F32Ty) {
+            V = Builder.CreateBitCast(V, V2F64Ty);
+        }
+
+        if (V->getType()->isFloatTy()) {
+            if (GMRVals[GMRId].hasValue()) {
+                Value *OldVal = Builder.CreateBitCast(GMRVals[GMRId].getValue(),
+                        V4F32Ty);
+                Value *Res = Builder.CreateInsertElement(OldVal,
+                        V, ConstantInt::get(Int32Ty, 0));
+                Res = Builder.CreateBitCast(Res, V2F64Ty);
+                SetGMRVals(type, gid, Res, true);
+            } else {
+                Value *Addr = Builder.CreateBitCast(GMRStates[GMRId],
+                                                V->getType()->getPointerTo());
+                Builder.CreateStore(V, Addr);
+            }
+        } else if (V->getType()->isDoubleTy()) {
+            if (GMRVals[GMRId].hasValue()) {
+                Value *Res = Builder.CreateInsertElement(GMRVals[GMRId].getValue(),
+                        V, ConstantInt::get(Int32Ty, 0));
+                SetGMRVals(type, gid, Res, true);
+            } else {
+                Value *Addr = Builder.CreateBitCast(GMRStates[GMRId],
+                                                V->getType()->getPointerTo());
+                Builder.CreateStore(V, Addr);
+            }
+        }
+    } else {
+        fprintf(stderr, "unsupported type.\n");
+        exit(-1);
     }
 }
 
@@ -728,7 +768,7 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd, Type *LoadTy) {
         } else if (OpndHdl.isXMM()) {
             // The current implementation is to read xmm reg from CPUX86State
             // directly.
-#if 1
+#if 0
             int off = GuestXMMOffset(OpndHdl.GetXMMID());
             Value *Addr =
                 Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
@@ -736,7 +776,7 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd, Type *LoadTy) {
             Res = Builder.CreateLoad(LLVMTy, Addr);
 #else
             Res = LoadGMRValue(LLVMTy, (X86MappedRegsId) OpndHdl.GetGMR(),
-                    OpndHdl.isHSubReg());
+                    false);
 #endif
         } else {
             llvm_unreachable("Unhandled register operand type!");
@@ -757,15 +797,25 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
 
     // If DestOpnd isn't MMX or XMM, then the bitwidth of ResVal is greater or
     // equal than DestOpnd.
-    assert(OpndHdl.isMMX() || OpndHdl.isXMM() || 
-           ResVal->getType()->getIntegerBitWidth() >=
-               (unsigned)OpndHdl.getOpndSize() * 8);
+    assert(OpndHdl.isMMX() || OpndHdl.isXMM() ||
+        (ResVal->getType()->isIntegerTy() &&
+            ResVal->getType()->getIntegerBitWidth() >=
+               (unsigned)OpndHdl.getOpndSize() * 8) ||
+        (ResVal->getType()->isFloatTy() && OpndHdl.getOpndSize() == 4) ||
+        (ResVal->getType()->isDoubleTy() &&
+            (OpndHdl.getOpndSize() == 4 || OpndHdl.getOpndSize() == 8)) ||
+        (ResVal->getType() == V4F32Ty || ResVal->getType() == V2F64Ty));
 
     // If Dest isn't MMX/XMM, Trunc ResVal to the same bitwidth as DestOpnd.
-    if (!OpndHdl.isMMX() && !OpndHdl.isXMM() &&
-        ResVal->getType()->getIntegerBitWidth() >
+    if (!OpndHdl.isMMX() && !OpndHdl.isXMM()) {
+        if (ResVal->getType()->isIntegerTy() &&
+            ResVal->getType()->getIntegerBitWidth() >
             (unsigned)(OpndHdl.getOpndSize() << 3)) {
-        ResVal = Builder.CreateTrunc(ResVal, GetOpndLLVMType(DestOpnd));
+            ResVal = Builder.CreateTrunc(ResVal, GetOpndLLVMType(DestOpnd));
+        } else if (ResVal->getType()->isDoubleTy()
+                && OpndHdl.getOpndSize() == 4) {
+            ResVal = Builder.CreateFPTrunc(ResVal, FloatTy);
+        }
     }
 
     if (OpndHdl.isGPR()) {
@@ -790,7 +840,7 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
             Builder.CreateIntToPtr(MemAddr, ResVal->getType()->getPointerTo());
         Builder.CreateStore(ResVal, MemAddr);
     } else if (OpndHdl.isXMM()) {
-#if 1
+#if 0
         // Current implementation is to store value into CPUX86State directly.
         int off = GuestXMMOffset(OpndHdl.GetXMMID());
         Value *Addr =
@@ -798,7 +848,7 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
         Addr = Builder.CreateBitCast(Addr, ResVal->getType()->getPointerTo());
         Builder.CreateStore(ResVal, Addr);
 #else
-        StoreGMRValue(ResVal, (X86MappedRegs) OpndHdl.GetGMR(), OpndHdl.isHSubReg());
+        StoreGMRValue(ResVal, (X86MappedRegsId) OpndHdl.GetGMR(), false);
 #endif
     } else {
         llvm_unreachable("Unhandled StoreOperand type!");

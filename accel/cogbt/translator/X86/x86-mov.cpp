@@ -33,12 +33,33 @@ void X86Translator::translate_movd(GuestInst *Inst) {
     X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
 
     Value *Src = nullptr, *Dest = nullptr;
-    if (SrcOpnd.isXMM() || SrcOpnd.isMMX()) { // Dest must be r/m32
+    if (SrcOpnd.isMMX()) { // Dest must be r/m32
+        assert(0 && "movd mmx has not implemented.");
         Src = LoadOperand(InstHdl.getOpnd(0), Int32Ty);
         StoreOperand(Src, InstHdl.getOpnd(1));
+    } else if (SrcOpnd.isXMM()) {
+        Src = LoadOperand(InstHdl.getOpnd(0), FloatTy);
+
+        assert(DestOpnd.isMem() || DestOpnd.isGPR()); // Dest must be r/m32
+        if (DestOpnd.isGPR()) {
+            Src = Builder.CreateBitCast(Src, Int32Ty);
+        }
+        StoreOperand(Src, InstHdl.getOpnd(1));
     } else if (DestOpnd.isXMM()) {
-        Src = LoadOperand(InstHdl.getOpnd(0)); // Src must be r/m32
-        Dest = Builder.CreateZExt(Src, Int128Ty);
+        assert(SrcOpnd.isMem() || SrcOpnd.isGPR()); // Src must be r/m32
+        if (SrcOpnd.isMem()) {
+            Src = LoadOperand(InstHdl.getOpnd(0), FloatTy);
+        } else if (SrcOpnd.isGPR()) {
+            Src = LoadOperand(InstHdl.getOpnd(0), Int32Ty);
+            Src = Builder.CreateBitCast(Src, FloatTy);
+        }
+
+        Dest = ConstantVector::getSplat(ElementCount::getFixed(4),
+                ConstantFP::get(FloatTy, 0.0));
+        Dest = Builder.CreateInsertElement(Dest, Src,
+                ConstantInt::get(Int32Ty, 0));
+        Dest = Builder.CreateBitCast(Dest, V2F64Ty);
+
         StoreOperand(Dest, InstHdl.getOpnd(1));
     } else { // Dest must be mmx
         assert(DestOpnd.isMMX() && "movd dest must be mmx");
@@ -53,19 +74,39 @@ void X86Translator::translate_movq(GuestInst *Inst) {
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
 
-    Value *Src = LoadOperand(InstHdl.getOpnd(0), Int64Ty);
-    Value *Dest = nullptr;
-    if (DestOpnd.isXMM()) {
-        Dest = Builder.CreateZExt(Src, Int128Ty);
+    Value *Src = nullptr, *Dest = nullptr;
+    if (SrcOpnd.isMMX()) {
+        assert(0);
+    } else if (SrcOpnd.isXMM()) {
+        Src = LoadOperand(InstHdl.getOpnd(0), DoubleTy);
+
+        assert(DestOpnd.isMem() || DestOpnd.isGPR()); // Dest must be r/m32
+        if (DestOpnd.isGPR()) {
+            Src = Builder.CreateBitCast(Src, Int64Ty);
+        }
+        StoreOperand(Src, InstHdl.getOpnd(1));
+    } else if (DestOpnd.isXMM()) {
+        assert(SrcOpnd.isMem() || SrcOpnd.isGPR()); // Src must be r/m32
+        if (SrcOpnd.isMem()) {
+            Src = LoadOperand(InstHdl.getOpnd(0), DoubleTy);
+        } else if (SrcOpnd.isGPR()) {
+            Src = LoadOperand(InstHdl.getOpnd(0), Int64Ty);
+            Src = Builder.CreateBitCast(Src, DoubleTy);
+        }
+
+        Dest = ConstantVector::getSplat(ElementCount::getFixed(2),
+                ConstantFP::get(DoubleTy, 0.0));
+        Dest = Builder.CreateInsertElement(Dest, Src,
+                ConstantInt::get(Int32Ty, 0));
+
         StoreOperand(Dest, InstHdl.getOpnd(1));
-    } else if (DestOpnd.isMMX()) { // Dest must be mmx
+    } else { // Dest must be mmx
         assert(DestOpnd.isMMX() && "movd dest must be mmx");
         assert(0 && "movd mmx unfinished!");
         // TODO
         /* Src = LoadOperand(InstHdl.getOpnd(0)); // Src must be r/m32 */
-    } else { // Dest is r/m64
-        StoreOperand(Src, InstHdl.getOpnd(1));
     }
+
 }
 
 void X86Translator::translate_movbe(GuestInst *Inst) {
@@ -222,9 +263,7 @@ void X86Translator::translate_movsd(GuestInst *Inst) {
     X86OperandHandler Opnd0(InstHdl.getOpnd(0));
     X86OperandHandler Opnd1(InstHdl.getOpnd(1));
     if (Opnd0.isXMM() || Opnd1.isXMM()) {
-        Value *Src = LoadOperand(InstHdl.getOpnd(0), Int64Ty);
-        if (Opnd0.isMem())
-            Src = Builder.CreateZExt(Src, Int128Ty);
+        Value *Src = LoadOperand(InstHdl.getOpnd(0), DoubleTy);
         StoreOperand(Src, InstHdl.getOpnd(1));
         return;
     }
@@ -433,13 +472,12 @@ void X86Translator::translate_movss(GuestInst *Inst) {
     X86OperandHandler Opnd1Hdl(InstHdl.getOpnd(1));
     // Source operand is xmm register, only move low 32 bit.
     if (Opnd0Hdl.isXMM()) {
-        Value *Src = LoadOperand(InstHdl.getOpnd(0), Int32Ty);
+        Value *Src = LoadOperand(InstHdl.getOpnd(0), FloatTy);
         StoreOperand(Src, InstHdl.getOpnd(1));
     } else {
         assert(Opnd0Hdl.isMem() && Opnd1Hdl.isXMM());
         // Source is memory and dest is xmm
-        Value *Src = LoadOperand(InstHdl.getOpnd(0), Int32Ty);
-        Src = Builder.CreateZExt(Src, Int128Ty);
+        Value *Src = LoadOperand(InstHdl.getOpnd(0), FloatTy);
         StoreOperand(Src, InstHdl.getOpnd(1));
     }
 }
@@ -464,19 +502,19 @@ void X86Translator::translate_movupd(GuestInst *Inst) {
 
 void X86Translator::translate_movaps(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
-    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    Value *Src = LoadOperand(InstHdl.getOpnd(0), V4F32Ty);
     StoreOperand(Src, InstHdl.getOpnd(1));
 }
 
 void X86Translator::translate_movapd(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
-    Value *Src = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0), V2F64Ty);
     StoreOperand(Src, InstHdl.getOpnd(1));
 }
 
 void X86Translator::translate_movups(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
-    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    Value *Src = LoadOperand(InstHdl.getOpnd(0), V4F32Ty);
     StoreOperand(Src, InstHdl.getOpnd(1));
 }
 void X86Translator::translate_movzx(GuestInst *Inst) {

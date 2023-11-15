@@ -382,7 +382,7 @@ void X86Translator::translate_pshuflw(GuestInst *Inst) {
 void X86Translator::translate_movdqu(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
 
-    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    Value *Src = LoadOperand(InstHdl.getOpnd(0), V2F64Ty);
     StoreOperand(Src, InstHdl.getOpnd(1));
 }
 
@@ -686,8 +686,11 @@ void X86Translator::translate_subpd(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_subps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction subps\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Src0 = LoadOperand(InstHdl.getOpnd(0), V4F32Ty);
+    Value *Src1 = LoadOperand(InstHdl.getOpnd(1), V4F32Ty);
+    Value *Dest = Builder.CreateFSub(Src1, Src0);
+    StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 
 void X86Translator::translate_subsd(GuestInst *Inst) {

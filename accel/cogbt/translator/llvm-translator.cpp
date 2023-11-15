@@ -77,8 +77,12 @@ void LLVMTranslator::InitializeTypes() {
     DoublePtrTy = Type::getDoublePtrTy(Context);
     V2I64Ty = FixedVectorType::get(Int64Ty, 2);
     V2F64Ty = FixedVectorType::get(DoubleTy, 2);
+    V4I32Ty = FixedVectorType::get(Int32Ty, 4);
+    V4F32Ty = FixedVectorType::get(FloatTy, 4);
     V2I64PtrTy = V2I64Ty->getPointerTo();
     V2F64PtrTy = V2F64Ty->getPointerTo();
+    V4I32PtrTy = V4I32Ty->getPointerTo();
+    V4F32PtrTy = V4F32Ty->getPointerTo();
     CPUX86StatePtrTy = StructType::create(Context)->getPointerTo();
 };
 
