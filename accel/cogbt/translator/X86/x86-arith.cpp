@@ -63,9 +63,9 @@ void X86Translator::translate_sbb(GuestInst *Inst) {
     if (Src0->getType()->getIntegerBitWidth() != 64) {
         CF = Builder.CreateTrunc(CF, Src0->getType());
     }
-    Src0 = Builder.CreateAdd(Src0, CF);
+    Value *Src = Builder.CreateAdd(Src0, CF);
     Value *Src1 = LoadOperand(InstHdl.getOpnd(1));
-    Value *Dest = Builder.CreateSub(Src1, Src0);
+    Value *Dest = Builder.CreateSub(Src1, Src);
     StoreOperand(Dest, InstHdl.getOpnd(1));
     CalcEflag(Inst, Dest, Src0, Src1);
 }

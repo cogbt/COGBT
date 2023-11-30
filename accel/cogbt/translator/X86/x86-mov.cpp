@@ -140,7 +140,7 @@ void X86Translator::translate_movsb(GuestInst *Inst) {
     Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
     RSI = Builder.CreateIntToPtr(RSI, Int8PtrTy);
     RDI = Builder.CreateIntToPtr(RDI, Int8PtrTy);
-    Value *V = Builder.CreateLoad(Int64Ty, RSI);
+    Value *V = Builder.CreateLoad(Int8Ty, RSI);
     Builder.CreateStore(V, RDI);
     // 2. Update RSI, RDI
     Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -191,7 +191,7 @@ void X86Translator::translate_movsw(GuestInst *Inst) {
     Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
     RSI = Builder.CreateIntToPtr(RSI, Int16PtrTy);
     RDI = Builder.CreateIntToPtr(RDI, Int16PtrTy);
-    Value *V = Builder.CreateLoad(Int64Ty, RSI);
+    Value *V = Builder.CreateLoad(Int16Ty, RSI);
     Builder.CreateStore(V, RDI);
     // 2. Update RSI, RDI
     Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -252,7 +252,7 @@ void X86Translator::translate_movsd(GuestInst *Inst) {
     Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
     RSI = Builder.CreateIntToPtr(RSI, Int32PtrTy);
     RDI = Builder.CreateIntToPtr(RDI, Int32PtrTy);
-    Value *V = Builder.CreateLoad(Int64Ty, RSI);
+    Value *V = Builder.CreateLoad(Int32Ty, RSI);
     Builder.CreateStore(V, RDI);
     // 2. Update RSI, RDI
     Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -770,12 +770,19 @@ void X86Translator::translate_cmpxchg(GuestInst *Inst) {
     Builder.SetInsertPoint(SuccBB);
     // Move Src to Dest
     StoreOperand(Src0, InstHdl.getOpnd(1));
+
     SyncAllGMRValue();
     Builder.CreateBr(JoinBB);
 
     Builder.SetInsertPoint(FailBB);
     // Move Dest to Accumulator
-    StoreGMRValue(Src1, X86Config::RAX);
+    X86OperandHandler DestHdl(InstHdl.getOpnd(1));
+    if (DestHdl.getOpndSize() == 4) { // need to zext
+        Value *Src = Builder.CreateZExt(Src1, Int64Ty);
+        StoreGMRValue(Src, X86Config::RAX);
+    } else {
+        StoreGMRValue(Src1, X86Config::RAX);
+    }
     SyncAllGMRValue();
     Builder.CreateBr(JoinBB);
 

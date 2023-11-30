@@ -238,6 +238,7 @@ void X86Translator::GenEpilogue() {
             Value *LBTFlag = GetLBTFlag();
             Value *DF =
                 Builder.CreateAnd(GuestVals[i], ConstInt(Int64Ty, DF_BIT|0x202));
+            /* DF = Builder.CreateOr(DF, ConstInt(Int64Ty, 0x202)); */
             GuestVals[i] = Builder.CreateOr(LBTFlag, DF);
         }
     }
@@ -312,6 +313,7 @@ void X86Translator::FlushGMRValue(int GMRId) {
     if (GMRId == X86Config::EFLAG) {
         Value *Flag = GetLBTFlag();
         GMRV = Builder.CreateAnd(GMRV, ConstInt(Int64Ty, DF_BIT|0x202));
+        /* GMRV = Builder.CreateOr(GMRV, ConstInt(Int64Ty, 0x202)); */
         GMRV = Builder.CreateOr(GMRV, Flag);
     }
     Builder.CreateStore(GMRV, Ptr, true);

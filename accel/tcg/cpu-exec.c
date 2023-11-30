@@ -315,6 +315,11 @@ long qemu_indirect_times = 0;
  * If found, return the code pointer.  If not found, return
  * the tcg epilogue so that we return into cpu_tb_exec.
  */
+#ifdef CONFIG_COGBT_DEBUG
+bool last_is_rep = false;
+uint64_t curr_tb_cnter = -1;
+extern uint64_t debug_start_cnter, debug_end_cnter;
+#endif
 const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
 {
 /* #ifdef CONFIG_COGBT_DEBUG */
@@ -346,6 +351,12 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
         return tcg_code_gen_epilogue;
 #endif
 
+#ifdef CONFIG_COGBT_DEBUG
+    if (!last_is_rep)
+        ++curr_tb_cnter;
+    if (!last_is_rep && curr_tb_cnter >= debug_start_cnter &&
+        curr_tb_cnter < debug_end_cnter)
+#endif
     log_cpu_exec(pc, cpu, tb);
 
     return tb->tc.ptr;
@@ -371,9 +382,10 @@ static inline uint64_t drdtime(void)
 
 const void *HELPER(cogbt_lookup_tb_ptr)(CPUArchState *env)
 {
+// It only needs to be turned on when comparing with qemu for debug.
 /* #ifdef CONFIG_COGBT_DEBUG */
 /*     return cogbt_code_gen_epilogue; */
-/* #else */
+/* #endif */
 
 #ifdef CONFIG_COGBT_DEBUG
     /* uint64_t start, end; */
@@ -415,11 +427,6 @@ const void *HELPER(cogbt_lookup_tb_ptr)(CPUArchState *env)
  * TCG is not considered a security-sensitive part of QEMU so this does not
  * affect the impact of CFI in environment with high security requirements
  */
-#ifdef CONFIG_COGBT_DEBUG
-bool last_is_rep = false;
-uint64_t curr_tb_cnter = -1;
-extern uint64_t debug_start_cnter, debug_end_cnter;
-#endif
 static inline TranslationBlock * QEMU_DISABLE_CFI
 cpu_tb_exec(CPUState *cpu, TranslationBlock *itb, int *tb_exit)
 {
