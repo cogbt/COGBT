@@ -166,8 +166,7 @@ void X86Translator::translate_cdq(GuestInst *Inst) {
     // EDX:EAX = sign-extend of EAX
     X86InstHandler InstHdl(Inst);
     Value *EAX = LoadGMRValue(Int32Ty, X86Config::RAX);
-    Value *V = Builder.CreateSExt(EAX, Int64Ty);
-    V = Builder.CreateLShr(V, ConstInt(Int64Ty, 32));
+    Value *V = Builder.CreateAShr(EAX, ConstInt(Int32Ty, 31));
     StoreGMRValue(V, X86Config::RDX);
 }
 void X86Translator::translate_cdqe(GuestInst *Inst) {
@@ -280,7 +279,7 @@ void X86Translator::translate_cwd(GuestInst *Inst) {
     // DX:AX = sign-extend of AX
     X86InstHandler InstHdl(Inst);
     Value *AX = LoadGMRValue(Int16Ty, X86Config::RAX);
-    Value *V = Builder.CreateAShr(AX, ConstInt(Int32Ty, 15));
+    Value *V = Builder.CreateAShr(AX, ConstInt(Int16Ty, 15));
     StoreGMRValue(V, X86Config::RDX);
 }
 void X86Translator::translate_cwde(GuestInst *Inst) {
@@ -1550,7 +1549,7 @@ void X86Translator::translate_pushfq(GuestInst *Inst) {
     // Store src value into stack.
     Value *Eflag = GetLBTFlag();
     Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-    DF = Builder.CreateAnd(Eflag, ConstInt(Int64Ty, DF_BIT));
+    DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT|0x202));
     Eflag = Builder.CreateOr(Eflag, DF);
     Value *NewESPPtr = Builder.CreateIntToPtr(NewESP, Int64PtrTy);
     Builder.CreateStore(Eflag, NewESPPtr);
@@ -1771,7 +1770,7 @@ void X86Translator::translate_stc(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_std(GuestInst *Inst) {
-    StoreGMRValue(ConstInt(Int64Ty, DF_BIT), X86Config::EFLAG);
+    StoreGMRValue(ConstInt(Int64Ty, DF_BIT|0x202), X86Config::EFLAG);
 }
 void X86Translator::translate_stgi(GuestInst *Inst) {
     dbgs() << "Untranslated instruction stgi\n";

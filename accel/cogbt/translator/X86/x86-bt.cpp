@@ -28,10 +28,12 @@ void X86Translator::translate_bt(GuestInst *Inst) {
         Value *index = nullptr;
         Value *base = CalcMemAddr(InstHdl.getOpnd(1));
         if (Opnd0Hdl.isImm()) {
-            index = ConstInt(Int8Ty, Opnd0Hdl.getIMM() % (OpndSize << 3));
-            if (Opnd0Hdl.getIMM() >> 3) {
-                Value *extraBytes = ConstInt(Int64Ty, Opnd0Hdl.getIMM() >> 3);
+            int bit_offset = Opnd0Hdl.getIMM() % (OpndSize << 3);
+            index = ConstInt(Int8Ty, bit_offset);
+            if (bit_offset >> 3) {
+                Value *extraBytes = ConstInt(Int64Ty, bit_offset >> 3);
                 base = Builder.CreateAdd(base, extraBytes);
+                index = ConstInt(Int8Ty, bit_offset % 8);
             }
         } else { // index is reg
             index = LoadOperand(InstHdl.getOpnd(0), Int64Ty);
@@ -83,25 +85,26 @@ void X86Translator::translate_btc(GuestInst *Inst) {
         Value *index = nullptr;
         Value *base = CalcMemAddr(InstHdl.getOpnd(1));
         if (Opnd0Hdl.isImm()) {
-            index = ConstInt(Int64Ty, Opnd0Hdl.getIMM() % (OpndSize << 3));
-            if (Opnd0Hdl.getIMM() >> 3) {
-                Value *extraBytes = ConstInt(Int64Ty, Opnd0Hdl.getIMM() >> 3);
+            int bit_offset = Opnd0Hdl.getIMM() % (OpndSize << 3);
+            index = ConstInt(Int8Ty, bit_offset);
+            if (bit_offset >> 3) {
+                Value *extraBytes = ConstInt(Int64Ty, bit_offset >> 3);
                 base = Builder.CreateAdd(base, extraBytes);
+                index = ConstInt(Int8Ty, bit_offset % 8);
             }
         } else { // index is reg
             index = LoadOperand(InstHdl.getOpnd(0), Int64Ty);
             Value *extraBytes = Builder.CreateAShr(index, ConstInt(Int64Ty, 3));
             base = Builder.CreateAdd(base, extraBytes);
             index = Builder.CreateAnd(index, ConstInt(Int64Ty, 7));
-            /* index = Builder.CreateTrunc(index, Int8Ty); */
+            index = Builder.CreateTrunc(index, Int8Ty);
         }
         // base is int64ty and index is int64ty now.
         Value *MemAddr = Builder.CreateIntToPtr(base, Int8PtrTy);
         Value *Src = Builder.CreateLoad(Int8Ty, MemAddr);
-        base = Builder.CreateZExt(Src, Int64Ty);
-        base = Builder.CreateLShr(base, index);
-        base = Builder.CreateAnd(base, ConstInt(Int64Ty, 1));
-        /* base = Builder.CreateZExt(base, Int64Ty); */
+        base = Builder.CreateLShr(Src, index);
+        base = Builder.CreateAnd(base, ConstInt(Int8Ty, 1));
+        base = Builder.CreateZExt(base, Int64Ty);
         SetLBTFlag(base, 0x1);
         // Bit(BitBase, BitOffset) = NOT Bit(BitBase, BitOffset)
         index = Builder.CreateTrunc(index, Int8Ty);
@@ -145,25 +148,26 @@ void X86Translator::translate_btr(GuestInst *Inst) {
         Value *index = nullptr;
         Value *base = CalcMemAddr(InstHdl.getOpnd(1));
         if (Opnd0Hdl.isImm()) {
-            index = ConstInt(Int64Ty, Opnd0Hdl.getIMM() % (OpndSize << 3));
-            if (Opnd0Hdl.getIMM() >> 3) {
-                Value *extraBytes = ConstInt(Int64Ty, Opnd0Hdl.getIMM() >> 3);
+            int bit_offset = Opnd0Hdl.getIMM() % (OpndSize << 3);
+            index = ConstInt(Int8Ty, bit_offset);
+            if (bit_offset >> 3) {
+                Value *extraBytes = ConstInt(Int64Ty, bit_offset >> 3);
                 base = Builder.CreateAdd(base, extraBytes);
+                index = ConstInt(Int8Ty, bit_offset % 8);
             }
         } else { // index is reg
             index = LoadOperand(InstHdl.getOpnd(0), Int64Ty);
             Value *extraBytes = Builder.CreateAShr(index, ConstInt(Int64Ty, 3));
             base = Builder.CreateAdd(base, extraBytes);
             index = Builder.CreateAnd(index, ConstInt(Int64Ty, 7));
-            /* index = Builder.CreateTrunc(index, Int8Ty); */
+            index = Builder.CreateTrunc(index, Int8Ty);
         }
         // base is int64ty and index is int64ty now.
         Value *MemAddr = Builder.CreateIntToPtr(base, Int8PtrTy);
         Value *Src = Builder.CreateLoad(Int8Ty, MemAddr);
-        base = Builder.CreateZExt(Src, Int64Ty);
-        base = Builder.CreateLShr(base, index);
-        base = Builder.CreateAnd(base, ConstInt(Int64Ty, 1));
-        /* base = Builder.CreateZExt(base, Int64Ty); */
+        base = Builder.CreateLShr(Src, index);
+        base = Builder.CreateAnd(base, ConstInt(Int8Ty, 1));
+        base = Builder.CreateZExt(base, Int64Ty);
         SetLBTFlag(base, 0x1);
         // Bit(BitBase, BitOffset) = 0
         index = Builder.CreateTrunc(index, Int8Ty);
@@ -207,27 +211,28 @@ void X86Translator::translate_bts(GuestInst *Inst) {
         Value *index = nullptr;
         Value *base = CalcMemAddr(InstHdl.getOpnd(1));
         if (Opnd0Hdl.isImm()) {
-            index = ConstInt(Int64Ty, Opnd0Hdl.getIMM() % (OpndSize << 3));
-            if (Opnd0Hdl.getIMM() >> 3) {
-                Value *extraBytes = ConstInt(Int64Ty, Opnd0Hdl.getIMM() >> 3);
+            int bit_offset = Opnd0Hdl.getIMM() % (OpndSize << 3);
+            index = ConstInt(Int8Ty, bit_offset);
+            if (bit_offset >> 3) {
+                Value *extraBytes = ConstInt(Int64Ty, bit_offset >> 3);
                 base = Builder.CreateAdd(base, extraBytes);
+                index = ConstInt(Int8Ty, bit_offset % 8);
             }
         } else { // index is reg
             index = LoadOperand(InstHdl.getOpnd(0), Int64Ty);
             Value *extraBytes = Builder.CreateAShr(index, ConstInt(Int64Ty, 3));
             base = Builder.CreateAdd(base, extraBytes);
             index = Builder.CreateAnd(index, ConstInt(Int64Ty, 7));
-            /* index = Builder.CreateTrunc(index, Int8Ty); */
+            index = Builder.CreateTrunc(index, Int8Ty);
         }
         // base is int64ty and index is int64ty now.
         Value *MemAddr = Builder.CreateIntToPtr(base, Int8PtrTy);
         Value *Src = Builder.CreateLoad(Int8Ty, MemAddr);
-        base = Builder.CreateZExt(Src, Int64Ty); base = Builder.CreateLShr(base, index);
-        base = Builder.CreateAnd(base, ConstInt(Int64Ty, 1));
-        /* base = Builder.CreateZExt(base, Int64Ty); */
+        base = Builder.CreateLShr(Src, index);
+        base = Builder.CreateAnd(base, ConstInt(Int8Ty, 1));
+        base = Builder.CreateZExt(base, Int64Ty);
         SetLBTFlag(base, 0x1);
         // Bit(BitBase, BitOffset) = 1
-        index = Builder.CreateTrunc(index, Int8Ty);
         Value *Dest = Builder.CreateShl(ConstInt(Int8Ty, 1), index);
         Dest = Builder.CreateOr(Builder.CreateZExt(Src, Int8Ty), Dest);
         Builder.CreateStore(Dest, MemAddr);
