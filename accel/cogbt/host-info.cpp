@@ -13,10 +13,10 @@ const int HostCSRs[] = {
 };
 
 const char *HostFPRegNames[] = {
-    "$fcc0",  "$fcc1",  "$fcc2",  "$fcc3",  "$fcc4",  "$fcc5",  "$fcc6",  "$fcc7",
-    "$fcc8",  "$fcc9",  "$fcc10", "$fcc11", "$fcc12", "$fcc13", "$fcc14", "$fcc15",
-    "$fcc16", "$fcc17", "$fcc18", "$fcc19", "$fcc20", "$fcc21", "$fcc22", "$fcc23",
-    "$fcc24", "$fcc25", "$fcc26", "$fcc27", "$fcc28", "$fcc29", "$fcc30", "$fcc31",
+    "$f0",  "$f1",  "$f2",  "$f3",  "$f4",  "$f5",  "$f6",  "$f7",
+    "$f8",  "$f9",  "$f10", "$f11", "$f12", "$f13", "$f14", "$f15",
+    "$f16", "$f17", "$f18", "$f19", "$f20", "$f21", "$f22", "$f23",
+    "$f24", "$f25", "$f26", "$f27", "$f28", "$f29", "$f30", "$f31",
 };
 
 const char *HostLSXRegNames[] = {

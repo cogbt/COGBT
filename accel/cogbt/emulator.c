@@ -95,13 +95,13 @@ int GuestMMXOffset(int idx) {
     return offsetof(CPUX86State, fpregs[idx].mmx);
 }
 
-int GuestFPUOffset(int idx) {
+int GuestFPROffset(int idx) {
     return offsetof(CPUX86State, fpregs[idx].d);
 }
 
 int GuestST0Offset(void *p) {
     CPUX86State *env = (CPUX86State *) p;
-    return GuestFPUOffset(env->fpstt);
+    return GuestFPROffset(env->fpstt);
 }
 
 int GuestSegOffset(int seg_idx) {

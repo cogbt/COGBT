@@ -23,7 +23,16 @@ const int X86Config::X64XMMRegToHost[] = {
     HostV24, HostV25, HostV26, HostV27, HostV28, HostV29, HostV30, HostV31
 };
 
+const char *X86Config::X64FPRName[] = {
+    "fpr0", "fpr1", "fpr2", "fpr3", "fpr4", "fpr5", "fpr6", "fpr7",
+};
+
+const int X86Config::X64FPRToHost[] = {
+    HostF0, HostF1, HostF2, HostF3, HostF4, HostF5, HostF6, HostF7
+};
+
 const int X86Config::RegTypeSize[] = {
     [X86RegGPRType] = 64,
     [X86RegXMMType] = 128,
+    [X86RegFPRType] = 64,
 };
