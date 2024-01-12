@@ -68,6 +68,9 @@ public:
     /// isMMX - Judeg if Opnd is a MMX register.
     bool isMMX();
 
+    /// isFPR - Judeg if Opnd is a ST register.
+    bool isFPR();
+
     /// getOpndSize - Get the size(in bytes) of Opnd.
     int getOpndSize() {
         return Opnd->size;

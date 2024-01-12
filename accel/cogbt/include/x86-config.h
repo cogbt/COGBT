@@ -23,8 +23,8 @@ public:
         NumX64XMMMappedRegs = XMM15,
 
         // X87 FPR mapped registers.
-        FPR0, FPR1, FPR2, FPR3, FPR4, FPR5, FPR6, FPR7,
-        NumX64FPRMappedRegs = FPR7,
+        ST0, ST1, ST2, ST3, ST4, ST5, ST6, ST7,
+        NumX64FPRMappedRegs = ST7,
 
         NumX64MappedRegs,
 
@@ -62,7 +62,7 @@ public:
         else if (mid <= NumX64XMMMappedRegs)
             return mid - XMM0;
         else if (mid <= NumX64FPRMappedRegs)
-            return mid - FPR0;
+            return mid - ST0;
         assert(0 && "mid Out Of Bounds");
     }
 
@@ -93,7 +93,7 @@ public:
                 return (X86MappedRegsId) (XMM0 + id);
             case X86RegFPRType:
                 assert(id < GetNumFPRs());
-                return (X86MappedRegsId) (FPR0 + id);
+                return (X86MappedRegsId) (ST0 + id);
         }
     }
 

@@ -54,6 +54,9 @@ typedef struct GuestInst GuestInst;
 class GuestBlock {
     vector<GuestInst> GuestInsts;
 public:
+    unsigned int topin;
+    unsigned int topout;
+
     void AddGuestInst(GuestInst Inst);
 
     /// All APIs for GuestInst should be registered below

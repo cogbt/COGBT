@@ -20,6 +20,7 @@ public:
 private: /// Currently translated instruction.
     GuestInst *CurrInst;
     Value *JMPCacheAddr;
+    unsigned int CurrTBTop;
 
     /// InitializeFunction - Initialize the basic framework of the translation
     /// function, such as `entry` block(binding physical register to IR value),
@@ -51,6 +52,11 @@ private: /// Currently translated instruction.
     virtual void SetGMRStates(int type, int gid, Value* value) override;
     virtual GMRValue GetGMRVals(int type, int gid) override;
     virtual void SetGMRVals(int type, int gid, Value* value, bool dirty) override;
+
+    // X87 Fpu
+    void X87FPR_Push();
+    void X87FPR_Pop();
+    X86Config::X86MappedRegsId X87GetCurrST0();
 
     /// ConstInt - Get a integer constant value.
     Value *ConstInt(Type *Ty, uint64_t Val) {

@@ -263,10 +263,12 @@ void X86Translator::BindPhysicalReg() {
                 X86RegTyToLLVMTy(X86RegXMMType));
     }
 
-    for (int i = 0; i < GetNumFPRs(); i++) {
+    for (unsigned int i = 0; i < (unsigned int) GetNumFPRs(); i++) {
         Value *GMRVal = Builder.CreateLoad(X86RegTyToLLVMTy(X86RegFPRType),
                 GetGMRStates(X86RegFPRType, i));
-        SetPhysicalRegValue(HostFPRegNames[GFPRToHMR(i)], GMRVal,
+        // x87 rotate
+        int temp = (i - CurrTBTop) & 7;
+        SetPhysicalRegValue(HostFPRegNames[GFPRToHMR(temp)], GMRVal,
                 X86RegTyToLLVMTy(X86RegFPRType));
     }
 }
@@ -682,6 +684,10 @@ Value *X86Translator::LoadGMRValue(Type *Ty, X86MappedRegsId GMRId,
         }
         V = Builder.CreateExtractElement(V, ConstantInt::get(Int32Ty, 0));
         return V;
+    } else if (type == X86RegFPRType) {
+        assert(Ty->isFloatTy());
+        V = Builder.CreateFPTrunc(V, FloatTy);
+        return V;
     } else {
         fprintf(stderr, "unsupported type.\n");
         exit(-1);
@@ -698,6 +704,13 @@ void X86Translator::StoreGMRValue(Value *V, X86MappedRegsId GMRId, bool isHSubRe
 
     if (V->getType() == V4F32Ty) {
         V = Builder.CreateBitCast(V, V2F64Ty);
+    }
+
+    if (type == X86RegFPRType && V->getType() == Int64Ty) {
+        V = Builder.CreateBitCast(V, DoubleTy);
+    } else if (type == X86RegFPRType && V->getType() == Int32Ty) {
+        V = Builder.CreateBitCast(V, FloatTy);
+        V = Builder.CreateFPExt(V, DoubleTy);
     }
 
     if (V->getType() == X86RegTyToLLVMTy(type)) {
@@ -758,6 +771,8 @@ void X86Translator::StoreGMRValue(Value *V, X86MappedRegsId GMRId, bool isHSubRe
                 Builder.CreateStore(V, Addr);
             }
         }
+    } else if (type == X86RegFPRType) {
+        assert(0 && "it is developing...");
     } else {
         fprintf(stderr, "unsupported type.\n");
         exit(-1);
@@ -858,6 +873,14 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd, Type *LoadTy) {
             Res = LoadGMRValue(LLVMTy, (X86MappedRegsId) OpndHdl.GetGMR(),
                     false);
 #endif
+        } else if (OpndHdl.isFPR()) {
+            if (LLVMTy == Int32Ty)
+                LLVMTy = FloatTy;
+            else if (LLVMTy == Int64Ty)
+                LLVMTy = DoubleTy;
+
+            Res = LoadGMRValue(LLVMTy, IdToX86MappedRegsId(X86RegFPRType,
+                        (OpndHdl.GetFPRID() + CurrTBTop) & 7), false);
         } else {
             llvm_unreachable("Unhandled register operand type!");
         }
@@ -877,7 +900,7 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
 
     // If DestOpnd isn't MMX or XMM, then the bitwidth of ResVal is greater or
     // equal than DestOpnd.
-    assert(OpndHdl.isMMX() || OpndHdl.isXMM() ||
+    assert(OpndHdl.isMMX() || OpndHdl.isXMM() || OpndHdl.isFPR() ||
         (ResVal->getType()->isIntegerTy() &&
             ResVal->getType()->getIntegerBitWidth() >=
                (unsigned)OpndHdl.getOpndSize() * 8) ||
@@ -930,6 +953,9 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
 #else
         StoreGMRValue(ResVal, (X86MappedRegsId) OpndHdl.GetGMR(), false);
 #endif
+    } else if (OpndHdl.isFPR()) {
+        StoreGMRValue(ResVal, IdToX86MappedRegsId(X86RegFPRType,
+                        (OpndHdl.GetFPRID() + CurrTBTop) & 7), false);
     } else {
         llvm_unreachable("Unhandled StoreOperand type!");
     }
@@ -1199,16 +1225,12 @@ void X86Translator::Translate() {
         }
     }
 
+    // FIXME: It is only used for tb mode and jit mode.
+    assert(TU->size() == 1);
     for (auto &block : *TU) {
-        assert(TU->size() && "TU size is expected to be non-zero!");
-        /* if (aotmode == 1) { */
-        /*     std::stringstream ss; */
-        /*     ss << std::hex << block.GetBlockEntry() << "." << std::dec */
-        /*        << block.GetBlockPCSize(); */
-        /*     InitializeFunction(ss.str()); */
-        /*     dbgs() << ss.str() << "\n"; */
-        /* } */
         InitializeBlock(block);
+        CurrTBTop = block.topin;
+
         for (auto &inst : block) {
             CurrInst = &inst;
             switch (inst.guestInst->id) {
@@ -1221,6 +1243,8 @@ void X86Translator::Translate() {
 #include "x86-inst.def"
             }
         }
+
+        block.topout = CurrTBTop;
 #if 0
         // In debug mode, ONLY one guest instruction is in a block. So some IRs
         // should be added to save guest pc and jump to epilogue.

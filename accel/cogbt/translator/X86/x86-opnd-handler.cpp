@@ -71,6 +71,20 @@ int X86OperandHandler::NormalizeGuestReg(int GuestRegID) {
     HANDLE_REG(XMM14)
     HANDLE_REG(XMM15)
 #undef HANDLE_REG
+
+#define  HANDLE_REG(name)           \
+    case X86_REG_##name:            \
+        return X86Config::name;
+
+    HANDLE_REG(ST0)
+    HANDLE_REG(ST1)
+    HANDLE_REG(ST2)
+    HANDLE_REG(ST3)
+    HANDLE_REG(ST4)
+    HANDLE_REG(ST5)
+    HANDLE_REG(ST6)
+    HANDLE_REG(ST7)
+#undef HANDLE_REG
     }
 }
 
@@ -122,23 +136,6 @@ int X86OperandHandler::GetXMMID() {
     }
 }
 
-int X86OperandHandler::GetMMXID() {
-    if (Opnd->type != X86_OP_REG)
-        return -1;
-    switch (Opnd->reg) {
-        case X86_REG_MM0: return 0;
-        case X86_REG_MM1: return 1;
-        case X86_REG_MM2: return 2;
-        case X86_REG_MM3: return 3;
-        case X86_REG_MM4: return 4;
-        case X86_REG_MM5: return 5;
-        case X86_REG_MM6: return 6;
-        case X86_REG_MM7: return 7;
-        default:
-            return -1;
-    }
-}
-
 int X86OperandHandler::GetFPRID() {
     if (Opnd->type != X86_OP_REG)
         return -1;
@@ -151,6 +148,23 @@ int X86OperandHandler::GetFPRID() {
         case X86_REG_ST5: return 5;
         case X86_REG_ST6: return 6;
         case X86_REG_ST7: return 7;
+        default:
+            return -1;
+    }
+}
+
+int X86OperandHandler::GetMMXID() {
+    if (Opnd->type != X86_OP_REG)
+        return -1;
+    switch (Opnd->reg) {
+        case X86_REG_MM0: return 0;
+        case X86_REG_MM1: return 1;
+        case X86_REG_MM2: return 2;
+        case X86_REG_MM3: return 3;
+        case X86_REG_MM4: return 4;
+        case X86_REG_MM5: return 5;
+        case X86_REG_MM6: return 6;
+        case X86_REG_MM7: return 7;
         default:
             return -1;
     }
@@ -244,6 +258,24 @@ bool X86OperandHandler::isMMX() {
         case X86_REG_MM5:
         case X86_REG_MM6:
         case X86_REG_MM7:
+            return 1;
+        default:
+            return 0;
+    }
+}
+
+bool X86OperandHandler::isFPR() {
+    if (Opnd->type != X86_OP_REG)
+        return 0;
+    switch (Opnd->reg) {
+        case X86_REG_ST0:
+        case X86_REG_ST1:
+        case X86_REG_ST2:
+        case X86_REG_ST3:
+        case X86_REG_ST4:
+        case X86_REG_ST5:
+        case X86_REG_ST6:
+        case X86_REG_ST7:
             return 1;
         default:
             return 0;

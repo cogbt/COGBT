@@ -1004,6 +1004,7 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 
 #ifdef CONFIG_COGBT
 extern int aotmode;
+#endif
 #ifdef CONFIG_COGBT_DEBUG
 extern uint64_t debug_pc;
 void debug_breakpoint(uint64_t pc);
@@ -1015,7 +1016,6 @@ uint64_t llvm_to_qemu = 0;
 uint64_t switch_context = 0;
 uint64_t tb_not_find = 0;
 uint64_t syscall_number = 0;
-#endif
 #endif
 
 void dump_path(uint64_t pc);
@@ -1141,7 +1141,7 @@ int cpu_exec(CPUState *cpu)
             tb = tb_lookup(cpu, pc, cs_base, flags, cflags);
             if (tb == NULL) {
                 mmap_lock();
-#if defined(CONFIG_COGBT) || defined(CONFIG_COGBT_DEBUG)
+#if defined(CONFIG_COGBT_DEBUG)
                 tb_not_find++;
 #endif
 
