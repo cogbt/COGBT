@@ -1,4 +1,29 @@
 #include "x86-translator.h"
+#include "emulator.h"
+
+Value *X86Translator::getXMMPtr(int i, int start_byte, Type *Ty) {
+
+    Value *Off = ConstInt(Int64Ty, GuestZMMRegOffset(i, start_byte));
+    Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, Off);
+    Addr = Builder.CreateBitCast(Addr, Ty);
+    return Addr;
+}
+
+Value *X86Translator::getXMMT0Ptr(int start_byte, Type *Ty) {
+
+    Value *Off = ConstInt(Int64Ty, GuestXMMT0Offset_bytes(start_byte));
+    Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, Off);
+    Addr = Builder.CreateBitCast(Addr, Ty);
+    return Addr;
+}
+
+Value *X86Translator::getMMXPtr(int i, int start_byte, Type *Ty) {
+
+    Value *Off = ConstInt(Int64Ty, GuestMMXRegOffset(i, start_byte));
+    Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, Off);
+    Addr = Builder.CreateBitCast(Addr, Ty);
+    return Addr;
+}
 
 void X86Translator::translate_lea(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
@@ -39,9 +64,11 @@ void X86Translator::translate_movd(GuestInst *Inst) {
         Src = LoadOperand(InstHdl.getOpnd(0)); // Src must be r/m32
         Dest = Builder.CreateZExt(Src, Int128Ty);
         StoreOperand(Dest, InstHdl.getOpnd(1));
-    } else { // Dest must be mmx
-        assert(DestOpnd.isMMX() && "movd dest must be mmx");
-        assert(0 && "movd mmx unfinished!");
+    } else if (DestOpnd.isMMX()) {             // Dest must be mmx
+        Src = LoadOperand(InstHdl.getOpnd(0)); // Src must be r/m32
+        Dest = Builder.CreateZExt(Src, Int64Ty);
+        StoreOperand(Dest, InstHdl.getOpnd(1));
+
         // TODO
         /* Src = LoadOperand(InstHdl.getOpnd(0)); // Src must be r/m32 */
     }
@@ -58,10 +85,12 @@ void X86Translator::translate_movq(GuestInst *Inst) {
         Dest = Builder.CreateZExt(Src, Int128Ty);
         StoreOperand(Dest, InstHdl.getOpnd(1));
     } else if (DestOpnd.isMMX()) { // Dest must be mmx
-        assert(DestOpnd.isMMX() && "movd dest must be mmx");
-        assert(0 && "movd mmx unfinished!");
+        // assert(DestOpnd.isMMX() && "movd dest must be mmx");
+        // assert(0 && "movd mmx unfinished!");
         // TODO
-        /* Src = LoadOperand(InstHdl.getOpnd(0)); // Src must be r/m32 */
+        Src = LoadOperand(InstHdl.getOpnd(0)); // Src must be r/m32
+        Dest = Builder.CreateZExt(Src, Int64Ty);
+        StoreOperand(Src, InstHdl.getOpnd(1));
     } else { // Dest is r/m64
         StoreOperand(Src, InstHdl.getOpnd(1));
     }
@@ -327,7 +356,7 @@ void X86Translator::translate_movsq(GuestInst *Inst) {
         Builder.SetInsertPoint(EndBB);
     }
 }
-
+//
 void X86Translator::translate_movddup(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movddup\n";
     exit(-1);
@@ -338,63 +367,157 @@ void X86Translator::translate_movdqa(GuestInst *Inst) {
     Value *Src = LoadOperand(InstHdl.getOpnd(0));
     StoreOperand(Src, InstHdl.getOpnd(1));
 }
-
+//
 void X86Translator::translate_movhlps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movhlps\n";
     exit(-1);
 }
+// void X86Translator::translate_movhps(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction movhps\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_movhps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movhps\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    if (SrcOpnd.isXMM()) {
+        assert(DestOpnd.isMem());
+        // load high 64bit of xmm and store it to mem
+        int xmmid = SrcOpnd.GetXMMID();
+        Value *Off = ConstInt(Int64Ty, GuestZMMRegOffset(xmmid, 8));
+        Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, Off);
+        Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
+        Value *Src = Builder.CreateLoad(Int64Ty, Addr);
+        StoreOperand(Src, InstHdl.getOpnd(1));
+    } else {
+        assert(SrcOpnd.isMem() && DestOpnd.isXMM());
+        // load mem
+        Value *Src = LoadOperand(InstHdl.getOpnd(0));
+        // store it to high 64bit of xmm
+        int xmmid = DestOpnd.GetXMMID();
+        Value *Off = ConstInt(Int64Ty, GuestZMMRegOffset(xmmid, 8));
+        Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, Off);
+        Addr = Builder.CreateBitCast(Addr, Int64PtrTy);
+        Builder.CreateStore(Src, Addr);
+    }
 }
+//
 void X86Translator::translate_movlhps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movlhps\n";
     exit(-1);
 }
+//
 void X86Translator::translate_movlps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movlps\n";
     exit(-1);
 }
+// void X86Translator::translate_movmskpd(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction movmskpd\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_movmskpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movmskpd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    if (SrcOpnd.isXMM() != true) {
+        llvm_unreachable("movmskpd error!");
+    }
+    Value *Addr_XMM = Builder.CreateGEP(
+        Int8Ty, CPUEnv, ConstInt(Int32Ty, GuestXMMOffset(SrcOpnd.GetXMMID())));
+    Value *V = nullptr;
+    FunctionType *Ty =
+        FunctionType::get(Int32Ty, {Int8PtrTy, Int8PtrTy}, false);
+    V = CallFunc(Ty, "helper_movmskpd", {CPUEnv, Addr_XMM});
+
+    if (SrcOpnd1.getOpndSize() == 4) {
+        StoreOperand(V, InstHdl.getOpnd(1));
+    } else if (SrcOpnd1.getOpndSize() == 8) {
+        V = Builder.CreateZExt(V, Int64Ty);
+        StoreOperand(V, InstHdl.getOpnd(1));
+    }
 }
+
+// void X86Translator::translate_movmskps(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction movmskps\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_movmskps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movmskps\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    if (SrcOpnd.isXMM() != true) {
+        llvm_unreachable("movmskps error!");
+    }
+    Value *Addr_XMM = Builder.CreateGEP(
+        Int8Ty, CPUEnv, ConstInt(Int32Ty, GuestXMMOffset(SrcOpnd.GetXMMID())));
+    Value *V = nullptr;
+    FunctionType *Ty =
+        FunctionType::get(Int32Ty, {Int8PtrTy, Int8PtrTy}, false);
+    V = CallFunc(Ty, "helper_movmskps", {CPUEnv, Addr_XMM});
+
+    if (SrcOpnd1.getOpndSize() == 4) {
+        StoreOperand(V, InstHdl.getOpnd(1));
+    } else if (SrcOpnd1.getOpndSize() == 8) {
+        V = Builder.CreateZExt(V, Int64Ty);
+        StoreOperand(V, InstHdl.getOpnd(1));
+    }
 }
+
+//
 void X86Translator::translate_movntdqa(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movntdqa\n";
     exit(-1);
 }
+// void X86Translator::translate_movntdq(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction movntdq\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_movntdq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movntdq\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+    StoreOperand(Src, InstHdl.getOpnd(1));
 }
+
+// void X86Translator::translate_movnti(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction movnti\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_movnti(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movnti\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    StoreOperand(Src, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_movntpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movntpd\n";
     exit(-1);
 }
+
 void X86Translator::translate_movntps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movntps\n";
     exit(-1);
 }
+
 void X86Translator::translate_movntsd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movntsd\n";
     exit(-1);
 }
+
 void X86Translator::translate_movntss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movntss\n";
     exit(-1);
 }
+
 void X86Translator::translate_movshdup(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movshdup\n";
     exit(-1);
 }
+
 void X86Translator::translate_movsldup(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movsldup\n";
     exit(-1);
@@ -416,7 +539,6 @@ void X86Translator::translate_movss(GuestInst *Inst) {
     }
 }
 
-
 void X86Translator::translate_movsx(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     Value *Src0 = LoadOperand(InstHdl.getOpnd(0));
@@ -429,9 +551,16 @@ void X86Translator::translate_movsxd(GuestInst *Inst) {
     Value *Dest = Builder.CreateSExt(Src0, GetOpndLLVMType(InstHdl.getOpnd(1)));
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
+// void X86Translator::translate_movupd(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction movupd\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_movupd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movupd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+    StoreOperand(Src, InstHdl.getOpnd(1));
 }
 
 void X86Translator::translate_movaps(GuestInst *Inst) {
@@ -442,8 +571,22 @@ void X86Translator::translate_movaps(GuestInst *Inst) {
 
 void X86Translator::translate_movapd(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
-    Value *Src = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
-    StoreOperand(Src, InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *SrcInt = nullptr;
+    Value *XMMptr = nullptr;
+    if (SrcOpnd.isXMM()) {
+        XMMptr = getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy);
+        SrcInt = Builder.CreateLoad(Int128Ty, XMMptr);
+    } else {
+        SrcInt = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+    }
+    if (DestOpnd.isXMM()) {
+        XMMptr = getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy);
+        Builder.CreateStore(SrcInt, XMMptr);
+    } else {
+        StoreOperand(SrcInt, InstHdl.getOpnd(1));
+    }
 }
 
 void X86Translator::translate_movups(GuestInst *Inst) {
@@ -457,6 +600,7 @@ void X86Translator::translate_movzx(GuestInst *Inst) {
     Value *Dest = Builder.CreateZExt(Src0, GetOpndLLVMType(InstHdl.getOpnd(1)));
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
+
 void X86Translator::translate_mpsadbw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction mpsadbw\n";
     exit(-1);

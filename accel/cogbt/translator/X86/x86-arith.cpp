@@ -284,10 +284,50 @@ void X86Translator::translate_xadd(GuestInst *Inst) {
     CalcEflag(Inst, Sum, Src, Dest);
 }
 
+// void X86Translator::translate_mulpd(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction mulpd\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_mulpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction mulpd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *SrcInt = nullptr;
+
+    if (SrcOpnd.isXMM()) {
+        Value *XMMptr=getXMMPtr(SrcOpnd.GetXMMID(),0,Int128PtrTy);
+        SrcInt = Builder.CreateLoad(Int128Ty,XMMptr);
+    }
+    else{
+        SrcInt = LoadOperand(InstHdl.getOpnd(0),Int128Ty);
+    }
+    //Src Split
+    Value *Int_high = Builder.CreateLShr(SrcInt, ConstInt(Int128Ty, 64));
+    Int_high = Builder.CreateTrunc(Int_high, Int64Ty);
+    Int_high = Builder.CreateBitCast(Int_high, FP64Ty);
+    Value *Int_low = Builder.CreateTrunc(SrcInt, Int64Ty);
+    Int_low = Builder.CreateBitCast(Int_low, FP64Ty);
+
+    //Dest Split
+    Value *DestInt = Builder.CreateLoad(Int128Ty, getXMMPtr(DestOpnd.GetXMMID(),0,Int128PtrTy));
+    Value *Int_high2 = Builder.CreateLShr(DestInt, ConstInt(Int128Ty, 64));
+    Int_high2 = Builder.CreateTrunc(Int_high2, Int64Ty);
+    Int_high2 = Builder.CreateBitCast(Int_high2, FP64Ty);
+    Value *Int_low2 = Builder.CreateTrunc(DestInt, Int64Ty);
+    Int_low2 = Builder.CreateBitCast(Int_low2, FP64Ty);
+
+    //mul
+    Int_high = Builder.CreateFMul(Int_high2, Int_high);
+    Int_low = Builder.CreateFMul(Int_low2, Int_low);
+
+    //store
+    Value *DestPtr = getXMMPtr(DestOpnd.GetXMMID(), 8, FP64PtrTy);
+    Builder.CreateStore(Int_high, DestPtr);
+    DestPtr = getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy);
+    Builder.CreateStore(Int_low, DestPtr);
 }
+
 void X86Translator::translate_mulps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction mulps\n";
     exit(-1);

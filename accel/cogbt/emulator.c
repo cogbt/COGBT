@@ -29,12 +29,12 @@ struct KeyVal SymTable[] = {
     /* {"helper_pxor_mmx", helper_pxor_mmx_wrapper}, */
     /* {"helper_pcmpeqb_xmm", helper_pcmpeqb_xmm_wrapper}, */
     /* {"helper_pcmpeqb_mmx", helper_pcmpeqb_mmx_wrapper}, */
-    {"helper_pmovmskb_xmm", helper_pmovmskb_xmm_wrapper},
-    {"helper_pmovmskb_mmx", helper_pmovmskb_mmx_wrapper},
-    {"helper_punpcklbw_xmm", helper_punpcklbw_xmm_wrapper},
-    {"helper_punpcklbw_mmx", helper_punpcklbw_mmx_wrapper},
-    {"helper_punpcklwd_xmm", helper_punpcklwd_xmm_wrapper},
-    {"helper_punpcklwd_mmx", helper_punpcklwd_mmx_wrapper},
+    // {"helper_pmovmskb_xmm", helper_pmovmskb_xmm_wrapper},
+    // {"helper_pmovmskb_mmx", helper_pmovmskb_mmx_wrapper},
+    // {"helper_punpcklbw_xmm", helper_punpcklbw_xmm_wrapper},
+    // {"helper_punpcklbw_mmx", helper_punpcklbw_mmx_wrapper},
+    // {"helper_punpcklwd_xmm", helper_punpcklwd_xmm_wrapper},
+    // {"helper_punpcklwd_mmx", helper_punpcklwd_mmx_wrapper},
     {"helper_pshufd", helper_pshufd_xmm_wrapper},
     {"helper_comiss", helper_comiss_wrapper},
     {"helper_comisd", helper_comisd_wrapper},
@@ -102,6 +102,10 @@ int GuestStateOffset(int idx) { return offsetof(CPUX86State, regs[idx]); }
 int GuestEflagOffset(void) { return offsetof(CPUX86State, eflags); }
 
 int GuestXMMT0Offset(void) { return offsetof(CPUX86State, xmm_t0); }
+
+int GuestXMMT0Offset_bytes(int reg_start_byte) {
+    return offsetof(CPUX86State, xmm_t0.ZMM_B(reg_start_byte));
+}
 
 int GuestMMXT0Offset(void) { return offsetof(CPUX86State, mmx_t0); }
 
@@ -190,21 +194,21 @@ void helper_fcom_ST0_zero_64_wrapper(void *p) {
     helper_fcom_ST0_zero_64((CPUX86State *)p);
 }
 
-void helper_fstt_ST0_From64_wrapper(void *p, uint64_t ptr){
+void helper_fstt_ST0_From64_wrapper(void *p, uint64_t ptr) {
 
     helper_fstt_ST0_From64((CPUX86State *)p, ptr);
 }
-void helper_fldt_ST0_To64_wrapper(void *p, uint64_t ptr){
+void helper_fldt_ST0_To64_wrapper(void *p, uint64_t ptr) {
 
     helper_fldt_ST0_To64((CPUX86State *)p, ptr);
 }
 
-    // void helper_f2xm1_64_wrapper(void *p){
-    //     helper_f2xm1_64((CPUX86State *)p);
-    // }
+// void helper_f2xm1_64_wrapper(void *p){
+//     helper_f2xm1_64((CPUX86State *)p);
+// }
 
-    void helper_divb_AL_wrapper(void *p, uint64_t divisor) {
-        helper_divb_AL((CPUX86State *)p, divisor);
+void helper_divb_AL_wrapper(void *p, uint64_t divisor) {
+    helper_divb_AL((CPUX86State *)p, divisor);
 }
 void helper_divw_AX_wrapper(void *p, uint64_t divisor) {
     helper_divw_AX((CPUX86State *)p, divisor);
@@ -265,32 +269,32 @@ void helper_pmovmskb_mmx_wrapper(void *p, int index) {
     assert(0 && "Unhandled pmovmskb_mmx\n");
 }
 
-void helper_punpcklbw_xmm_wrapper(void *p, int dest, int src) {
-    CPUX86State *env = (CPUX86State *)p;
-    ZMMReg *d = &env->xmm_regs[dest];
-    ZMMReg *s = &env->xmm_t0;
-    if (src != -1) { // src is not memory
-        s = &env->xmm_regs[src];
-    }
-    helper_punpcklbw_xmm(env, d, s);
-}
-void helper_punpcklbw_mmx_wrapper(void *p, int dest, int src) {
-    assert(0 && "Unfinished pxor_mmx\n");
-}
+// void helper_punpcklbw_xmm_wrapper(void *p, int dest, int src) {
+//     CPUX86State *env = (CPUX86State *)p;
+//     ZMMReg *d = &env->xmm_regs[dest];
+//     ZMMReg *s = &env->xmm_t0;
+//     if (src != -1) { // src is not memory
+//         s = &env->xmm_regs[src];
+//     }
+//     helper_punpcklbw_xmm(env, d, s);
+// }
+// void helper_punpcklbw_mmx_wrapper(void *p, int dest, int src) {
+//     assert(0 && "Unfinished pxor_mmx\n");
+// }
 
-void helper_punpcklwd_xmm_wrapper(void *p, int dest, int src) {
-    CPUX86State *env = (CPUX86State *)p;
-    ZMMReg *d = &env->xmm_regs[dest];
-    ZMMReg *s = &env->xmm_t0;
-    if (src != -1) { // src is not memory
-        s = &env->xmm_regs[src];
-    }
-    helper_punpcklwd_xmm(env, d, s);
-}
+// void helper_punpcklwd_xmm_wrapper(void *p, int dest, int src) {
+//     CPUX86State *env = (CPUX86State *)p;
+//     ZMMReg *d = &env->xmm_regs[dest];
+//     ZMMReg *s = &env->xmm_t0;
+//     if (src != -1) { // src is not memory
+//         s = &env->xmm_regs[src];
+//     }
+//     helper_punpcklwd_xmm(env, d, s);
+// }
 
-void helper_punpcklwd_mmx_wrapper(void *p, int dest, int src) {
-    assert(0 && "Unfinished pxor_mmx\n");
-}
+// void helper_punpcklwd_mmx_wrapper(void *p, int dest, int src) {
+//     assert(0 && "Unfinished pxor_mmx\n");
+// }
 
 void helper_pshufd_xmm_wrapper(void *p, int dest, int src, int order) {
     CPUX86State *env = (CPUX86State *)p;
@@ -411,7 +415,7 @@ void helper_mulsd_wrapper(void *p, int dest, int src) {
     helper_mulsd(env, d, s);
 }
 
-void helper_round_mode_wrapper(void *p){
+void helper_round_mode_wrapper(void *p) {
     CPUX86State *env = (CPUX86State *)p;
     helper_round_mode(env);
 }

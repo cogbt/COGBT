@@ -25,6 +25,10 @@ public:
     /// otherwise.
     int GetXMMID();
 
+    int GetYMMID();
+
+    int GetZMMID();
+
     /// GetMMXID - If operand is a x86 mmx register, return its index(0-7), -1
     /// otherwise.
     int GetMMXID();
@@ -62,6 +66,10 @@ public:
 
     /// isXMM - Judge if Opnd is a XMM register.
     bool isXMM();
+
+    bool isYMM();
+
+    bool isZMM();
 
     /// isMMX - Judeg if Opnd is a MMX register.
     bool isMMX();

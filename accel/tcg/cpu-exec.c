@@ -925,7 +925,7 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
 }
 
 /* main execution loop */
-
+extern char path_name[100];
 #ifdef CONFIG_COGBT_DEBUG
 extern uint64_t debug_pc;
 void debug_breakpoint(uint64_t pc);
@@ -1037,7 +1037,8 @@ int cpu_exec(CPUState *cpu) {
             tb = tb_lookup(cpu, pc, cs_base, flags, cflags);
             if (tb == NULL) {
                 mmap_lock();
-                FILE *fp = fopen("./e1.out.path", "a+");
+                
+                FILE *fp = fopen(path_name, "a+");
 
                 fprintf(fp, "0x%lx\n", pc);
                 fclose(fp);
@@ -1053,7 +1054,7 @@ int cpu_exec(CPUState *cpu) {
 
 #ifndef CONFIG_USER_ONLY
             /*
-             * We don't take care of direct jumps when address mapping
+             * We don't take care of direct jumps when address mapping 
              * changes in system emulation.  So it's not safe to make a
              * direct jump to a TB spanning two pages because the mapping
              * for the second page can change.

@@ -1,7 +1,8 @@
 #include "x86-translator.h"
 
 void X86Translator::translate_cvtsi2sd(GuestInst *Inst) {
-    // Convert Doubleword Integer to Scalar Double-Precision Floating-Point Value
+    // Convert Doubleword Integer to Scalar Double-Precision Floating-Point
+    // Value
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
@@ -27,30 +28,83 @@ void X86Translator::translate_cvtsi2sd(GuestInst *Inst) {
     }
 }
 
+// void X86Translator::translate_cvtdq2pd(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction cvtdq2pd\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_cvtdq2pd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvtdq2pd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *SrcInt = nullptr;
+    if (SrcOpnd.isXMM()) {
+        Value *XMMptr = getXMMPtr(SrcOpnd.GetXMMID(), 0, Int64PtrTy);
+        SrcInt = Builder.CreateLoad(Int64Ty, XMMptr);
+    } else {
+        SrcInt = LoadOperand(InstHdl.getOpnd(0), Int64Ty);
+    }
+    Value *Int_high = Builder.CreateAShr(SrcInt, ConstInt(Int64Ty, 32));
+    Value *Int_low = Builder.CreateTrunc(SrcInt, Int32Ty);
+
+    Int_high = Builder.CreateSIToFP(Int_high, FP64Ty);
+    Int_low = Builder.CreateSIToFP(Int_low, FP64Ty);
+    Value *DestPtr = getXMMPtr(DestOpnd.GetXMMID(), 8, FP64PtrTy);
+    Builder.CreateStore(Int_high, DestPtr);
+    DestPtr = getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy);
+    Builder.CreateStore(Int_low, DestPtr);
 }
+//
 void X86Translator::translate_cvtdq2ps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cvtdq2ps\n";
     exit(-1);
 }
+//
 void X86Translator::translate_cvtpd2dq(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cvtpd2dq\n";
     exit(-1);
 }
+
+// void X86Translator::translate_cvtpd2ps(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction cvtpd2ps\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_cvtpd2ps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cvtpd2ps\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *SrcInt = nullptr;
+    if (SrcOpnd.isXMM()) {
+        Value *XMMptr = getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy);
+        SrcInt = Builder.CreateLoad(Int128Ty, XMMptr);
+    } else {
+        SrcInt = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+    }
+    Value *Int_high = Builder.CreateLShr(SrcInt, ConstInt(Int128Ty, 64));
+    Int_high = Builder.CreateTrunc(Int_high, Int64Ty);
+    Int_high = Builder.CreateBitCast(Int_high, FP64Ty);
+    Value *Int_low = Builder.CreateTrunc(SrcInt, Int64Ty);
+    Int_low = Builder.CreateBitCast(Int_low, FP64Ty);
+
+    Int_high = Builder.CreateFPTrunc(Int_high, FP32Ty);
+    Int_low = Builder.CreateFPTrunc(Int_low, FP32Ty);
+    Value *DestPtr = getXMMPtr(DestOpnd.GetXMMID(), 4, FP32PtrTy);
+    Builder.CreateStore(Int_high, DestPtr);
+    DestPtr = getXMMPtr(DestOpnd.GetXMMID(), 0, FP32PtrTy);
+    Builder.CreateStore(Int_low, DestPtr);
 }
+
 void X86Translator::translate_cvtps2dq(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cvtps2dq\n";
     exit(-1);
 }
+
 void X86Translator::translate_cvtps2pd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cvtps2pd\n";
     exit(-1);
 }
+
 void X86Translator::translate_cvtsd2si(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cvtsd2si\n";
     exit(-1);
@@ -122,10 +176,12 @@ void X86Translator::translate_cvtss2si(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cvtss2si\n";
     exit(-1);
 }
+
 void X86Translator::translate_cvttpd2dq(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cvttpd2dq\n";
     exit(-1);
 }
+
 void X86Translator::translate_cvttps2dq(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cvttps2dq\n";
     exit(-1);

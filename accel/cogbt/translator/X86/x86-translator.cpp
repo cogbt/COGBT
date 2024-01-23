@@ -522,17 +522,24 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd, Type *LoadTy) {
         } else if (OpndHdl.isXMM()) {
             // The current implementation is to read xmm reg from CPUX86State
             // directly.
+            // llvm_unreachable("Store to XMM should use Ptr");
             int off = GuestXMMOffset(OpndHdl.GetXMMID());
             Value *Addr =
                 Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
             Addr = Builder.CreateBitCast(Addr, LLVMTy->getPointerTo());
             Res = Builder.CreateLoad(LLVMTy, Addr);
-        } else if (OpndHdl.isFPR() || OpndHdl.isSTR()) {
+        } else if (OpndHdl.isSTR()) {
             Value *St0 = GetFPUTop();
             Value *SrcSTRID = ConstInt(Int32Ty, OpndHdl.GetSTRID());
             Value *SrcFPRID = Builder.CreateAdd(St0, SrcSTRID);
             SrcFPRID = Builder.CreateAnd(SrcFPRID, ConstInt(Int32Ty, 7));
             Res = LoadFromFPR(SrcFPRID, Int64Ty);
+        } else if (OpndHdl.isMMX()) {
+            int off = GuestMMXOffset(OpndHdl.GetMMXID());
+            Value *Addr =
+                Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
+            Addr = Builder.CreateBitCast(Addr, LLVMTy->getPointerTo());
+            Res = Builder.CreateLoad(LLVMTy, Addr);
         } else {
             llvm_unreachable("Unhandled register operand type!");
         }
@@ -592,7 +599,7 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
         Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
         Addr = Builder.CreateBitCast(Addr, ResVal->getType()->getPointerTo());
         Builder.CreateStore(ResVal, Addr);
-    } else if (OpndHdl.isFPR() || OpndHdl.isSTR()) {
+    } else if (OpndHdl.isSTR()) {
         if (ResVal->getType()->getIntegerBitWidth() == 32) {
             ResVal = Builder.CreateBitCast(ResVal, FP32Ty);
             ResVal = Builder.CreateFPExt(ResVal, FP64Ty);
@@ -606,6 +613,12 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
         Value *DestFPRID = Builder.CreateAdd(St0, DestSTRID);
         DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty, 7));
         StoreToFPR(ResVal, DestFPRID);
+    } else if (OpndHdl.isMMX()) {
+        // Current implementation is to store value into CPUX86State directly.
+        int off = GuestMMXOffset(OpndHdl.GetMMXID());
+        Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
+        Addr = Builder.CreateBitCast(Addr, ResVal->getType()->getPointerTo());
+        Builder.CreateStore(ResVal, Addr);
     } else {
         llvm_unreachable("Unhandled StoreOperand type!");
     }

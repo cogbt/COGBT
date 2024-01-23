@@ -253,7 +253,7 @@ void X86Translator::translate_pmovmskb(GuestInst *Inst) {
     if (SrcOpnd.isXMM()) {
         Value *SrcXMMID = ConstInt(Int64Ty, SrcOpnd.GetXMMID());
         Dest = CallFunc(FuncTy, "helper_pmovmskb_xmm", {CPUEnv, SrcXMMID});
-    } else { //MMX
+    } else { // MMX
         Value *SrcMMXID = ConstInt(Int64Ty, SrcOpnd.GetMMXID());
         Dest = CallFunc(FuncTy, "helper_pmovmskb_mmx", {CPUEnv, SrcMMXID});
     }
@@ -261,94 +261,192 @@ void X86Translator::translate_pmovmskb(GuestInst *Inst) {
 }
 
 void X86Translator::translate_punpckhbw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction punpckhbw\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    // helper_punpcklvw_xxx function type.
+    FunctionType *FuncTy =
+        FunctionType::get(Int32Ty, {Int8PtrTy, Int64PtrTy, Int64PtrTy}, false);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *DestPtr = nullptr;
+    Value *SrcPtr = nullptr;
+
+    if (DestOpnd.isXMM()) {
+        DestPtr = getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy);
+        if (SrcOpnd.isXMM())
+            SrcPtr = getXMMPtr(SrcOpnd.GetXMMID(), 0, Int64PtrTy);
+        else {
+            SrcPtr = CalcMemAddr(InstHdl.getOpnd(0));
+            SrcPtr = Builder.CreateIntToPtr(SrcPtr, Int64PtrTy);
+        }
+        CallFunc(FuncTy, "helper_punpckhbw_xmm", {CPUEnv, DestPtr, SrcPtr});
+    } else if (DestOpnd.isMMX()) {
+        DestPtr = getMMXPtr(DestOpnd.GetMMXID(), 0, Int64PtrTy);
+        if (SrcOpnd.isMMX())
+            SrcPtr = getMMXPtr(SrcOpnd.GetMMXID(), 0, Int64PtrTy);
+        else {
+            SrcPtr = CalcMemAddr(InstHdl.getOpnd(0));
+            SrcPtr = Builder.CreateIntToPtr(SrcPtr, Int64PtrTy);
+        }
+        CallFunc(FuncTy, "helper_punpckhbw_mmx", {CPUEnv, DestPtr, SrcPtr});
+    }
 }
+
 void X86Translator::translate_punpckhdq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction punpckhdq\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    // helper_punpcklvw_xxx function type.
+    FunctionType *FuncTy =
+        FunctionType::get(Int32Ty, {Int8PtrTy, Int64PtrTy, Int64PtrTy}, false);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *DestPtr = nullptr;
+    Value *SrcPtr = nullptr;
+
+    if (DestOpnd.isXMM()) {
+        DestPtr = getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy);
+        if (SrcOpnd.isXMM())
+            SrcPtr = getXMMPtr(SrcOpnd.GetXMMID(), 0, Int64PtrTy);
+        else {
+            SrcPtr = CalcMemAddr(InstHdl.getOpnd(0));
+            SrcPtr = Builder.CreateIntToPtr(SrcPtr, Int64PtrTy);
+        }
+        CallFunc(FuncTy, "helper_punpckhdq_xmm", {CPUEnv, DestPtr, SrcPtr});
+    } else if (DestOpnd.isMMX()) {
+        DestPtr = getMMXPtr(DestOpnd.GetMMXID(), 0, Int64PtrTy);
+        if (SrcOpnd.isMMX())
+            SrcPtr = getMMXPtr(SrcOpnd.GetMMXID(), 0, Int64PtrTy);
+        else {
+            SrcPtr = CalcMemAddr(InstHdl.getOpnd(0));
+            SrcPtr = Builder.CreateIntToPtr(SrcPtr, Int64PtrTy);
+        }
+        CallFunc(FuncTy, "helper_punpckhdq_mmx", {CPUEnv, DestPtr, SrcPtr});
+    }
 }
+
 void X86Translator::translate_punpckhwd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction punpckhwd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    // helper_punpcklvw_xxx function type.
+    FunctionType *FuncTy =
+        FunctionType::get(Int32Ty, {Int8PtrTy, Int64PtrTy, Int64PtrTy}, false);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *DestPtr = nullptr;
+    Value *SrcPtr = nullptr;
+
+    if (DestOpnd.isXMM()) {
+        DestPtr = getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy);
+        if (SrcOpnd.isXMM())
+            SrcPtr = getXMMPtr(SrcOpnd.GetXMMID(), 0, Int64PtrTy);
+        else {
+            SrcPtr = CalcMemAddr(InstHdl.getOpnd(0));
+            SrcPtr = Builder.CreateIntToPtr(SrcPtr, Int64PtrTy);
+        }
+        CallFunc(FuncTy, "helper_punpckhwd_xmm", {CPUEnv, DestPtr, SrcPtr});
+    } else if (DestOpnd.isMMX()) {
+        DestPtr = getMMXPtr(DestOpnd.GetMMXID(), 0, Int64PtrTy);
+        if (SrcOpnd.isMMX())
+            SrcPtr = getMMXPtr(SrcOpnd.GetMMXID(), 0, Int64PtrTy);
+        else {
+            SrcPtr = CalcMemAddr(InstHdl.getOpnd(0));
+            SrcPtr = Builder.CreateIntToPtr(SrcPtr, Int64PtrTy);
+        }
+        CallFunc(FuncTy, "helper_punpckhwd_mmx", {CPUEnv, DestPtr, SrcPtr});
+    }
 }
 void X86Translator::translate_punpcklbw(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     // helper_punpcklvw_xxx function type.
     FunctionType *FuncTy =
-        FunctionType::get(Int32Ty, {Int8PtrTy, Int64Ty, Int64Ty}, false);
+        FunctionType::get(Int32Ty, {Int8PtrTy, Int64PtrTy, Int64PtrTy}, false);
 
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
-    if (SrcOpnd.isMem()) {
-        Value *MemV = LoadOperand(InstHdl.getOpnd(0));
-        if (DestOpnd.isMMX()) {
-            FlushMMXT0(MemV);
-            Value *MMXID = ConstInt(Int64Ty, DestOpnd.GetMMXID());
-            CallFunc(FuncTy, "helper_punpcklbw_mmx",
-                     {CPUEnv, MMXID, ConstInt(Int64Ty, -1)});
-        } else {
-            assert(DestOpnd.isXMM());
-            FlushXMMT0(MemV);
-            Value *XMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
-            CallFunc(FuncTy, "helper_punpcklbw_xmm",
-                     {XMMID, ConstInt(Int64Ty, -1)});
+    Value *DestPtr = nullptr;
+    Value *SrcPtr = nullptr;
+
+    if (DestOpnd.isXMM()) {
+        DestPtr = getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy);
+        if (SrcOpnd.isXMM())
+            SrcPtr = getXMMPtr(SrcOpnd.GetXMMID(), 0, Int64PtrTy);
+        else {
+            SrcPtr = CalcMemAddr(InstHdl.getOpnd(0));
+            SrcPtr = Builder.CreateIntToPtr(SrcPtr, Int64PtrTy);
         }
-    } else { // both xmm or mmx.
-        if (SrcOpnd.isMMX()) {
-            Value *SrcMMXID = ConstInt(Int64Ty, SrcOpnd.GetMMXID());
-            Value *DestMMXID = ConstInt(Int64Ty, DestOpnd.GetMMXID());
-            CallFunc(FuncTy, "helper_punpcklbw_mmx",
-                     {CPUEnv, DestMMXID, SrcMMXID});
-        } else {
-            assert(DestOpnd.isXMM());
-            Value *SrcXMMID = ConstInt(Int64Ty, SrcOpnd.GetXMMID());
-            Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
-            CallFunc(FuncTy, "helper_punpcklbw_xmm",
-                     {CPUEnv, DestXMMID, SrcXMMID});
+        CallFunc(FuncTy, "helper_punpcklbw_xmm", {CPUEnv, DestPtr, SrcPtr});
+    } else if (DestOpnd.isMMX()) {
+        DestPtr = getMMXPtr(DestOpnd.GetMMXID(), 0, Int64PtrTy);
+        if (SrcOpnd.isMMX())
+            SrcPtr = getMMXPtr(SrcOpnd.GetMMXID(), 0, Int64PtrTy);
+        else {
+            SrcPtr = CalcMemAddr(InstHdl.getOpnd(0));
+            SrcPtr = Builder.CreateIntToPtr(SrcPtr, Int64PtrTy);
         }
+        CallFunc(FuncTy, "helper_punpcklbw_mmx", {CPUEnv, DestPtr, SrcPtr});
     }
 }
 
 void X86Translator::translate_punpckldq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction punpckldq\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    // helper_punpcklvw_xxx function type.
+    FunctionType *FuncTy =
+        FunctionType::get(Int32Ty, {Int8PtrTy, Int64PtrTy, Int64PtrTy}, false);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *DestPtr = nullptr;
+    Value *SrcPtr = nullptr;
+
+    if (DestOpnd.isXMM()) {
+        DestPtr = getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy);
+        if (SrcOpnd.isXMM())
+            SrcPtr = getXMMPtr(SrcOpnd.GetXMMID(), 0, Int64PtrTy);
+        else {
+            SrcPtr = CalcMemAddr(InstHdl.getOpnd(0));
+            SrcPtr = Builder.CreateIntToPtr(SrcPtr, Int64PtrTy);
+        }
+        CallFunc(FuncTy, "helper_punpckldq_xmm", {CPUEnv, DestPtr, SrcPtr});
+    } else if (DestOpnd.isMMX()) {
+        DestPtr = getMMXPtr(DestOpnd.GetMMXID(), 0, Int64PtrTy);
+        if (SrcOpnd.isMMX())
+            SrcPtr = getMMXPtr(SrcOpnd.GetMMXID(), 0, Int64PtrTy);
+        else {
+            SrcPtr = CalcMemAddr(InstHdl.getOpnd(0));
+            SrcPtr = Builder.CreateIntToPtr(SrcPtr, Int64PtrTy);
+        }
+        CallFunc(FuncTy, "helper_punpckldq_mmx", {CPUEnv, DestPtr, SrcPtr});
+    }
 }
 void X86Translator::translate_punpcklwd(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     // helper_punpcklvw_xxx function type.
     FunctionType *FuncTy =
-        FunctionType::get(Int32Ty, {Int8PtrTy, Int64Ty, Int64Ty}, false);
+        FunctionType::get(Int32Ty, {Int8PtrTy, Int64PtrTy, Int64PtrTy}, false);
 
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
-    if (SrcOpnd.isMem()) {
-        Value *MemV = LoadOperand(InstHdl.getOpnd(0));
-        if (DestOpnd.isMMX()) {
-            FlushMMXT0(MemV);
-            Value *MMXID = ConstInt(Int64Ty, DestOpnd.GetMMXID());
-            CallFunc(FuncTy, "helper_punpcklwd_mmx",
-                     {CPUEnv, MMXID, ConstInt(Int64Ty, -1)});
-        } else {
-            assert(DestOpnd.isXMM());
-            FlushXMMT0(MemV);
-            Value *XMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
-            CallFunc(FuncTy, "helper_punpcklwd_xmm",
-                     {XMMID, ConstInt(Int64Ty, -1)});
+    Value *DestPtr = nullptr;
+    Value *SrcPtr = nullptr;
+
+    if (DestOpnd.isXMM()) {
+        DestPtr = getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy);
+        if (SrcOpnd.isXMM())
+            SrcPtr = getXMMPtr(SrcOpnd.GetXMMID(), 0, Int64PtrTy);
+        else {
+            SrcPtr = CalcMemAddr(InstHdl.getOpnd(0));
+            SrcPtr = Builder.CreateIntToPtr(SrcPtr, Int64PtrTy);
         }
-    } else { // both xmm or mmx.
-        if (SrcOpnd.isMMX()) {
-            Value *SrcMMXID = ConstInt(Int64Ty, SrcOpnd.GetMMXID());
-            Value *DestMMXID = ConstInt(Int64Ty, DestOpnd.GetMMXID());
-            CallFunc(FuncTy, "helper_punpcklwd_mmx",
-                     {CPUEnv, DestMMXID, SrcMMXID});
-        } else {
-            assert(DestOpnd.isXMM());
-            Value *SrcXMMID = ConstInt(Int64Ty, SrcOpnd.GetXMMID());
-            Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
-            CallFunc(FuncTy, "helper_punpcklwd_xmm",
-                     {CPUEnv, DestXMMID, SrcXMMID});
+        CallFunc(FuncTy, "helper_punpcklwd_xmm", {CPUEnv, DestPtr, SrcPtr});
+    } else if (DestOpnd.isMMX()) {
+        DestPtr = getMMXPtr(DestOpnd.GetMMXID(), 0, Int64PtrTy);
+        if (SrcOpnd.isMMX())
+            SrcPtr = getMMXPtr(SrcOpnd.GetMMXID(), 0, Int64PtrTy);
+        else {
+            SrcPtr = CalcMemAddr(InstHdl.getOpnd(0));
+            SrcPtr = Builder.CreateIntToPtr(SrcPtr, Int64PtrTy);
         }
+        CallFunc(FuncTy, "helper_punpcklwd_mmx", {CPUEnv, DestPtr, SrcPtr});
     }
 }
 
@@ -370,15 +468,16 @@ void X86Translator::translate_pshufd(GuestInst *Inst) {
     X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
     Value *Dest = ConstInt(Int64Ty, DestOpnd.GetXMMID());
 
-    FunctionType *FuncTy =
-        FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty, Int32Ty}, false);
+    FunctionType *FuncTy = FunctionType::get(
+        VoidTy, {Int8PtrTy, Int64Ty, Int64Ty, Int32Ty}, false);
     CallFunc(FuncTy, "helper_pshufd", {CPUEnv, Dest, Src1, Src0});
 }
-
+//
 void X86Translator::translate_pshufhw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pshufhw\n";
     exit(-1);
 }
+//
 void X86Translator::translate_pshuflw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pshuflw\n";
     exit(-1);
@@ -422,7 +521,7 @@ void X86Translator::translate_comiss(GuestInst *Inst) {
 void X86Translator::translate_comisd(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
 
-    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0)); // xmm or mem64
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));  // xmm or mem64
     X86OperandHandler DestOpnd(InstHdl.getOpnd(1)); // xmm
     Value *MemVal = nullptr;
     // helper_comisd type
@@ -435,7 +534,8 @@ void X86Translator::translate_comisd(GuestInst *Inst) {
         MemVal = LoadOperand(InstHdl.getOpnd(0), Int64Ty);
 
     if (MemVal) {
-        /* printf("memopnd size is %d bytes\n", Inst->detail->x86.operands[0].size); */
+        /* printf("memopnd size is %d bytes\n",
+         * Inst->detail->x86.operands[0].size); */
         FlushXMMT0(MemVal, Int64PtrTy);
         Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
         Value *SrcXMMID = ConstInt(Int64Ty, -1); // -1 means src is xmm_t0
@@ -499,9 +599,48 @@ void X86Translator::translate_mulx(GuestInst *Inst) {
     exit(-1);
 }
 
+// void X86Translator::translate_addpd(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction addpd\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_addpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction addpd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *SrcInt = nullptr;
+
+    if (SrcOpnd.isXMM()) {
+        Value *XMMptr = getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy);
+        SrcInt = Builder.CreateLoad(Int128Ty, XMMptr);
+    } else {
+        SrcInt = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+    }
+    // Src Split
+    Value *Int_high = Builder.CreateLShr(SrcInt, ConstInt(Int128Ty, 64));
+    Int_high = Builder.CreateTrunc(Int_high, Int64Ty);
+    Int_high = Builder.CreateBitCast(Int_high, FP64Ty);
+    Value *Int_low = Builder.CreateTrunc(SrcInt, Int64Ty);
+    Int_low = Builder.CreateBitCast(Int_low, FP64Ty);
+
+    // Dest Split
+    Value *DestInt = Builder.CreateLoad(
+        Int128Ty, getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+    Value *Int_high2 = Builder.CreateLShr(DestInt, ConstInt(Int128Ty, 64));
+    Int_high2 = Builder.CreateTrunc(Int_high2, Int64Ty);
+    Int_high2 = Builder.CreateBitCast(Int_high2, FP64Ty);
+    Value *Int_low2 = Builder.CreateTrunc(DestInt, Int64Ty);
+    Int_low2 = Builder.CreateBitCast(Int_low2, FP64Ty);
+
+    // add
+    Int_high = Builder.CreateFAdd(Int_high2, Int_high);
+    Int_low = Builder.CreateFAdd(Int_low2, Int_low);
+
+    // store
+    Value *DestPtr = getXMMPtr(DestOpnd.GetXMMID(), 8, FP64PtrTy);
+    Builder.CreateStore(Int_high, DestPtr);
+    DestPtr = getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy);
+    Builder.CreateStore(Int_low, DestPtr);
 }
 
 void X86Translator::translate_addps(GuestInst *Inst) {
@@ -558,6 +697,7 @@ void X86Translator::translate_minpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction minpd\n";
     exit(-1);
 }
+
 void X86Translator::translate_minps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction minps\n";
     exit(-1);
@@ -689,6 +829,7 @@ void X86Translator::translate_subpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction subpd\n";
     exit(-1);
 }
+
 void X86Translator::translate_subps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction subps\n";
     exit(-1);
@@ -800,6 +941,7 @@ void X86Translator::translate_maxpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction maxpd\n";
     exit(-1);
 }
+
 void X86Translator::translate_maxps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction maxps\n";
     exit(-1);
@@ -959,14 +1101,14 @@ void X86Translator::translate_andps(GuestInst *Inst) {
 }
 
 #define SSE_HELPER_CMP(name)                                                   \
-X86InstHandler InstHdl(Inst);                                                  \
-X86OperandHandler Opnd0(InstHdl.getOpnd(0));                                   \
-X86OperandHandler Opnd1(InstHdl.getOpnd(1));                                   \
-Value *SrcXMMID = ConstInt(Int64Ty, Opnd0.GetXMMID());                         \
-Value *DestXMMID = ConstInt(Int64Ty, Opnd1.GetXMMID());                        \
-FunctionType *FTy =                                                            \
-    FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty}, false);           \
-CallFunc(FTy, "helper_" #name, {CPUEnv, DestXMMID, SrcXMMID});
+    X86InstHandler InstHdl(Inst);                                              \
+    X86OperandHandler Opnd0(InstHdl.getOpnd(0));                               \
+    X86OperandHandler Opnd1(InstHdl.getOpnd(1));                               \
+    Value *SrcXMMID = ConstInt(Int64Ty, Opnd0.GetXMMID());                     \
+    Value *DestXMMID = ConstInt(Int64Ty, Opnd1.GetXMMID());                    \
+    FunctionType *FTy =                                                        \
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty}, false);       \
+    CallFunc(FTy, "helper_" #name, {CPUEnv, DestXMMID, SrcXMMID});
 
 void X86Translator::translate_cmpeqsd(GuestInst *Inst) {
     SSE_HELPER_CMP(cmpeqsd)
@@ -1087,7 +1229,25 @@ void X86Translator::translate_orpd(GuestInst *Inst) {
     CallFunc(FTy, "helper_por_xmm", {CPUEnv, DestAddr, SrcAddr});
 }
 
+// void X86Translator::translate_orps(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction orps\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_orps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction orps\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *SrcInt = nullptr;
+    Value *XMMptr = nullptr;
+    if (SrcOpnd.isXMM()) {
+        XMMptr = getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy);
+        SrcInt = Builder.CreateLoad(Int128Ty, XMMptr);
+    } else {
+        SrcInt = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+    }
+    XMMptr = getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy);
+    Value *DestInt = Builder.CreateLoad(Int128Ty, XMMptr);
+    DestInt = Builder.CreateOr(SrcInt, DestInt);
+    Builder.CreateStore(DestInt, XMMptr);
 }

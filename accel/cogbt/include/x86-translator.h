@@ -140,8 +140,14 @@ private: /// Currently translated instruction.
 
     /// @name X87 FPU translator helper functions.
 
+    // get 64 bit XMM Ptr
+    Value *getXMMPtr(int i, int start_byte, Type *Ty);
 
-    Value * getFT0Ptr();
+    Value *getXMMT0Ptr(int start_byte, Type *Ty);
+
+    Value *getMMXPtr(int i, int start_byte, Type *Ty);
+
+    Value *getFT0Ptr();
 
     ///   FP64CompareSW - f64 compares with f64 , result show in FPU State Words
     ///   Note: if LHS > RHS C3:C0 = 00 , LHS = RHS 10 , LHS < RHS 01

@@ -42,10 +42,83 @@ void X86Translator::translate_andn(GuestInst *Inst) {
     dbgs() << "Untranslated instruction andn\n";
     exit(-1);
 }
+// void X86Translator::translate_andnps(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction andnps\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_andnps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction andnps\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    int ID = DestOpnd.GetXMMID();
+    int ID_Src = SrcOpnd.GetXMMID();
+    Value *Src1 = nullptr;
+    Value *Dest1 = Builder.CreateLoad(getXMMPtr(ID, 0, Int128PtrTy));
+    if (SrcOpnd.isXMM()) {
+        Src1 = Builder.CreateLoad(getXMMPtr(ID_Src, 0, Int128PtrTy));
+    } else {
+        Src1 = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+    }
+
+    Dest1 = Builder.CreateNot(Dest1);
+    Dest1 = Builder.CreateAnd(Dest1, Src1);
+    Builder.CreateStore(Dest1, getXMMPtr(ID, 0, Int128PtrTy));
+    /*
+        Value *Dest1 =
+            Builder.CreateLoad(getXMMPtr(ID, 0, Int32PtrTy));
+        Value *Dest2 =
+            Builder.CreateLoad(getXMMPtr(ID, 4, Int32PtrTy));
+        Value *Dest3 =
+            Builder.CreateLoad(getXMMPtr(ID, 8, Int32PtrTy));
+        Value *Dest4 =
+            Builder.CreateLoad(getXMMPtr(ID, 12, Int32PtrTy));
+
+        Value *Src1 =nullptr;
+        Value *Src2 =nullptr;
+        Value *Src3 =nullptr;
+        Value *Src4 =nullptr;
+
+        if(SrcOpnd.isXMM()){
+        Src1 =
+            Builder.CreateLoad(getXMMPtr(ID_Src, 0, Int32PtrTy));
+        Src2 =
+            Builder.CreateLoad(getXMMPtr(ID_Src, 4, Int32PtrTy));
+        Src3 =
+            Builder.CreateLoad(getXMMPtr(ID_Src, 8, Int32PtrTy));
+        Src4 =
+            Builder.CreateLoad(getXMMPtr(ID_Src, 12, Int32PtrTy));
+        }
+        else{
+            Value *Src=LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+            Src1=Builder.CreateTrunc(Src,Int32Ty);
+            Src=Builder.Builder.CreateLShr(V, ConstInt(Int128Ty, 32));
+            Src2=Builder.CreateTrunc(Src,Int32Ty);
+            Src=Builder.Builder.CreateLShr(V, ConstInt(Int128Ty, 32));
+            Src3=Builder.CreateTrunc(Src,Int32Ty);
+            Src=Builder.Builder.CreateLShr(V, ConstInt(Int128Ty, 32));
+            Src4=Builder.CreateTrunc(Src,Int32Ty);
+        }
+
+        Dest1=Builder.CreateNot(Dest1);
+        Dest2=Builder.CreateNot(Dest2);
+        Dest3=Builder.CreateNot(Dest3);
+        Dest4=Builder.CreateNot(Dest4);
+
+        Dest1=Builder.CreateAnd(Dest1,Src1);
+        Dest2=Builder.CreateAnd(Dest2,Src2);
+        Dest3=Builder.CreateAnd(Dest3,Src3);
+        Dest4=Builder.CreateAnd(Dest4,Src4);
+
+
+        Builder.CreateStore(Dest1,getXMMPtr(ID, 0, Int32PtrTy));
+        Builder.CreateStore(Dest2,getXMMPtr(ID, 4, Int32PtrTy));
+        Builder.CreateStore(Dest3,getXMMPtr(ID, 8, Int32PtrTy));
+        Builder.CreateStore(Dest4,getXMMPtr(ID, 12, Int32PtrTy));
+    */
 }
+
 void X86Translator::translate_arpl(GuestInst *Inst) {
     dbgs() << "Untranslated instruction arpl\n";
     exit(-1);
@@ -186,11 +259,12 @@ void X86Translator::translate_cmc(GuestInst *Inst) {
 void X86Translator::translate_cpuid(GuestInst *Inst) {
     /* for (int GMRId = 0; GMRId < (int)GMRVals.size(); GMRId++) { */
     /*     if (GMRVals[GMRId].isDirty()) { */
-    /*         Builder.CreateStore(GMRVals[GMRId].getValue(), GMRStates[GMRId]); */
+    /*         Builder.CreateStore(GMRVals[GMRId].getValue(), GMRStates[GMRId]);
+     */
     /*         GMRVals[GMRId].setDirty(false); */
     /*     } */
     /* } */
-    // Sync 
+    // Sync
     Value *Addr = nullptr;
     if (GMRVals[X86Config::RAX].hasValue()) {
         Addr = Builder.CreateGEP(Int8Ty, CPUEnv,
@@ -294,29 +368,304 @@ void X86Translator::translate_ljmp(GuestInst *Inst) {
     dbgs() << "Untranslated instruction ljmp\n";
     exit(-1);
 }
+// void X86Translator::translate_fxrstor(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction fxrstor\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_fxrstor(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fxrstor\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int8PtrTy}, false);
+    Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
+    Addr = Builder.CreateIntToPtr(Addr, Int8PtrTy);
+
+    CallFunc(FTy, "helper_fxrstor", {CPUEnv, Addr});
 }
+
 void X86Translator::translate_fxrstor64(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fxrstor64\n";
     exit(-1);
 }
 void X86Translator::translate_fxsave(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fxsave\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int8PtrTy}, false);
+    Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
+    Addr = Builder.CreateIntToPtr(Addr, Int8PtrTy);
+    CallFunc(FTy, "helper_fxsave", {CPUEnv, Addr});
 }
 void X86Translator::translate_fxsave64(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fxsave64\n";
     exit(-1);
 }
 void X86Translator::translate_vmovapd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovapd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+    if (DestOpnd.isXMM()) {
+
+        Value *Src = nullptr;
+        if (SrcOpnd.isXMM())
+            Src = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy));
+        else {
+            Src = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+        }
+        Builder.CreateStore(Src,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+    }
+
+    else if (DestOpnd.isYMM()) {
+
+        Value *Src1 = nullptr;
+        Value *Src2 = nullptr;
+
+        if (SrcOpnd.isYMM()) {
+            Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetYMMID(), 0, Int128PtrTy));
+            Src2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetYMMID(), 16, Int128PtrTy));
+
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Src1 = Builder.CreateLoad(Int128Ty, Addr1);
+            Src2 = Builder.CreateLoad(Int128Ty, Addr2);
+        }
+        Builder.CreateStore(Src1,
+                            getXMMPtr(DestOpnd.GetYMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Src2,
+                            getXMMPtr(DestOpnd.GetYMMID(), 16, Int128PtrTy));
+
+    } else if (DestOpnd.isZMM()) {
+
+        Value *Src1 = nullptr;
+        Value *Src2 = nullptr;
+        Value *Src3 = nullptr;
+        Value *Src4 = nullptr;
+        if (SrcOpnd.isZMM()) {
+            Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 0, Int128PtrTy));
+            Src2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 16, Int128PtrTy));
+            Src3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 32, Int128PtrTy));
+            Src4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 48, Int128PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Value *Addr3 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 32));
+            Value *Addr4 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 48));
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+            Addr3 = Builder.CreateIntToPtr(Addr3, Int128PtrTy);
+            Addr4 = Builder.CreateIntToPtr(Addr4, Int128PtrTy);
+            Src1 = Builder.CreateLoad(Int128Ty, Addr1);
+            Src2 = Builder.CreateLoad(Int128Ty, Addr2);
+            Src3 = Builder.CreateLoad(Int128Ty, Addr3);
+            Src4 = Builder.CreateLoad(Int128Ty, Addr4);
+        }
+        Builder.CreateStore(Src1,
+                            getXMMPtr(DestOpnd.GetZMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Src2,
+                            getXMMPtr(DestOpnd.GetZMMID(), 16, Int128PtrTy));
+        Builder.CreateStore(Src3,
+                            getXMMPtr(DestOpnd.GetZMMID(), 32, Int128PtrTy));
+        Builder.CreateStore(Src4,
+                            getXMMPtr(DestOpnd.GetZMMID(), 48, Int128PtrTy));
+    } else { // is mem
+        if (SrcOpnd.isXMM()) {
+            Value *Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy));
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(1));
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Builder.CreateStore(Src1, Addr1);
+        } else if (SrcOpnd.isYMM()) {
+            Value *Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetYMMID(), 0, Int128PtrTy));
+            Value *Src2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetYMMID(), 16, Int128PtrTy));
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(1));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Builder.CreateStore(Src1, Addr1);
+            Builder.CreateStore(Src2, Addr2);
+
+        } else if (SrcOpnd.isZMM()) {
+            Value *Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 0, Int128PtrTy));
+            Value *Src2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 16, Int128PtrTy));
+            Value *Src3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 32, Int128PtrTy));
+            Value *Src4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 48, Int128PtrTy));
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(1));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Value *Addr3 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 32));
+            Value *Addr4 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 48));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+            Addr3 = Builder.CreateIntToPtr(Addr3, Int128PtrTy);
+            Addr4 = Builder.CreateIntToPtr(Addr4, Int128PtrTy);
+
+            Builder.CreateStore(Src1, Addr1);
+            Builder.CreateStore(Src2, Addr2);
+            Builder.CreateStore(Src3, Addr3);
+            Builder.CreateStore(Src4, Addr4);
+        }
+    }
 }
 void X86Translator::translate_vmovaps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovaps\n";
-    exit(-1);
+
+    translate_vmovapd(Inst);
+    /*
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+    if(DestOpnd.isXMM()){
+
+        Value * Src = nullptr;
+        if (SrcOpnd.isXMM())
+            Src=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetXMMID(),0,Int128PtrTy));
+        else {
+            Src = LoadOperand(InstHdl.getOpnd(0),Int128Ty);
+        }
+        Builder.CreateStore(Src,getXMMPtr(DestOpnd.GetXMMID(),0,Int128PtrTy));
+    }
+
+    else  if(DestOpnd.isYMM()){
+
+        Value * Src1 = nullptr;
+        Value * Src2 = nullptr;
+
+        if (SrcOpnd.isYMM()){
+            Src1=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetYMMID(),0,Int128PtrTy));
+            Src2=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetYMMID(),16,Int128PtrTy));
+
+        }
+        else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Src1 = Builder.CreateLoad(Int128Ty, Addr1);
+            Src2 = Builder.CreateLoad(Int128Ty, Addr2);
+
+        }
+        Builder.CreateStore(Src1,getXMMPtr(DestOpnd.GetYMMID(),0,Int128PtrTy));
+        Builder.CreateStore(Src2,getXMMPtr(DestOpnd.GetYMMID(),16,Int128PtrTy));
+
+    }
+    else if(DestOpnd.isZMM()){
+
+        Value * Src1 = nullptr;
+        Value * Src2 = nullptr;
+        Value * Src3 = nullptr;
+        Value * Src4 = nullptr;
+        if (SrcOpnd.isZMM()){
+            Src1=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(),0,Int128PtrTy));
+            Src2=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(),16,Int128PtrTy));
+            Src3=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(),32,Int128PtrTy));
+            Src4=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(),48,Int128PtrTy));
+        }
+        else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Value *Addr3 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 32));
+            Value *Addr4 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 48));
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+            Addr3 = Builder.CreateIntToPtr(Addr3, Int128PtrTy);
+            Addr4 = Builder.CreateIntToPtr(Addr4, Int128PtrTy);
+            Src1 = Builder.CreateLoad(Int128Ty, Addr1);
+            Src2 = Builder.CreateLoad(Int128Ty, Addr2);
+            Src3 = Builder.CreateLoad(Int128Ty, Addr3);
+            Src4 = Builder.CreateLoad(Int128Ty, Addr4);
+        }
+        Builder.CreateStore(Src1,getXMMPtr(DestOpnd.GetZMMID(),0,Int128PtrTy));
+        Builder.CreateStore(Src2,getXMMPtr(DestOpnd.GetZMMID(),16,Int128PtrTy));
+        Builder.CreateStore(Src3,getXMMPtr(DestOpnd.GetZMMID(),32,Int128PtrTy));
+        Builder.CreateStore(Src4,getXMMPtr(DestOpnd.GetZMMID(),48,Int128PtrTy));
+    }
+    else {//is mem
+        if(SrcOpnd.isXMM()){
+            Value *Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy));
+            Value *Addr1=CalcMemAddr(InstHdl.getOpnd(1));
+            Addr1=Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Builder.CreateStore(Src1, Addr1);
+        }
+        else if(SrcOpnd.isYMM()){
+            Value *Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetYMMID(), 0, Int128PtrTy));
+            Value *Src2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetYMMID(), 16, Int128PtrTy));
+            Value *Addr1=CalcMemAddr(InstHdl.getOpnd(1));
+            Value *Addr2=Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(),
+    16));
+
+            Addr1=Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2=Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Builder.CreateStore(Src1, Addr1);
+            Builder.CreateStore(Src2, Addr2);
+
+        }
+        else if(SrcOpnd.isZMM()){
+            Value *Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 0, Int128PtrTy));
+            Value *Src2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 16, Int128PtrTy));
+            Value *Src3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 32, Int128PtrTy));
+            Value *Src4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 48, Int128PtrTy));
+            Value *Addr1=CalcMemAddr(InstHdl.getOpnd(1));
+            Value *Addr2=Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(),
+    16)); Value *Addr3=Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 32));
+            Value *Addr4=Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(),
+    48));
+
+            Addr1=Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2=Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+            Addr3=Builder.CreateIntToPtr(Addr3, Int128PtrTy);
+            Addr4=Builder.CreateIntToPtr(Addr4, Int128PtrTy);
+
+            Builder.CreateStore(Src1, Addr1);
+            Builder.CreateStore(Src2, Addr2);
+            Builder.CreateStore(Src3, Addr3);
+            Builder.CreateStore(Src4, Addr4);
+        }
+    }
+    */
 }
 void X86Translator::translate_getsec(GuestInst *Inst) {
     dbgs() << "Untranslated instruction getsec\n";
@@ -331,8 +680,11 @@ void X86Translator::translate_haddps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_hlt(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction hlt\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    FunctionType *FTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
+    Value *V = ConstInt(Int32Ty, 0);
+    CallFunc(FTy, "helper_hlt", {CPUEnv, V});
 }
 void X86Translator::translate_hsubpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction hsubpd\n";
@@ -481,28 +833,84 @@ void X86Translator::translate_vcomisd(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vcomiss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vcomiss\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+    Value *LHS = nullptr;
+    if (SrcOpnd.isXMM())
+        LHS = Builder.CreateLoad(getXMMPtr(SrcOpnd.GetXMMID(), 0, FP32PtrTy));
+    else {
+        LHS = LoadOperand(InstHdl.getOpnd(0), FP32Ty);
+    }
+    Value *RHS =
+        Builder.CreateLoad(getXMMPtr(DestOpnd.GetXMMID(), 0, FP32PtrTy));
+
+    FlushGMRValue(X86Config::EFLAG);
+    Value *EflgPtr = Builder.CreateGEP(Int8Ty, CPUEnv,
+                                       ConstInt(Int32Ty, GuestEflagOffset()));
+    EflgPtr = Builder.CreateBitCast(EflgPtr, Int32PtrTy);
+    Value *old_flag = Builder.CreateLoad(Int32Ty, EflgPtr);
+    Value *CF = nullptr;
+    Value *ZF = nullptr;
+    ZF = Builder.CreateFCmpOEQ(LHS, RHS);
+    CF = Builder.CreateFCmpOGT(LHS, RHS); // SRC>ST0
+    CF = Builder.CreateZExt(CF, Int32Ty);
+    ZF = Builder.CreateZExt(ZF, Int32Ty);
+    ZF = Builder.CreateShl(ZF, ConstInt(Int32Ty, 6));
+    old_flag = Builder.CreateAnd(old_flag, ConstInt(Int32Ty, 0xffffffba));
+    old_flag = Builder.CreateOr(old_flag, CF);
+    old_flag = Builder.CreateOr(old_flag, ZF);
+    Builder.CreateStore(old_flag, EflgPtr);
+    ReloadGMRValue(X86Config::EFLAG);
 }
 void X86Translator::translate_vcvtsd2ss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vcvtsd2ss\n";
     exit(-1);
 }
 void X86Translator::translate_vcvtsi2sd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vcvtsi2sd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+
+    Src = Builder.CreateSIToFP(Src, FP64Ty);
+
+    Builder.CreateStore(Src, getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
 }
 void X86Translator::translate_vcvtsi2ss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vcvtsi2ss\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+
+    Src = Builder.CreateSIToFP(Src, FP32Ty);
+
+    Builder.CreateStore(Src, getXMMPtr(DestOpnd.GetXMMID(), 0, FP32PtrTy));
 }
 void X86Translator::translate_vcvtss2sd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vcvtss2sd\n";
     exit(-1);
 }
 void X86Translator::translate_vcvttsd2si(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vcvttsd2si\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *Src = nullptr;
+
+    if (SrcOpnd.isXMM()) {
+        Src = Builder.CreateLoad(getXMMPtr(SrcOpnd.GetXMMID(), 0, FP64PtrTy));
+    } else {
+        Src = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
+    }
+    if (DestOpnd.getOpndSize() == 4)
+        Src = Builder.CreateFPToSI(Src, Int32Ty);
+    else
+        Src = Builder.CreateFPToSI(Src, Int64Ty);
+
+    StoreOperand(Src, InstHdl.getOpnd(1));
 }
 void X86Translator::translate_vcvttsd2usi(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vcvttsd2usi\n";
@@ -525,8 +933,7 @@ void X86Translator::translate_vcvtusi2ss(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vucomisd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vucomisd\n";
-    exit(-1);
+    translate_ucomisd(Inst);
 }
 void X86Translator::translate_vucomiss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vucomiss\n";
@@ -704,9 +1111,19 @@ void X86Translator::translate_lar(GuestInst *Inst) {
     dbgs() << "Untranslated instruction lar\n";
     exit(-1);
 }
+// void X86Translator::translate_lddqu(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction lddqu\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_lddqu(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction lddqu\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+    Value *V = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+    Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
 }
 
 void X86Translator::translate_ldmxcsr(GuestInst *Inst) {
@@ -740,8 +1157,8 @@ void X86Translator::translate_les(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_lfence(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction lfence\n";
-    exit(-1);
+    // dbgs() << "Untranslated instruction lfence\n";
+    // exit(-1);
 }
 void X86Translator::translate_lfs(GuestInst *Inst) {
     dbgs() << "Untranslated instruction lfs\n";
@@ -903,14 +1320,93 @@ void X86Translator::translate_packuswb(GuestInst *Inst) {
     dbgs() << "Untranslated instruction packuswb\n";
     exit(-1);
 }
+// void X86Translator::translate_palignr(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction palignr\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_palignr(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction palignr\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+    X86OperandHandler ImmOpnd(InstHdl.getOpnd(0));
+    Value *Imm8 = LoadOperand(InstHdl.getOpnd(0));
+    Imm8 = Builder.CreateAnd(Imm8, ConstInt(Imm8->getType(), 7));
+    if (SrcOpnd.isXMM()) {
+        Value *Src = Builder.CreateLoad(
+            Int128Ty, getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy));
+        Value *Dest = Builder.CreateLoad(
+            Int128Ty, getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(ConstInt(Int128Ty, 0),
+                            getXMMT0Ptr(32, Int128PtrTy));
+        Builder.CreateStore(Src, getXMMT0Ptr(16, Int128PtrTy));
+        Builder.CreateStore(Dest, getXMMT0Ptr(0, Int128PtrTy));
+
+        ConstantInt *CI = dyn_cast<ConstantInt>(Imm8);
+        int constIntValue = CI->getZExtValue();
+        Dest = Builder.CreateLoad(Int128Ty,
+                                  getXMMT0Ptr(constIntValue, Int128PtrTy));
+        Builder.CreateStore(Dest,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+
+    }
+
+    else if (SrcOpnd.isMMX()) {
+        Value *Src = Builder.CreateLoad(
+            Int128Ty, getMMXPtr(SrcOpnd.GetMMXID(), 0, Int64PtrTy));
+        Value *Dest = Builder.CreateLoad(
+            Int128Ty, getMMXPtr(DestOpnd.GetMMXID(), 0, Int64PtrTy));
+
+        Builder.CreateStore(ConstInt(Int64Ty, 0), getXMMT0Ptr(16, Int64PtrTy));
+        Builder.CreateStore(Src, getXMMT0Ptr(8, Int64PtrTy));
+        Builder.CreateStore(Dest, getXMMT0Ptr(0, Int64PtrTy));
+
+        ConstantInt *CI = dyn_cast<ConstantInt>(Imm8);
+        int constIntValue = CI->getZExtValue();
+        Dest =
+            Builder.CreateLoad(Int64Ty, getXMMT0Ptr(constIntValue, Int64PtrTy));
+        Builder.CreateStore(Dest,
+                            getMMXPtr(DestOpnd.GetMMXID(), 0, Int64PtrTy));
+    }
 }
+
+// void X86Translator::translate_pextrw(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction pextrw\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_pextrw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pextrw\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+    X86OperandHandler ImmOpnd(InstHdl.getOpnd(0));
+
+    Value *Imm8 = LoadOperand(InstHdl.getOpnd(0));
+    Value *SRC = nullptr;
+    Imm8 = Builder.CreateAnd(Imm8, ConstInt(Imm8->getType(), 7));
+    Imm8 = Builder.CreateMul(Imm8, ConstInt(Imm8->getType(), 16));
+    if (SrcOpnd.isXMM()) {
+        SRC = Builder.CreateLoad(Int128Ty,
+                                 getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy));
+    } else if (SrcOpnd.isMMX()) {
+        SRC = Builder.CreateLoad(Int64Ty,
+                                 getMMXPtr(SrcOpnd.GetXMMID(), 0, Int64PtrTy));
+    }
+    Imm8 = Builder.CreateZExtOrTrunc(Imm8, SRC->getType());
+    SRC = Builder.CreateLShr(SRC, Imm8);
+    SRC = Builder.CreateTrunc(SRC, Int16Ty);
+
+    int dest_size = DestOpnd.getOpndSize();
+    if (dest_size == 4)
+        SRC = Builder.CreateZExt(SRC, Int32Ty);
+    else if (dest_size == 8)
+        SRC = Builder.CreateZExt(SRC, Int64Ty);
+
+    StoreOperand(SRC, InstHdl.getOpnd(2));
 }
+
 void X86Translator::translate_phaddsw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction phaddsw\n";
     exit(-1);
@@ -983,18 +1479,242 @@ void X86Translator::translate_psraw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction psraw\n";
     exit(-1);
 }
+// void X86Translator::translate_psrld(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction psrld\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_psrld(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction psrld\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *Shift = nullptr;
+    if (SrcOpnd.isXMM()) {
+        Shift = Builder.CreateLoad(getXMMPtr(SrcOpnd.GetXMMID(), 0, Int8PtrTy));
+    } else {
+        Shift = LoadOperand(InstHdl.getOpnd(0));
+    }
+    Shift = Builder.CreateZExtOrTrunc(Shift, Int32Ty);
+    BasicBlock *LessBB = BasicBlock::Create(Context, "Less", TransFunc, ExitBB);
+    BasicBlock *LargBB = BasicBlock::Create(Context, "Larg", TransFunc, ExitBB);
+    BasicBlock *EndBB = BasicBlock::Create(Context, "End", TransFunc, ExitBB);
+    Value *Cond = Builder.CreateICmpUGT(Shift, ConstInt(Int32Ty, 31));
+
+    Builder.CreateCondBr(Cond, LargBB, LessBB);
+
+    /*----------------------------------------------*/
+    Builder.SetInsertPoint(LessBB);
+
+    if (DestOpnd.isXMM()) {
+        int ID = DestOpnd.GetXMMID();
+        Value *Dest1 = Builder.CreateLoad(getXMMPtr(ID, 0, Int32PtrTy));
+        Value *Dest2 = Builder.CreateLoad(getXMMPtr(ID, 4, Int32PtrTy));
+        Value *Dest3 = Builder.CreateLoad(getXMMPtr(ID, 8, Int32PtrTy));
+        Value *Dest4 = Builder.CreateLoad(getXMMPtr(ID, 12, Int32PtrTy));
+
+        Dest1 = Builder.CreateLShr(Dest1, Shift);
+        Dest2 = Builder.CreateLShr(Dest2, Shift);
+        Dest3 = Builder.CreateLShr(Dest3, Shift);
+        Dest4 = Builder.CreateLShr(Dest4, Shift);
+
+        Builder.CreateStore(Dest1, getXMMPtr(ID, 0, Int32PtrTy));
+        Builder.CreateStore(Dest2, getXMMPtr(ID, 4, Int32PtrTy));
+        Builder.CreateStore(Dest3, getXMMPtr(ID, 8, Int32PtrTy));
+        Builder.CreateStore(Dest4, getXMMPtr(ID, 12, Int32PtrTy));
+
+    } else if (DestOpnd.isMMX()) {
+
+        int ID = DestOpnd.GetMMXID();
+        Value *Dest1 = Builder.CreateLoad(getMMXPtr(ID, 0, Int32PtrTy));
+        Value *Dest2 = Builder.CreateLoad(getMMXPtr(ID, 4, Int32PtrTy));
+
+        Dest1 = Builder.CreateLShr(Dest1, Shift);
+        Dest2 = Builder.CreateLShr(Dest2, Shift);
+
+        Builder.CreateStore(Dest1, getMMXPtr(ID, 0, Int32PtrTy));
+        Builder.CreateStore(Dest2, getMMXPtr(ID, 4, Int32PtrTy));
+    }
+    Builder.CreateBr(EndBB);
+
+    /*----------------------------------------------*/
+
+    Builder.SetInsertPoint(LargBB);
+    if (DestOpnd.isXMM()) {
+
+        Builder.CreateStore(ConstInt(Int64Ty, 0),
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+        Builder.CreateStore(ConstInt(Int64Ty, 0),
+                            getXMMPtr(DestOpnd.GetXMMID(), 8, Int64PtrTy));
+    } else if (DestOpnd.isMMX()) {
+
+        StoreOperand(ConstInt(Int64Ty, 0), InstHdl.getOpnd(1));
+    }
+    Builder.CreateBr(EndBB);
+    /*----------------------------------------------*/
+
+    Builder.SetInsertPoint(EndBB);
 }
+
+// void X86Translator::translate_psrlq(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction psrlq\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_psrlq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction psrlq\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *Shift = nullptr;
+    if (SrcOpnd.isXMM()) {
+        Shift = Builder.CreateLoad(getXMMPtr(SrcOpnd.GetXMMID(), 0, Int8PtrTy));
+    } else {
+        Shift = LoadOperand(InstHdl.getOpnd(0));
+    }
+    Shift = Builder.CreateZExtOrTrunc(Shift, Int64Ty);
+    BasicBlock *LessBB = BasicBlock::Create(Context, "Less", TransFunc, ExitBB);
+    BasicBlock *LargBB = BasicBlock::Create(Context, "Larg", TransFunc, ExitBB);
+    BasicBlock *EndBB = BasicBlock::Create(Context, "End", TransFunc, ExitBB);
+    Value *Cond = Builder.CreateICmpUGT(Shift, ConstInt(Int64Ty, 63));
+    Builder.CreateCondBr(Cond, LargBB, LessBB);
+
+    /*----------------------------------------------*/
+    Builder.SetInsertPoint(LessBB);
+
+    if (DestOpnd.isXMM()) {
+        Value *DestLow =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+        Value *DestHigh =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetXMMID(), 8, Int64PtrTy));
+
+        DestLow = Builder.CreateLShr(DestLow, Shift);
+        DestHigh = Builder.CreateLShr(DestHigh, Shift);
+        Builder.CreateStore(DestLow,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+        Builder.CreateStore(DestHigh,
+                            getXMMPtr(DestOpnd.GetXMMID(), 8, Int64PtrTy));
+    } else if (DestOpnd.isMMX()) {
+        Value *DestValue = LoadOperand(InstHdl.getOpnd(1), Int64Ty);
+        DestValue = Builder.CreateLShr(DestValue, Shift);
+        StoreOperand(DestValue, InstHdl.getOpnd(1));
+    }
+    Builder.CreateBr(EndBB);
+    /*----------------------------------------------*/
+
+    Builder.SetInsertPoint(LargBB);
+    if (DestOpnd.isXMM()) {
+
+        Builder.CreateStore(ConstInt(Int64Ty, 0),
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+        Builder.CreateStore(ConstInt(Int64Ty, 0),
+                            getXMMPtr(DestOpnd.GetXMMID(), 8, Int64PtrTy));
+    } else if (DestOpnd.isMMX()) {
+
+        StoreOperand(ConstInt(Int64Ty, 0), InstHdl.getOpnd(1));
+    }
+    Builder.CreateBr(EndBB);
+    /*----------------------------------------------*/
+
+    Builder.SetInsertPoint(EndBB);
 }
+
+// void X86Translator::translate_psrlw(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction psrlw\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_psrlw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction psrlw\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *Shift = nullptr;
+    if (SrcOpnd.isXMM()) {
+        Shift = Builder.CreateLoad(getXMMPtr(SrcOpnd.GetXMMID(), 0, Int8PtrTy));
+    } else {
+        Shift = LoadOperand(InstHdl.getOpnd(0));
+    }
+    Shift = Builder.CreateZExtOrTrunc(Shift, Int16Ty);
+
+    BasicBlock *LessBB = BasicBlock::Create(Context, "Less", TransFunc, ExitBB);
+    BasicBlock *LargBB = BasicBlock::Create(Context, "Larg", TransFunc, ExitBB);
+    BasicBlock *EndBB = BasicBlock::Create(Context, "End", TransFunc, ExitBB);
+    Value *Cond = Builder.CreateICmpUGT(Shift, ConstInt(Int16Ty, 15));
+
+    Builder.CreateCondBr(Cond, LargBB, LessBB);
+
+    /*----------------------------------------------*/
+    Builder.SetInsertPoint(LessBB);
+
+    if (DestOpnd.isXMM()) {
+        int ID = DestOpnd.GetXMMID();
+        Value *Dest1 = Builder.CreateLoad(getXMMPtr(ID, 0, Int16PtrTy));
+        Value *Dest2 = Builder.CreateLoad(getXMMPtr(ID, 2, Int16PtrTy));
+        Value *Dest3 = Builder.CreateLoad(getXMMPtr(ID, 4, Int16PtrTy));
+        Value *Dest4 = Builder.CreateLoad(getXMMPtr(ID, 6, Int16PtrTy));
+        Value *Dest5 = Builder.CreateLoad(getXMMPtr(ID, 8, Int16PtrTy));
+        Value *Dest6 = Builder.CreateLoad(getXMMPtr(ID, 10, Int16PtrTy));
+        Value *Dest7 = Builder.CreateLoad(getXMMPtr(ID, 12, Int16PtrTy));
+        Value *Dest8 = Builder.CreateLoad(getXMMPtr(ID, 14, Int16PtrTy));
+
+        Dest1 = Builder.CreateLShr(Dest1, Shift);
+        Dest2 = Builder.CreateLShr(Dest2, Shift);
+        Dest3 = Builder.CreateLShr(Dest3, Shift);
+        Dest4 = Builder.CreateLShr(Dest4, Shift);
+        Dest5 = Builder.CreateLShr(Dest5, Shift);
+        Dest6 = Builder.CreateLShr(Dest6, Shift);
+        Dest7 = Builder.CreateLShr(Dest7, Shift);
+        Dest8 = Builder.CreateLShr(Dest8, Shift);
+        Builder.CreateStore(Dest1, getXMMPtr(ID, 0, Int16PtrTy));
+        Builder.CreateStore(Dest2, getXMMPtr(ID, 2, Int16PtrTy));
+        Builder.CreateStore(Dest3, getXMMPtr(ID, 4, Int16PtrTy));
+        Builder.CreateStore(Dest4, getXMMPtr(ID, 6, Int16PtrTy));
+        Builder.CreateStore(Dest5, getXMMPtr(ID, 8, Int16PtrTy));
+        Builder.CreateStore(Dest6, getXMMPtr(ID, 10, Int16PtrTy));
+        Builder.CreateStore(Dest7, getXMMPtr(ID, 12, Int16PtrTy));
+        Builder.CreateStore(Dest8, getXMMPtr(ID, 14, Int16PtrTy));
+
+    } else if (DestOpnd.isMMX()) {
+
+        int ID = DestOpnd.GetMMXID();
+        Value *Dest1 = Builder.CreateLoad(getMMXPtr(ID, 0, Int16PtrTy));
+        Value *Dest2 = Builder.CreateLoad(getMMXPtr(ID, 2, Int16PtrTy));
+        Value *Dest3 = Builder.CreateLoad(getMMXPtr(ID, 4, Int16PtrTy));
+        Value *Dest4 = Builder.CreateLoad(getMMXPtr(ID, 6, Int16PtrTy));
+
+        Dest1 = Builder.CreateLShr(Dest1, Shift);
+        Dest2 = Builder.CreateLShr(Dest2, Shift);
+        Dest3 = Builder.CreateLShr(Dest3, Shift);
+        Dest4 = Builder.CreateLShr(Dest4, Shift);
+
+        Builder.CreateStore(Dest1, getMMXPtr(ID, 0, Int16PtrTy));
+        Builder.CreateStore(Dest2, getMMXPtr(ID, 2, Int16PtrTy));
+        Builder.CreateStore(Dest3, getMMXPtr(ID, 4, Int16PtrTy));
+        Builder.CreateStore(Dest4, getMMXPtr(ID, 6, Int16PtrTy));
+    }
+
+    Builder.CreateBr(EndBB);
+
+    /*----------------------------------------------*/
+
+    Builder.SetInsertPoint(LargBB);
+    if (DestOpnd.isXMM()) {
+
+        Builder.CreateStore(ConstInt(Int64Ty, 0),
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+        Builder.CreateStore(ConstInt(Int64Ty, 0),
+                            getXMMPtr(DestOpnd.GetXMMID(), 8, Int64PtrTy));
+    } else if (DestOpnd.isMMX()) {
+
+        StoreOperand(ConstInt(Int64Ty, 0), InstHdl.getOpnd(1));
+    }
+    Builder.CreateBr(EndBB);
+    /*----------------------------------------------*/
+
+    Builder.SetInsertPoint(EndBB);
 }
+
 void X86Translator::translate_monitor(GuestInst *Inst) {
     dbgs() << "Untranslated instruction monitor\n";
     exit(-1);
@@ -1064,8 +1784,26 @@ void X86Translator::translate_pcmpgtq(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_pcmpistri(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction pcmpistri\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+    // X86OperandHandler ImmOpnd(InstHdl.getOpnd(0));
+    Value *mode = LoadOperand(InstHdl.getOpnd(0));
+    mode = Builder.CreateAnd(mode, ConstInt(mode->getType(), 7));
+    mode = Builder.CreateZExt(mode, Int32Ty);
+    FunctionType *FTy = FunctionType::get(
+        VoidTy, {Int8PtrTy, Int128PtrTy, Int128PtrTy, Int32Ty}, false);
+
+    Value *Addr_SRC = nullptr;
+    if (SrcOpnd.isXMM())
+        Addr_SRC = getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy);
+    else {
+        Addr_SRC = CalcMemAddr(InstHdl.getOpnd(1));
+        Addr_SRC = Builder.CreateIntToPtr(Addr_SRC, Int128PtrTy);
+    }
+    Value *Addr_DEST = getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy);
+    CallFunc(FTy, "helper_pcmpistri_xmm", {CPUEnv, Addr_DEST, Addr_SRC, mode});
 }
 void X86Translator::translate_pcmpistrm(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pcmpistrm\n";
@@ -1334,45 +2072,117 @@ void X86Translator::translate_popfq(GuestInst *Inst) {
     Value *NewESP = Builder.CreateAdd(OldESP, ConstInt(Int64Ty, 8));
     StoreGMRValue(NewESP, X86Config::RSP);
 }
-void X86Translator::translate_prefetch(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction prefetch\n";
-    exit(-1);
-}
-void X86Translator::translate_prefetchnta(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction prefetchnta\n";
-    exit(-1);
-}
-void X86Translator::translate_prefetcht0(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction prefetcht0\n";
-    exit(-1);
-}
-void X86Translator::translate_prefetcht1(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction prefetcht1\n";
-    exit(-1);
-}
-void X86Translator::translate_prefetcht2(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction prefetcht2\n";
-    exit(-1);
-}
-void X86Translator::translate_prefetchw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction prefetchw\n";
-    exit(-1);
-}
+void X86Translator::translate_prefetch(GuestInst *Inst) { ; }
+void X86Translator::translate_prefetchnta(GuestInst *Inst) { ; }
+void X86Translator::translate_prefetcht0(GuestInst *Inst) { ; }
+void X86Translator::translate_prefetcht1(GuestInst *Inst) { ; }
+void X86Translator::translate_prefetcht2(GuestInst *Inst) { ; }
+void X86Translator::translate_prefetchw(GuestInst *Inst) { ; }
 void X86Translator::translate_pswapd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction pswapd\n";
     exit(-1);
 }
 void X86Translator::translate_ptest(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction ptest\n";
-    exit(-1);
+
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+    Value *Src = nullptr;
+    if (SrcOpnd.isXMM()) {
+        Src = Builder.CreateLoad(getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy));
+    } else {
+        Src = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+    }
+    Value *Dest =
+        Builder.CreateLoad(getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+
+    FlushGMRValue(X86Config::EFLAG);
+    Value *EflgPtr = Builder.CreateGEP(Int8Ty, CPUEnv,
+                                       ConstInt(Int32Ty, GuestEflagOffset()));
+    EflgPtr = Builder.CreateBitCast(EflgPtr, Int32PtrTy);
+    Value *old_flag = Builder.CreateLoad(Int32Ty, EflgPtr);
+    Value *CF = nullptr;
+    Value *ZF = nullptr;
+
+    CF = Builder.CreateAnd(Src, Dest);
+    CF = Builder.CreateICmpEQ(CF, ConstInt(Int128Ty, 0));
+
+    Dest = Builder.CreateNot(Dest);
+    ZF = Builder.CreateAnd(Src, Dest);
+    ZF = Builder.CreateICmpEQ(ZF, ConstInt(Int128Ty, 0));
+
+    CF = Builder.CreateZExt(CF, Int32Ty);
+    ZF = Builder.CreateZExt(ZF, Int32Ty);
+    ZF = Builder.CreateShl(ZF, ConstInt(Int32Ty, 6));
+    old_flag = Builder.CreateAnd(old_flag, ConstInt(Int32Ty, 0xffffffba));
+    old_flag = Builder.CreateOr(old_flag, CF);
+    old_flag = Builder.CreateOr(old_flag, ZF);
+    Builder.CreateStore(old_flag, EflgPtr);
+    ReloadGMRValue(X86Config::EFLAG);
 }
 void X86Translator::translate_punpckhqdq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction punpckhqdq\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    // helper_punpcklvw_xxx function type.
+    FunctionType *FuncTy =
+        FunctionType::get(Int32Ty, {Int8PtrTy, Int64PtrTy, Int64PtrTy}, false);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *DestPtr = nullptr;
+    Value *SrcPtr = nullptr;
+
+    if (DestOpnd.isXMM()) {
+        DestPtr = getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy);
+        if (SrcOpnd.isXMM())
+            SrcPtr = getXMMPtr(SrcOpnd.GetXMMID(), 0, Int64PtrTy);
+        else {
+            SrcPtr = CalcMemAddr(InstHdl.getOpnd(0));
+            SrcPtr = Builder.CreateIntToPtr(SrcPtr, Int64PtrTy);
+        }
+        CallFunc(FuncTy, "helper_punpckhqdq_xmm", {CPUEnv, DestPtr, SrcPtr});
+    } else if (DestOpnd.isMMX()) {
+        DestPtr = getMMXPtr(DestOpnd.GetMMXID(), 0, Int64PtrTy);
+        if (SrcOpnd.isMMX())
+            SrcPtr = getMMXPtr(SrcOpnd.GetMMXID(), 0, Int64PtrTy);
+        else {
+            SrcPtr = CalcMemAddr(InstHdl.getOpnd(0));
+            SrcPtr = Builder.CreateIntToPtr(SrcPtr, Int64PtrTy);
+        }
+        CallFunc(FuncTy, "helper_punpckhqdq_mmx", {CPUEnv, DestPtr, SrcPtr});
+    }
 }
 void X86Translator::translate_punpcklqdq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction punpcklqdq\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    // helper_punpcklvw_xxx function type.
+    FunctionType *FuncTy =
+        FunctionType::get(Int32Ty, {Int8PtrTy, Int64PtrTy, Int64PtrTy}, false);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *DestPtr = nullptr;
+    Value *SrcPtr = nullptr;
+
+    if (DestOpnd.isXMM()) {
+        DestPtr = getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy);
+        if (SrcOpnd.isXMM())
+            SrcPtr = getXMMPtr(SrcOpnd.GetXMMID(), 0, Int64PtrTy);
+        else {
+            SrcPtr = CalcMemAddr(InstHdl.getOpnd(0));
+            SrcPtr = Builder.CreateIntToPtr(SrcPtr, Int64PtrTy);
+        }
+        CallFunc(FuncTy, "helper_punpcklqdq_xmm", {CPUEnv, DestPtr, SrcPtr});
+    } else if (DestOpnd.isMMX()) {
+        DestPtr = getMMXPtr(DestOpnd.GetMMXID(), 0, Int64PtrTy);
+        if (SrcOpnd.isMMX())
+            SrcPtr = getMMXPtr(SrcOpnd.GetMMXID(), 0, Int64PtrTy);
+        else {
+            SrcPtr = CalcMemAddr(InstHdl.getOpnd(0));
+            SrcPtr = Builder.CreateIntToPtr(SrcPtr, Int64PtrTy);
+        }
+        CallFunc(FuncTy, "helper_punpcklqdq_mmx", {CPUEnv, DestPtr, SrcPtr});
+    }
 }
 void X86Translator::translate_push(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
@@ -1486,8 +2296,23 @@ void X86Translator::translate_roundps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_roundsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction roundsd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+    // X86OperandHandler ImmOpnd(InstHdl.getOpnd(0));
+    Value *mode = LoadOperand(InstHdl.getOpnd(0));
+    mode = Builder.CreateAnd(mode, ConstInt(mode->getType(), 7));
+    FunctionType *FTy = FunctionType::get(
+        VoidTy, {Int8PtrTy, Int64PtrTy, Int64PtrTy, Int8Ty}, false);
+
+    Value *Addr_SRC = nullptr;
+    if (SrcOpnd.isXMM())
+        Addr_SRC = getXMMPtr(SrcOpnd.GetXMMID(), 0, Int64PtrTy);
+    else
+        Addr_SRC = CalcMemAddr(InstHdl.getOpnd(1));
+    Value *Addr_DEST = getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy);
+    CallFunc(FTy, "helper_roundsd_xmm", {CPUEnv, Addr_DEST, Addr_SRC, mode});
 }
 void X86Translator::translate_roundss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction roundss\n";
@@ -1501,10 +2326,22 @@ void X86Translator::translate_rsqrtps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction rsqrtps\n";
     exit(-1);
 }
+// void X86Translator::translate_rsqrtss(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction rsqrtss\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_rsqrtss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction rsqrtss\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *Dest_Ptr = getXMMPtr(DestOpnd.GetXMMID(), 0, Int8PtrTy);
+    Value *Src_Ptr = getXMMPtr(SrcOpnd.GetXMMID(), 0, Int8PtrTy);
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int8PtrTy, Int8PtrTy}, false);
+    CallFunc(FTy, "helper_rsqrtss", {CPUEnv, Dest_Ptr, Src_Ptr});
 }
+
 void X86Translator::translate_sahf(GuestInst *Inst) {
     dbgs() << "Untranslated instruction sahf\n";
     exit(-1);
@@ -1522,8 +2359,8 @@ void X86Translator::translate_sarx(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_sfence(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction sfence\n";
-    exit(-1);
+    // dbgs() << "Untranslated instruction sfence\n";
+    // exit(-1);
 }
 void X86Translator::translate_sgdt(GuestInst *Inst) {
     dbgs() << "Untranslated instruction sgdt\n";
@@ -1673,24 +2510,307 @@ void X86Translator::translate_unpckhps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_unpcklpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction unpcklpd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *Low = nullptr;
+    if (SrcOpnd.isXMM())
+        Low = Builder.CreateLoad(getXMMPtr(SrcOpnd.GetXMMID(), 0, Int64PtrTy));
+    else {
+        Low = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+        Low = Builder.CreateTrunc(Low, Int64Ty);
+    }
+    Value *High =
+        Builder.CreateLoad(getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+    Builder.CreateStore(High, getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+    Builder.CreateStore(Low, getXMMPtr(DestOpnd.GetXMMID(), 8, Int64PtrTy));
 }
 void X86Translator::translate_unpcklps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction unpcklps\n";
     exit(-1);
 }
 void X86Translator::translate_vaddpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vaddpd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 8, FP64PtrTy));
+        if (SrcOpnd1.isXMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 8, FP64PtrTy));
+        } else {
+            Src1_2 = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+            Src1_1 = Builder.CreateTrunc(Src1_2, Int64Ty);
+            Src1_2 = Builder.CreateLShr(Src1_2, ConstInt(Int128Ty, 64));
+            Src1_2 = Builder.CreateTrunc(Src1_2, Int64Ty);
+            Src1_1 = Builder.CreateBitCast(Src1_1, FP64Ty);
+            Src1_2 = Builder.CreateBitCast(Src1_2, FP64Ty);
+        }
+        Dest1 = Builder.CreateFAdd(Src1_1, Src2_1);
+        Dest2 = Builder.CreateFAdd(Src1_2, Src2_2);
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetXMMID(), 8, FP64PtrTy));
+    } else if (DestOpnd.isYMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+        Value *Src1_3 = nullptr;
+        Value *Src1_4 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+        Value *Src2_3 = nullptr;
+        Value *Src2_4 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+        Value *Dest3 = nullptr;
+        Value *Dest4 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 0, FP64PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 8, FP64PtrTy));
+        Src2_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 16, FP64PtrTy));
+        Src2_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 24, FP64PtrTy));
+        if (SrcOpnd1.isYMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 0, FP64PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 8, FP64PtrTy));
+            Src1_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 16, FP64PtrTy));
+            Src1_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 24, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 8));
+            Value *Addr3 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Value *Addr4 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 24));
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, FP64PtrTy);
+            Addr3 = Builder.CreateIntToPtr(Addr3, FP64PtrTy);
+            Addr4 = Builder.CreateIntToPtr(Addr4, FP64PtrTy);
+            Src1_1 = Builder.CreateLoad(FP64Ty, Addr1);
+            Src1_2 = Builder.CreateLoad(FP64Ty, Addr2);
+            Src1_3 = Builder.CreateLoad(FP64Ty, Addr3);
+            Src1_4 = Builder.CreateLoad(FP64Ty, Addr4);
+        }
+
+        Dest1 = Builder.CreateFAdd(Src1_1, Src2_1);
+        Dest2 = Builder.CreateFAdd(Src1_2, Src2_2);
+        Dest3 = Builder.CreateFAdd(Src1_3, Src2_3);
+        Dest4 = Builder.CreateFAdd(Src1_4, Src2_4);
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetYMMID(), 0, FP64PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetYMMID(), 8, FP64PtrTy));
+        Builder.CreateStore(Dest3,
+                            getXMMPtr(DestOpnd.GetYMMID(), 16, FP64PtrTy));
+        Builder.CreateStore(Dest4,
+                            getXMMPtr(DestOpnd.GetYMMID(), 24, FP64PtrTy));
+    } else if (DestOpnd.isZMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+        Value *Src1_3 = nullptr;
+        Value *Src1_4 = nullptr;
+        Value *Src1_5 = nullptr;
+        Value *Src1_6 = nullptr;
+        Value *Src1_7 = nullptr;
+        Value *Src1_8 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+        Value *Src2_3 = nullptr;
+        Value *Src2_4 = nullptr;
+        Value *Src2_5 = nullptr;
+        Value *Src2_6 = nullptr;
+        Value *Src2_7 = nullptr;
+        Value *Src2_8 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+        Value *Dest3 = nullptr;
+        Value *Dest4 = nullptr;
+        Value *Dest5 = nullptr;
+        Value *Dest6 = nullptr;
+        Value *Dest7 = nullptr;
+        Value *Dest8 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 0, FP64PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 8, FP64PtrTy));
+        Src2_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 16, FP64PtrTy));
+        Src2_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 24, FP64PtrTy));
+        Src2_5 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 32, FP64PtrTy));
+        Src2_6 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 40, FP64PtrTy));
+        Src2_7 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 48, FP64PtrTy));
+        Src2_8 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 56, FP64PtrTy));
+        if (SrcOpnd1.isZMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 0, FP64PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 8, FP64PtrTy));
+            Src1_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 16, FP64PtrTy));
+            Src1_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 24, FP64PtrTy));
+            Src1_5 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 32, FP64PtrTy));
+            Src1_6 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 40, FP64PtrTy));
+            Src1_7 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 48, FP64PtrTy));
+            Src1_8 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 56, FP64PtrTy));
+        } else {
+            llvm_unreachable("vaddpd: error");
+        }
+
+        Dest1 = Builder.CreateFAdd(Src1_1, Src2_1);
+        Dest2 = Builder.CreateFAdd(Src1_2, Src2_2);
+        Dest3 = Builder.CreateFAdd(Src1_3, Src2_3);
+        Dest4 = Builder.CreateFAdd(Src1_4, Src2_4);
+        Dest5 = Builder.CreateFAdd(Src1_5, Src2_5);
+        Dest6 = Builder.CreateFAdd(Src1_6, Src2_6);
+        Dest7 = Builder.CreateFAdd(Src1_7, Src2_7);
+        Dest8 = Builder.CreateFAdd(Src1_8, Src2_8);
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetZMMID(), 0, FP64PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetZMMID(), 8, FP64PtrTy));
+        Builder.CreateStore(Dest3,
+                            getXMMPtr(DestOpnd.GetZMMID(), 16, FP64PtrTy));
+        Builder.CreateStore(Dest4,
+                            getXMMPtr(DestOpnd.GetZMMID(), 24, FP64PtrTy));
+        Builder.CreateStore(Dest5,
+                            getXMMPtr(DestOpnd.GetZMMID(), 32, FP64PtrTy));
+        Builder.CreateStore(Dest6,
+                            getXMMPtr(DestOpnd.GetZMMID(), 40, FP64PtrTy));
+        Builder.CreateStore(Dest7,
+                            getXMMPtr(DestOpnd.GetZMMID(), 48, FP64PtrTy));
+        Builder.CreateStore(Dest8,
+                            getXMMPtr(DestOpnd.GetZMMID(), 56, FP64PtrTy));
+    }
 }
 void X86Translator::translate_vaddps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vaddps\n";
     exit(-1);
 }
 void X86Translator::translate_vaddsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vaddsd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    {
+        Value *Src1_1 = nullptr;
+        Value *Src2_1 = nullptr;
+        Value *Dest1 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+        if (SrcOpnd1.isXMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+        } else {
+            Src1_1 = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+            Src1_1 = Builder.CreateTrunc(Src1_1, Int64Ty);
+
+            Src1_1 = Builder.CreateBitCast(Src1_1, FP64Ty);
+        }
+        Dest1 = Builder.CreateFAdd(Src1_1, Src2_1);
+
+        Value *Src1_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 8, FP64PtrTy));
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+        Builder.CreateStore(Src1_2,
+                            getXMMPtr(DestOpnd.GetXMMID(), 8, FP64PtrTy));
+    }
+    // else if(DestOpnd.isYMM()){
+    //     Value * Src1_1 = nullptr;
+
+    //     Value * Src2_1 = nullptr;
+
+    //     Value * Dest1 = nullptr;
+
+    //     Src2_1 = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 0,
+    //     FP64PtrTy));
+
+    //     if (SrcOpnd1.isYMM()) {
+    //         Src1_1 = Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 0,
+    //         FP64PtrTy));
+
+    //     }
+    //     else {
+    //         Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+
+    //         Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+
+    //         Src1_1 = Builder.CreateLoad(FP64Ty,Addr1);
+
+    //     }
+
+    //     Dest1 = Builder.CreateFAdd(Src1_1, Src2_1);
+
+    //     Builder.CreateStore(Dest1,getXMMPtr(DestOpnd.GetYMMID(),0,FP64PtrTy));
+
+    // }
+    // else if(DestOpnd.isZMM()){
+    //     Value * Src1_1 = nullptr;
+
+    //     Value * Src2_1 = nullptr;
+
+    //     Value * Dest1 = nullptr;
+
+    //     Src2_1 = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 0,
+    //     FP64PtrTy));
+
+    //     if (SrcOpnd1.isZMM()) {
+    //         Src1_1 = Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 0,
+    //         FP64PtrTy));
+
+    //     }
+    //     else {
+    //         llvm_unreachable("vaddsd: error");
+    //     }
+
+    //     Dest1 = Builder.CreateFAdd(Src1_1, Src2_1);
+
+    //     Builder.CreateStore(Dest1,getXMMPtr(DestOpnd.GetZMMID(),0,FP64PtrTy));
+
+    // }
 }
 void X86Translator::translate_vaddss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vaddss\n";
@@ -1737,20 +2857,486 @@ void X86Translator::translate_valignq(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vandnpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vandnpd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src2_1 = nullptr;
+        Value *Dest1 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int128PtrTy));
+        if (SrcOpnd1.isXMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int128PtrTy));
+        } else {
+            Src1_1 = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+        }
+
+        Src2_1 = Builder.CreateNot(Src2_1);
+
+        Dest1 = Builder.CreateAnd(Src1_1, Src2_1);
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+    } else if (DestOpnd.isYMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 0, Int128PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 16, Int128PtrTy));
+
+        if (SrcOpnd1.isYMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 0, Int128PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 16, Int128PtrTy));
+
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Src1_1 = Builder.CreateLoad(Int128Ty, Addr1);
+            Src1_2 = Builder.CreateLoad(Int128Ty, Addr2);
+        }
+
+        Src2_1 = Builder.CreateNot(Src2_1);
+        Src2_2 = Builder.CreateNot(Src2_2);
+
+        Dest1 = Builder.CreateAnd(Src1_1, Src2_1);
+        Dest2 = Builder.CreateAnd(Src1_2, Src2_2);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetYMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetYMMID(), 16, Int128PtrTy));
+    } else if (DestOpnd.isZMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+        Value *Src1_3 = nullptr;
+        Value *Src1_4 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+        Value *Src2_3 = nullptr;
+        Value *Src2_4 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+        Value *Dest3 = nullptr;
+        Value *Dest4 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 0, Int128PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 16, Int128PtrTy));
+        Src2_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 32, Int128PtrTy));
+        Src2_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 48, Int128PtrTy));
+        if (SrcOpnd1.isZMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 0, Int128PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 16, Int128PtrTy));
+            Src1_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 32, Int128PtrTy));
+            Src1_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 48, Int128PtrTy));
+        } else {
+            llvm_unreachable("vandnpd: error");
+        }
+
+        Src2_1 = Builder.CreateNot(Src2_1);
+        Src2_2 = Builder.CreateNot(Src2_2);
+        Src2_3 = Builder.CreateNot(Src2_3);
+        Src2_4 = Builder.CreateNot(Src2_4);
+
+        Dest1 = Builder.CreateAnd(Src1_1, Src2_1);
+        Dest2 = Builder.CreateAnd(Src1_2, Src2_2);
+        Dest3 = Builder.CreateAnd(Src1_3, Src2_3);
+        Dest4 = Builder.CreateAnd(Src1_4, Src2_4);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetZMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetZMMID(), 16, Int128PtrTy));
+        Builder.CreateStore(Dest3,
+                            getXMMPtr(DestOpnd.GetZMMID(), 32, Int128PtrTy));
+        Builder.CreateStore(Dest4,
+                            getXMMPtr(DestOpnd.GetZMMID(), 48, Int128PtrTy));
+    }
 }
 void X86Translator::translate_vandnps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vandnps\n";
-    exit(-1);
+    translate_vandnpd(Inst);
+    // X86InstHandler InstHdl(Inst);
+
+    // X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    // X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    // X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    // if(DestOpnd.isXMM()){
+    //     Value * Src1_1 = nullptr;
+    //     Value * Src2_1 = nullptr;
+    //     Value * Dest1 = nullptr;
+
+    //     Src2_1 = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0,
+    //     Int128PtrTy)); if (SrcOpnd1.isXMM()) {
+    //         Src1_1 = Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0,
+    //         Int128PtrTy));
+    //     }
+    //     else {
+    //         Src1_1=LoadOperand(InstHdl.getOpnd(0),Int128Ty);
+
+    //     }
+
+    //     Src2_1 = Builder.CreateNot(Src2_1);
+
+    //     Dest1 = Builder.CreateAnd(Src1_1, Src2_1);
+    //     Builder.CreateStore(Dest1,getXMMPtr(DestOpnd.GetXMMID(),0,Int128PtrTy));
+    // }
+    // else if(DestOpnd.isYMM()){
+    //     Value * Src1_1 = nullptr;
+    //     Value * Src1_2 = nullptr;
+
+    //     Value * Src2_1 = nullptr;
+    //     Value * Src2_2 = nullptr;
+
+    //     Value * Dest1 = nullptr;
+    //     Value * Dest2 = nullptr;
+
+    //     Src2_1 = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 0,
+    //     Int128PtrTy)); Src2_2 =
+    //     Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 16, Int128PtrTy));
+
+    //     if (SrcOpnd1.isYMM()) {
+    //         Src1_1 = Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 0,
+    //         Int128PtrTy)); Src1_2 =
+    //         Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 16,
+    //         Int128PtrTy));
+
+    //     }
+    //     else {
+    //         Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+    //         Value *Addr2 =
+    //             Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+
+    //         Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+    //         Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+    //         Src1_1 = Builder.CreateLoad(Int128Ty,Addr1);
+    //         Src1_2 = Builder.CreateLoad(Int128Ty,Addr2);
+
+    //     }
+
+    //     Src2_1 = Builder.CreateNot(Src2_1);
+    //     Src2_2 = Builder.CreateNot(Src2_2);
+
+    //     Dest1 = Builder.CreateAnd(Src1_1, Src2_1);
+    //     Dest2 = Builder.CreateAnd(Src1_2, Src2_2);
+
+    //     Builder.CreateStore(Dest1,getXMMPtr(DestOpnd.GetYMMID(),0,Int128PtrTy));
+    //     Builder.CreateStore(Dest2,getXMMPtr(DestOpnd.GetYMMID(),16,Int128PtrTy));
+    // }
+    // else if(DestOpnd.isZMM()){
+    //     Value * Src1_1 = nullptr;
+    //     Value * Src1_2 = nullptr;
+    //     Value * Src1_3 = nullptr;
+    //     Value * Src1_4 = nullptr;
+
+    //     Value * Src2_1 = nullptr;
+    //     Value * Src2_2 = nullptr;
+    //     Value * Src2_3 = nullptr;
+    //     Value * Src2_4 = nullptr;
+
+    //     Value * Dest1 = nullptr;
+    //     Value * Dest2 = nullptr;
+    //     Value * Dest3 = nullptr;
+    //     Value * Dest4 = nullptr;
+
+    //     Src2_1 = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 0,
+    //     Int128PtrTy)); Src2_2 =
+    //     Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 16, Int128PtrTy));
+    //     Src2_3 = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 32,
+    //     Int128PtrTy)); Src2_4 =
+    //     Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 48, Int128PtrTy));
+    //     if (SrcOpnd1.isZMM()) {
+    //         Src1_1 = Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 0,
+    //         Int128PtrTy)); Src1_2 =
+    //         Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 16,
+    //         Int128PtrTy)); Src1_3 =
+    //         Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 32,
+    //         Int128PtrTy)); Src1_4 =
+    //         Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 48,
+    //         Int128PtrTy));
+    //     }
+    //     else {
+    //         llvm_unreachable("vandnpd: error");
+    //     }
+
+    //     Src2_1 = Builder.CreateNot(Src2_1);
+    //     Src2_2 = Builder.CreateNot(Src2_2);
+    //     Src2_3 = Builder.CreateNot(Src2_3);
+    //     Src2_4 = Builder.CreateNot(Src2_4);
+
+    //     Dest1 = Builder.CreateAnd(Src1_1, Src2_1);
+    //     Dest2 = Builder.CreateAnd(Src1_2, Src2_2);
+    //     Dest3 = Builder.CreateAnd(Src1_3, Src2_3);
+    //     Dest4 = Builder.CreateAnd(Src1_4, Src2_4);
+
+    //     Builder.CreateStore(Dest1,getXMMPtr(DestOpnd.GetZMMID(),0,Int128PtrTy));
+    //     Builder.CreateStore(Dest2,getXMMPtr(DestOpnd.GetZMMID(),16,Int128PtrTy));
+    //     Builder.CreateStore(Dest3,getXMMPtr(DestOpnd.GetZMMID(),32,Int128PtrTy));
+    //     Builder.CreateStore(Dest4,getXMMPtr(DestOpnd.GetZMMID(),48,Int128PtrTy));
+    // }
 }
+
 void X86Translator::translate_vandpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vandpd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src2_1 = nullptr;
+        Value *Dest1 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int128PtrTy));
+        if (SrcOpnd1.isXMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int128PtrTy));
+        } else {
+            Src1_1 = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+        }
+
+        Dest1 = Builder.CreateAnd(Src1_1, Src2_1);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+    } else if (DestOpnd.isYMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 0, Int128PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 16, Int128PtrTy));
+
+        if (SrcOpnd1.isYMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 0, Int128PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 16, Int128PtrTy));
+
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Src1_1 = Builder.CreateLoad(Int128Ty, Addr1);
+            Src1_2 = Builder.CreateLoad(Int128Ty, Addr2);
+        }
+
+        Dest1 = Builder.CreateAnd(Src1_1, Src2_1);
+        Dest2 = Builder.CreateAnd(Src1_2, Src2_2);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetYMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetYMMID(), 16, Int128PtrTy));
+    } else if (DestOpnd.isZMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+        Value *Src1_3 = nullptr;
+        Value *Src1_4 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+        Value *Src2_3 = nullptr;
+        Value *Src2_4 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+        Value *Dest3 = nullptr;
+        Value *Dest4 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 0, Int128PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 16, Int128PtrTy));
+        Src2_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 32, Int128PtrTy));
+        Src2_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 48, Int128PtrTy));
+        if (SrcOpnd1.isZMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 0, Int128PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 16, Int128PtrTy));
+            Src1_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 32, Int128PtrTy));
+            Src1_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 48, Int128PtrTy));
+        } else {
+            llvm_unreachable("vandpd: error");
+        }
+
+        Dest1 = Builder.CreateAnd(Src1_1, Src2_1);
+        Dest2 = Builder.CreateAnd(Src1_2, Src2_2);
+        Dest3 = Builder.CreateAnd(Src1_3, Src2_3);
+        Dest4 = Builder.CreateAnd(Src1_4, Src2_4);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetZMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetZMMID(), 16, Int128PtrTy));
+        Builder.CreateStore(Dest3,
+                            getXMMPtr(DestOpnd.GetZMMID(), 32, Int128PtrTy));
+        Builder.CreateStore(Dest4,
+                            getXMMPtr(DestOpnd.GetZMMID(), 48, Int128PtrTy));
+    }
 }
+
 void X86Translator::translate_vandps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vandps\n";
-    exit(-1);
+    translate_vandpd(Inst);
+    /*
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if(DestOpnd.isXMM()){
+        Value * Src1_1 = nullptr;
+        Value * Src2_1 = nullptr;
+        Value * Dest1 = nullptr;
+
+        Src2_1 = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0,
+    Int128PtrTy)); if (SrcOpnd1.isXMM()) { Src1_1 =
+    Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int128PtrTy));
+        }
+        else {
+            Src1_1=LoadOperand(InstHdl.getOpnd(0),Int128Ty);
+
+        }
+        Dest1 = Builder.CreateAnd(Src1_1, Src2_1);
+        Builder.CreateStore(Dest1,getXMMPtr(DestOpnd.GetXMMID(),0,Int128PtrTy));
+    }
+    else if(DestOpnd.isYMM()){
+        Value * Src1_1 = nullptr;
+        Value * Src1_2 = nullptr;
+
+
+        Value * Src2_1 = nullptr;
+        Value * Src2_2 = nullptr;
+
+
+        Value * Dest1 = nullptr;
+        Value * Dest2 = nullptr;
+
+
+        Src2_1 = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 0,
+    Int128PtrTy)); Src2_2 = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(),
+    16, Int128PtrTy));
+
+        if (SrcOpnd1.isYMM()) {
+            Src1_1 = Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 0,
+    Int128PtrTy)); Src1_2 = Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(),
+    16, Int128PtrTy));
+
+        }
+        else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Src1_1 = Builder.CreateLoad(Int128Ty,Addr1);
+            Src1_2 = Builder.CreateLoad(Int128Ty,Addr2);
+
+        }
+
+        Dest1 = Builder.CreateAnd(Src1_1, Src2_1);
+        Dest2 = Builder.CreateAnd(Src1_2, Src2_2);
+
+        Builder.CreateStore(Dest1,getXMMPtr(DestOpnd.GetYMMID(),0,Int128PtrTy));
+        Builder.CreateStore(Dest2,getXMMPtr(DestOpnd.GetYMMID(),16,Int128PtrTy));
+    }
+    else if(DestOpnd.isZMM()){
+        Value * Src1_1 = nullptr;
+        Value * Src1_2 = nullptr;
+        Value * Src1_3 = nullptr;
+        Value * Src1_4 = nullptr;
+
+
+        Value * Src2_1 = nullptr;
+        Value * Src2_2 = nullptr;
+        Value * Src2_3 = nullptr;
+        Value * Src2_4 = nullptr;
+
+
+        Value * Dest1 = nullptr;
+        Value * Dest2 = nullptr;
+        Value * Dest3 = nullptr;
+        Value * Dest4 = nullptr;
+
+
+        Src2_1 = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 0,
+    Int128PtrTy)); Src2_2 = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(),
+    16, Int128PtrTy)); Src2_3 =
+    Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 32, Int128PtrTy)); Src2_4
+    = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 48, Int128PtrTy)); if
+    (SrcOpnd1.isZMM()) { Src1_1 =
+    Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 0, Int128PtrTy)); Src1_2 =
+    Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 16, Int128PtrTy)); Src1_3
+    = Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 32, Int128PtrTy));
+            Src1_4 = Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 48,
+    Int128PtrTy));
+        }
+        else {
+            llvm_unreachable("vandps: error");
+        }
+
+        Dest1 = Builder.CreateAnd(Src1_1, Src2_1);
+        Dest2 = Builder.CreateAnd(Src1_2, Src2_2);
+        Dest3 = Builder.CreateAnd(Src1_3, Src2_3);
+        Dest4 = Builder.CreateAnd(Src1_4, Src2_4);
+
+        Builder.CreateStore(Dest1,getXMMPtr(DestOpnd.GetZMMID(),0,Int128PtrTy));
+        Builder.CreateStore(Dest2,getXMMPtr(DestOpnd.GetZMMID(),16,Int128PtrTy));
+        Builder.CreateStore(Dest3,getXMMPtr(DestOpnd.GetZMMID(),32,Int128PtrTy));
+        Builder.CreateStore(Dest4,getXMMPtr(DestOpnd.GetZMMID(),48,Int128PtrTy));
+    }
+    */
 }
 void X86Translator::translate_vblendmpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vblendmpd\n";
@@ -1789,12 +3375,78 @@ void X86Translator::translate_vbroadcasti64x4(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vbroadcastsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vbroadcastsd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *V = nullptr;
+    if (SrcOpnd.isXMM()) {
+        V = Builder.CreateLoad(getXMMPtr(SrcOpnd.GetXMMID(), 0, Int64PtrTy));
+    } else {
+        V = LoadOperand(InstHdl.getOpnd(0), Int64Ty);
+    }
+    if (DestOpnd.isXMM()) {
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 8, Int64PtrTy));
+    } else if (DestOpnd.isYMM()) {
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetYMMID(), 0, Int64PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetYMMID(), 8, Int64PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetYMMID(), 16, Int64PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetYMMID(), 24, Int64PtrTy));
+    } else if (DestOpnd.isZMM()) {
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetZMMID(), 0, Int64PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetZMMID(), 8, Int64PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetZMMID(), 16, Int64PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetZMMID(), 24, Int64PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetZMMID(), 32, Int64PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetZMMID(), 40, Int64PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetZMMID(), 48, Int64PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetZMMID(), 56, Int64PtrTy));
+    }
 }
 void X86Translator::translate_vbroadcastss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vbroadcastss\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *V = nullptr;
+    if (SrcOpnd.isXMM()) {
+        V = Builder.CreateLoad(getXMMPtr(SrcOpnd.GetXMMID(), 0, Int32PtrTy));
+    } else {
+        V = LoadOperand(InstHdl.getOpnd(0), Int32Ty);
+    }
+    if (DestOpnd.isXMM()) {
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 0, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 4, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 8, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 12, Int32PtrTy));
+    } else if (DestOpnd.isYMM()) {
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 0, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 4, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 8, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 12, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 16, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 20, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 24, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 28, Int32PtrTy));
+    } else if (DestOpnd.isZMM()) {
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 0, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 4, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 8, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 12, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 16, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 20, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 24, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 28, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 32, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 36, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 40, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 44, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 48, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 52, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 56, Int32PtrTy));
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 60, Int32PtrTy));
+    }
 }
 void X86Translator::translate_vcompresspd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vcompresspd\n";
@@ -1905,8 +3557,37 @@ void X86Translator::translate_vdivps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vdivsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vdivsd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src2_1 = nullptr;
+        Value *Dest1 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+        if (SrcOpnd1.isXMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+
+            Src1_1 = Builder.CreateLoad(FP64Ty, Addr1);
+        }
+        Dest1 = Builder.CreateFDiv(Src2_1, Src1_1);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+
+    } else {
+        llvm_unreachable("vdivsd : error!");
+    }
 }
 void X86Translator::translate_vdivss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vdivss\n";
@@ -1945,16 +3626,49 @@ void X86Translator::translate_vexpandps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vextractf128(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vextractf128\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+    X86OperandHandler ImmOpnd(InstHdl.getOpnd(0));
+
+    Value *Imm8 = LoadOperand(InstHdl.getOpnd(0), Int1Ty);
+    ConstantInt *CI = dyn_cast<ConstantInt>(Imm8);
+    int constIntValue = CI->getZExtValue();
+    Value *V = Builder.CreateLoad(
+        getXMMPtr(SrcOpnd.GetYMMID(), 16 * constIntValue, Int128PtrTy));
+    if (DestOpnd.isXMM()) {
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+    } else {
+        StoreOperand(V, InstHdl.getOpnd(2));
+    }
 }
 void X86Translator::translate_vextractf32x4(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vextractf32x4\n";
     exit(-1);
 }
 void X86Translator::translate_vextractf64x4(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vextractf64x4\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+    X86OperandHandler ImmOpnd(InstHdl.getOpnd(0));
+
+    Value *Imm8 = LoadOperand(InstHdl.getOpnd(0), Int1Ty);
+    ConstantInt *CI = dyn_cast<ConstantInt>(Imm8);
+    int constIntValue = CI->getZExtValue();
+    Value *V1 = Builder.CreateLoad(
+        getXMMPtr(SrcOpnd.GetZMMID(), 32 * constIntValue, Int128PtrTy));
+    Value *V2 = Builder.CreateLoad(
+        getXMMPtr(SrcOpnd.GetZMMID(), 32 * constIntValue + 16, Int128PtrTy));
+    if (DestOpnd.isYMM()) {
+        Builder.CreateStore(V1, getXMMPtr(DestOpnd.GetYMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(V2,
+                            getXMMPtr(DestOpnd.GetYMMID(), 16, Int128PtrTy));
+
+    } else {
+        llvm_unreachable("vextractf64x4: error");
+    }
 }
 void X86Translator::translate_vextracti128(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vextracti128\n";
@@ -1973,24 +3687,764 @@ void X86Translator::translate_vextractps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vfmadd132pd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vfmadd132pd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *D1 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+        Value *D2 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetXMMID(), 8, FP64PtrTy));
+        Value *S1_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+        Value *S1_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 8, FP64PtrTy));
+
+        Value *S2_1 = nullptr;
+        Value *S2_2 = nullptr;
+
+        if (SrcOpnd2.isXMM()) {
+            S2_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+            S2_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 8, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 8));
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, FP64PtrTy);
+            S2_1 = Builder.CreateLoad(Addr1);
+            S2_2 = Builder.CreateLoad(Addr2);
+        }
+        D1 = Builder.CreateFMul(D1, S2_1);
+        D1 = Builder.CreateFAdd(D1, S1_1);
+        Builder.CreateStore(D1, getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+
+        D2 = Builder.CreateFMul(D2, S2_2);
+        D2 = Builder.CreateFAdd(D2, S1_2);
+        Builder.CreateStore(D2, getXMMPtr(DestOpnd.GetXMMID(), 8, FP64PtrTy));
+
+    } else if (DestOpnd.isYMM()) {
+        Value *D1 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetYMMID(), 0, FP64PtrTy));
+        Value *D2 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetYMMID(), 8, FP64PtrTy));
+        Value *D3 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetYMMID(), 16, FP64PtrTy));
+        Value *D4 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetYMMID(), 24, FP64PtrTy));
+
+        Value *S1_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 0, FP64PtrTy));
+        Value *S1_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 8, FP64PtrTy));
+        Value *S1_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 16, FP64PtrTy));
+        Value *S1_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 24, FP64PtrTy));
+
+        Value *S2_1 = nullptr;
+        Value *S2_2 = nullptr;
+        Value *S2_3 = nullptr;
+        Value *S2_4 = nullptr;
+
+        if (SrcOpnd2.isYMM()) {
+            S2_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetYMMID(), 0, FP64PtrTy));
+            S2_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetYMMID(), 8, FP64PtrTy));
+            S2_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetYMMID(), 16, FP64PtrTy));
+            S2_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetYMMID(), 24, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 8));
+            Value *Addr3 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Value *Addr4 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 24));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, FP64PtrTy);
+            Addr3 = Builder.CreateIntToPtr(Addr3, FP64PtrTy);
+            Addr4 = Builder.CreateIntToPtr(Addr4, FP64PtrTy);
+            S2_1 = Builder.CreateLoad(Addr1);
+            S2_2 = Builder.CreateLoad(Addr2);
+            S2_3 = Builder.CreateLoad(Addr3);
+            S2_4 = Builder.CreateLoad(Addr4);
+        }
+        D1 = Builder.CreateFMul(D1, S2_1);
+        D1 = Builder.CreateFAdd(D1, S1_1);
+        Builder.CreateStore(D1, getXMMPtr(DestOpnd.GetYMMID(), 0, FP64PtrTy));
+
+        D2 = Builder.CreateFMul(D2, S2_2);
+        D2 = Builder.CreateFAdd(D2, S1_2);
+        Builder.CreateStore(D2, getXMMPtr(DestOpnd.GetYMMID(), 8, FP64PtrTy));
+
+        D3 = Builder.CreateFMul(D3, S2_3);
+        D3 = Builder.CreateFAdd(D3, S1_3);
+        Builder.CreateStore(D3, getXMMPtr(DestOpnd.GetYMMID(), 16, FP64PtrTy));
+
+        D4 = Builder.CreateFMul(D4, S2_4);
+        D4 = Builder.CreateFAdd(D4, S1_4);
+        Builder.CreateStore(D4, getXMMPtr(DestOpnd.GetYMMID(), 24, FP64PtrTy));
+
+    } else if (DestOpnd.isZMM()) {
+        Value *D1 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 0, FP64PtrTy));
+        Value *D2 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 8, FP64PtrTy));
+        Value *D3 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 16, FP64PtrTy));
+        Value *D4 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 24, FP64PtrTy));
+        Value *D5 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 32, FP64PtrTy));
+        Value *D6 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 40, FP64PtrTy));
+        Value *D7 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 48, FP64PtrTy));
+        Value *D8 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 56, FP64PtrTy));
+
+        Value *S1_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 0, FP64PtrTy));
+        Value *S1_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 8, FP64PtrTy));
+        Value *S1_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 16, FP64PtrTy));
+        Value *S1_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 24, FP64PtrTy));
+        Value *S1_5 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 32, FP64PtrTy));
+        Value *S1_6 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 40, FP64PtrTy));
+        Value *S1_7 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 48, FP64PtrTy));
+        Value *S1_8 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 56, FP64PtrTy));
+
+        Value *S2_1 = nullptr;
+        Value *S2_2 = nullptr;
+        Value *S2_3 = nullptr;
+        Value *S2_4 = nullptr;
+        Value *S2_5 = nullptr;
+        Value *S2_6 = nullptr;
+        Value *S2_7 = nullptr;
+        Value *S2_8 = nullptr;
+
+        if (SrcOpnd2.isZMM()) {
+            S2_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 0, FP64PtrTy));
+            S2_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 8, FP64PtrTy));
+            S2_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 16, FP64PtrTy));
+            S2_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 24, FP64PtrTy));
+            S2_5 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 32, FP64PtrTy));
+            S2_6 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 40, FP64PtrTy));
+            S2_7 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 48, FP64PtrTy));
+            S2_8 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 56, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 8));
+            Value *Addr3 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Value *Addr4 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 24));
+            Value *Addr5 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 32));
+            Value *Addr6 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 40));
+            Value *Addr7 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 48));
+            Value *Addr8 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 56));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, FP64PtrTy);
+            Addr3 = Builder.CreateIntToPtr(Addr3, FP64PtrTy);
+            Addr4 = Builder.CreateIntToPtr(Addr4, FP64PtrTy);
+            Addr5 = Builder.CreateIntToPtr(Addr5, FP64PtrTy);
+            Addr6 = Builder.CreateIntToPtr(Addr6, FP64PtrTy);
+            Addr7 = Builder.CreateIntToPtr(Addr7, FP64PtrTy);
+            Addr8 = Builder.CreateIntToPtr(Addr8, FP64PtrTy);
+            S2_1 = Builder.CreateLoad(Addr1);
+            S2_2 = Builder.CreateLoad(Addr2);
+            S2_3 = Builder.CreateLoad(Addr3);
+            S2_4 = Builder.CreateLoad(Addr4);
+            S2_5 = Builder.CreateLoad(Addr5);
+            S2_6 = Builder.CreateLoad(Addr6);
+            S2_7 = Builder.CreateLoad(Addr7);
+            S2_8 = Builder.CreateLoad(Addr8);
+        }
+        D1 = Builder.CreateFMul(D1, S2_1);
+        D1 = Builder.CreateFAdd(D1, S1_1);
+        Builder.CreateStore(D1, getXMMPtr(DestOpnd.GetZMMID(), 0, FP64PtrTy));
+
+        D2 = Builder.CreateFMul(D2, S2_2);
+        D2 = Builder.CreateFAdd(D2, S1_2);
+        Builder.CreateStore(D2, getXMMPtr(DestOpnd.GetZMMID(), 8, FP64PtrTy));
+
+        D3 = Builder.CreateFMul(D3, S2_3);
+        D3 = Builder.CreateFAdd(D3, S1_3);
+        Builder.CreateStore(D3, getXMMPtr(DestOpnd.GetZMMID(), 16, FP64PtrTy));
+
+        D4 = Builder.CreateFMul(D4, S2_4);
+        D4 = Builder.CreateFAdd(D4, S1_4);
+        Builder.CreateStore(D4, getXMMPtr(DestOpnd.GetZMMID(), 24, FP64PtrTy));
+
+        D5 = Builder.CreateFMul(D5, S2_5);
+        D5 = Builder.CreateFAdd(D5, S1_5);
+        Builder.CreateStore(D5, getXMMPtr(DestOpnd.GetZMMID(), 32, FP64PtrTy));
+
+        D6 = Builder.CreateFMul(D6, S2_6);
+        D6 = Builder.CreateFAdd(D6, S1_6);
+        Builder.CreateStore(D6, getXMMPtr(DestOpnd.GetZMMID(), 40, FP64PtrTy));
+
+        D7 = Builder.CreateFMul(D7, S2_7);
+        D7 = Builder.CreateFAdd(D7, S1_7);
+        Builder.CreateStore(D7, getXMMPtr(DestOpnd.GetZMMID(), 48, FP64PtrTy));
+
+        D8 = Builder.CreateFMul(D8, S2_8);
+        D8 = Builder.CreateFAdd(D8, S1_8);
+        Builder.CreateStore(D8, getXMMPtr(DestOpnd.GetZMMID(), 56, FP64PtrTy));
+    }
 }
 void X86Translator::translate_vfmadd132ps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vfmadd132ps\n";
     exit(-1);
 }
 void X86Translator::translate_vfmaddpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vfmaddpd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(2));
+    X86OperandHandler SrcOpnd3(InstHdl.getOpnd(3));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(0));
+
+    assert(DestOpnd.isXMM() && "vfmaddpd : XMM only");
+
+    Value *S2_1 =
+        Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+    Value *S2_2 =
+        Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 8, FP64PtrTy));
+
+    Value *S3_1 =
+        Builder.CreateLoad(getXMMPtr(SrcOpnd3.GetXMMID(), 0, FP64PtrTy));
+    Value *S3_2 =
+        Builder.CreateLoad(getXMMPtr(SrcOpnd3.GetXMMID(), 8, FP64PtrTy));
+
+    Value *S1_1 = nullptr;
+    Value *S1_2 = nullptr;
+
+    if (SrcOpnd1.isXMM()) {
+        S1_1 = Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+        S1_2 = Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 8, FP64PtrTy));
+    } else {
+        Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+        Value *Addr2 = Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 8));
+
+        Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+        Addr2 = Builder.CreateIntToPtr(Addr2, FP64PtrTy);
+
+        S1_1 = Builder.CreateLoad(Addr1);
+        S1_2 = Builder.CreateLoad(Addr2);
+    }
+    Value *V1 = Builder.CreateFMul(S1_1, S2_1);
+    V1 = Builder.CreateFAdd(V1, S3_1);
+
+    Value *V2 = Builder.CreateFMul(S1_2, S2_2);
+    V2 = Builder.CreateFAdd(V2, S3_2);
+
+    Builder.CreateStore(V1, getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+    Builder.CreateStore(V2, getXMMPtr(DestOpnd.GetXMMID(), 8, FP64PtrTy));
 }
 void X86Translator::translate_vfmadd213pd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vfmadd213pd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *D1 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+        Value *D2 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetXMMID(), 8, FP64PtrTy));
+        Value *S1_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+        Value *S1_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 8, FP64PtrTy));
+
+        Value *S2_1 = nullptr;
+        Value *S2_2 = nullptr;
+
+        if (SrcOpnd2.isXMM()) {
+            S2_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+            S2_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 8, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 8));
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, FP64PtrTy);
+            S2_1 = Builder.CreateLoad(Addr1);
+            S2_2 = Builder.CreateLoad(Addr2);
+        }
+        D1 = Builder.CreateFMul(D1, S1_1);
+        D1 = Builder.CreateFAdd(D1, S2_1);
+        Builder.CreateStore(D1, getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+
+        D2 = Builder.CreateFMul(D2, S1_2);
+        D2 = Builder.CreateFAdd(D2, S2_2);
+        Builder.CreateStore(D2, getXMMPtr(DestOpnd.GetXMMID(), 8, FP64PtrTy));
+
+    } else if (DestOpnd.isYMM()) {
+        Value *D1 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetYMMID(), 0, FP64PtrTy));
+        Value *D2 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetYMMID(), 8, FP64PtrTy));
+        Value *D3 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetYMMID(), 16, FP64PtrTy));
+        Value *D4 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetYMMID(), 24, FP64PtrTy));
+
+        Value *S1_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 0, FP64PtrTy));
+        Value *S1_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 8, FP64PtrTy));
+        Value *S1_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 16, FP64PtrTy));
+        Value *S1_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 24, FP64PtrTy));
+
+        Value *S2_1 = nullptr;
+        Value *S2_2 = nullptr;
+        Value *S2_3 = nullptr;
+        Value *S2_4 = nullptr;
+
+        if (SrcOpnd2.isYMM()) {
+            S2_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetYMMID(), 0, FP64PtrTy));
+            S2_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetYMMID(), 8, FP64PtrTy));
+            S2_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetYMMID(), 16, FP64PtrTy));
+            S2_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetYMMID(), 24, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 8));
+            Value *Addr3 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Value *Addr4 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 24));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, FP64PtrTy);
+            Addr3 = Builder.CreateIntToPtr(Addr3, FP64PtrTy);
+            Addr4 = Builder.CreateIntToPtr(Addr4, FP64PtrTy);
+            S2_1 = Builder.CreateLoad(Addr1);
+            S2_2 = Builder.CreateLoad(Addr2);
+            S2_3 = Builder.CreateLoad(Addr3);
+            S2_4 = Builder.CreateLoad(Addr4);
+        }
+        D1 = Builder.CreateFMul(D1, S1_1);
+        D1 = Builder.CreateFAdd(D1, S2_1);
+        Builder.CreateStore(D1, getXMMPtr(DestOpnd.GetYMMID(), 0, FP64PtrTy));
+
+        D2 = Builder.CreateFMul(D2, S1_2);
+        D2 = Builder.CreateFAdd(D2, S2_2);
+        Builder.CreateStore(D2, getXMMPtr(DestOpnd.GetYMMID(), 8, FP64PtrTy));
+
+        D3 = Builder.CreateFMul(D3, S1_3);
+        D3 = Builder.CreateFAdd(D3, S2_3);
+        Builder.CreateStore(D3, getXMMPtr(DestOpnd.GetYMMID(), 16, FP64PtrTy));
+
+        D4 = Builder.CreateFMul(D4, S1_4);
+        D4 = Builder.CreateFAdd(D4, S2_4);
+        Builder.CreateStore(D4, getXMMPtr(DestOpnd.GetYMMID(), 24, FP64PtrTy));
+
+    } else if (DestOpnd.isZMM()) {
+        Value *D1 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 0, FP64PtrTy));
+        Value *D2 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 8, FP64PtrTy));
+        Value *D3 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 16, FP64PtrTy));
+        Value *D4 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 24, FP64PtrTy));
+        Value *D5 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 32, FP64PtrTy));
+        Value *D6 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 40, FP64PtrTy));
+        Value *D7 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 48, FP64PtrTy));
+        Value *D8 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 56, FP64PtrTy));
+
+        Value *S1_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 0, FP64PtrTy));
+        Value *S1_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 8, FP64PtrTy));
+        Value *S1_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 16, FP64PtrTy));
+        Value *S1_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 24, FP64PtrTy));
+        Value *S1_5 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 32, FP64PtrTy));
+        Value *S1_6 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 40, FP64PtrTy));
+        Value *S1_7 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 48, FP64PtrTy));
+        Value *S1_8 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 56, FP64PtrTy));
+
+        Value *S2_1 = nullptr;
+        Value *S2_2 = nullptr;
+        Value *S2_3 = nullptr;
+        Value *S2_4 = nullptr;
+        Value *S2_5 = nullptr;
+        Value *S2_6 = nullptr;
+        Value *S2_7 = nullptr;
+        Value *S2_8 = nullptr;
+
+        if (SrcOpnd2.isZMM()) {
+            S2_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 0, FP64PtrTy));
+            S2_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 8, FP64PtrTy));
+            S2_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 16, FP64PtrTy));
+            S2_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 24, FP64PtrTy));
+            S2_5 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 32, FP64PtrTy));
+            S2_6 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 40, FP64PtrTy));
+            S2_7 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 48, FP64PtrTy));
+            S2_8 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 56, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 8));
+            Value *Addr3 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Value *Addr4 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 24));
+            Value *Addr5 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 32));
+            Value *Addr6 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 40));
+            Value *Addr7 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 48));
+            Value *Addr8 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 56));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, FP64PtrTy);
+            Addr3 = Builder.CreateIntToPtr(Addr3, FP64PtrTy);
+            Addr4 = Builder.CreateIntToPtr(Addr4, FP64PtrTy);
+            Addr5 = Builder.CreateIntToPtr(Addr5, FP64PtrTy);
+            Addr6 = Builder.CreateIntToPtr(Addr6, FP64PtrTy);
+            Addr7 = Builder.CreateIntToPtr(Addr7, FP64PtrTy);
+            Addr8 = Builder.CreateIntToPtr(Addr8, FP64PtrTy);
+            S2_1 = Builder.CreateLoad(Addr1);
+            S2_2 = Builder.CreateLoad(Addr2);
+            S2_3 = Builder.CreateLoad(Addr3);
+            S2_4 = Builder.CreateLoad(Addr4);
+            S2_5 = Builder.CreateLoad(Addr5);
+            S2_6 = Builder.CreateLoad(Addr6);
+            S2_7 = Builder.CreateLoad(Addr7);
+            S2_8 = Builder.CreateLoad(Addr8);
+        }
+        D1 = Builder.CreateFMul(D1, S1_1);
+        D1 = Builder.CreateFAdd(D1, S2_1);
+        Builder.CreateStore(D1, getXMMPtr(DestOpnd.GetZMMID(), 0, FP64PtrTy));
+
+        D2 = Builder.CreateFMul(D2, S1_2);
+        D2 = Builder.CreateFAdd(D2, S2_2);
+        Builder.CreateStore(D2, getXMMPtr(DestOpnd.GetZMMID(), 8, FP64PtrTy));
+
+        D3 = Builder.CreateFMul(D3, S1_3);
+        D3 = Builder.CreateFAdd(D3, S2_3);
+        Builder.CreateStore(D3, getXMMPtr(DestOpnd.GetZMMID(), 16, FP64PtrTy));
+
+        D4 = Builder.CreateFMul(D4, S1_4);
+        D4 = Builder.CreateFAdd(D4, S2_4);
+        Builder.CreateStore(D4, getXMMPtr(DestOpnd.GetZMMID(), 24, FP64PtrTy));
+
+        D5 = Builder.CreateFMul(D5, S1_5);
+        D5 = Builder.CreateFAdd(D5, S2_5);
+        Builder.CreateStore(D5, getXMMPtr(DestOpnd.GetZMMID(), 32, FP64PtrTy));
+
+        D6 = Builder.CreateFMul(D6, S1_6);
+        D6 = Builder.CreateFAdd(D6, S2_6);
+        Builder.CreateStore(D6, getXMMPtr(DestOpnd.GetZMMID(), 40, FP64PtrTy));
+
+        D7 = Builder.CreateFMul(D7, S1_7);
+        D7 = Builder.CreateFAdd(D7, S2_7);
+        Builder.CreateStore(D7, getXMMPtr(DestOpnd.GetZMMID(), 48, FP64PtrTy));
+
+        D8 = Builder.CreateFMul(D8, S1_8);
+        D8 = Builder.CreateFAdd(D8, S2_8);
+        Builder.CreateStore(D8, getXMMPtr(DestOpnd.GetZMMID(), 56, FP64PtrTy));
+    }
 }
 void X86Translator::translate_vfmadd231pd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vfmadd231pd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *D1 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+        Value *D2 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetXMMID(), 8, FP64PtrTy));
+        Value *S1_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+        Value *S1_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 8, FP64PtrTy));
+
+        Value *S2_1 = nullptr;
+        Value *S2_2 = nullptr;
+
+        if (SrcOpnd2.isXMM()) {
+            S2_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+            S2_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 8, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 8));
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, FP64PtrTy);
+            S2_1 = Builder.CreateLoad(Addr1);
+            S2_2 = Builder.CreateLoad(Addr2);
+        }
+        S2_1 = Builder.CreateFMul(S2_1, S1_1);
+        D1 = Builder.CreateFAdd(D1, S2_1);
+        Builder.CreateStore(D1, getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+
+        S2_2 = Builder.CreateFMul(S2_2, S1_2);
+        D2 = Builder.CreateFAdd(D2, S2_2);
+        Builder.CreateStore(D2, getXMMPtr(DestOpnd.GetXMMID(), 8, FP64PtrTy));
+
+    } else if (DestOpnd.isYMM()) {
+        Value *D1 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetYMMID(), 0, FP64PtrTy));
+        Value *D2 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetYMMID(), 8, FP64PtrTy));
+        Value *D3 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetYMMID(), 16, FP64PtrTy));
+        Value *D4 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetYMMID(), 24, FP64PtrTy));
+
+        Value *S1_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 0, FP64PtrTy));
+        Value *S1_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 8, FP64PtrTy));
+        Value *S1_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 16, FP64PtrTy));
+        Value *S1_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 24, FP64PtrTy));
+
+        Value *S2_1 = nullptr;
+        Value *S2_2 = nullptr;
+        Value *S2_3 = nullptr;
+        Value *S2_4 = nullptr;
+
+        if (SrcOpnd2.isYMM()) {
+            S2_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetYMMID(), 0, FP64PtrTy));
+            S2_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetYMMID(), 8, FP64PtrTy));
+            S2_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetYMMID(), 16, FP64PtrTy));
+            S2_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetYMMID(), 24, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 8));
+            Value *Addr3 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Value *Addr4 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 24));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, FP64PtrTy);
+            Addr3 = Builder.CreateIntToPtr(Addr3, FP64PtrTy);
+            Addr4 = Builder.CreateIntToPtr(Addr4, FP64PtrTy);
+            S2_1 = Builder.CreateLoad(Addr1);
+            S2_2 = Builder.CreateLoad(Addr2);
+            S2_3 = Builder.CreateLoad(Addr3);
+            S2_4 = Builder.CreateLoad(Addr4);
+        }
+        S2_1 = Builder.CreateFMul(S2_1, S1_1);
+        D1 = Builder.CreateFAdd(D1, S2_1);
+        Builder.CreateStore(D1, getXMMPtr(DestOpnd.GetYMMID(), 0, FP64PtrTy));
+
+        S2_2 = Builder.CreateFMul(S2_2, S1_2);
+        D2 = Builder.CreateFAdd(D2, S2_2);
+        Builder.CreateStore(D2, getXMMPtr(DestOpnd.GetYMMID(), 8, FP64PtrTy));
+
+        S2_3 = Builder.CreateFMul(S2_3, S1_3);
+        D3 = Builder.CreateFAdd(D3, S2_3);
+        Builder.CreateStore(D3, getXMMPtr(DestOpnd.GetYMMID(), 16, FP64PtrTy));
+
+        S2_4 = Builder.CreateFMul(S2_4, S1_4);
+        D4 = Builder.CreateFAdd(D4, S2_4);
+        Builder.CreateStore(D4, getXMMPtr(DestOpnd.GetYMMID(), 24, FP64PtrTy));
+
+    } else if (DestOpnd.isZMM()) {
+        Value *D1 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 0, FP64PtrTy));
+        Value *D2 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 8, FP64PtrTy));
+        Value *D3 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 16, FP64PtrTy));
+        Value *D4 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 24, FP64PtrTy));
+        Value *D5 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 32, FP64PtrTy));
+        Value *D6 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 40, FP64PtrTy));
+        Value *D7 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 48, FP64PtrTy));
+        Value *D8 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetZMMID(), 56, FP64PtrTy));
+
+        Value *S1_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 0, FP64PtrTy));
+        Value *S1_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 8, FP64PtrTy));
+        Value *S1_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 16, FP64PtrTy));
+        Value *S1_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 24, FP64PtrTy));
+        Value *S1_5 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 32, FP64PtrTy));
+        Value *S1_6 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 40, FP64PtrTy));
+        Value *S1_7 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 48, FP64PtrTy));
+        Value *S1_8 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetZMMID(), 56, FP64PtrTy));
+
+        Value *S2_1 = nullptr;
+        Value *S2_2 = nullptr;
+        Value *S2_3 = nullptr;
+        Value *S2_4 = nullptr;
+        Value *S2_5 = nullptr;
+        Value *S2_6 = nullptr;
+        Value *S2_7 = nullptr;
+        Value *S2_8 = nullptr;
+
+        if (SrcOpnd2.isZMM()) {
+            S2_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 0, FP64PtrTy));
+            S2_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 8, FP64PtrTy));
+            S2_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 16, FP64PtrTy));
+            S2_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 24, FP64PtrTy));
+            S2_5 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 32, FP64PtrTy));
+            S2_6 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 40, FP64PtrTy));
+            S2_7 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 48, FP64PtrTy));
+            S2_8 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetZMMID(), 56, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 8));
+            Value *Addr3 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Value *Addr4 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 24));
+            Value *Addr5 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 32));
+            Value *Addr6 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 40));
+            Value *Addr7 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 48));
+            Value *Addr8 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 56));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, FP64PtrTy);
+            Addr3 = Builder.CreateIntToPtr(Addr3, FP64PtrTy);
+            Addr4 = Builder.CreateIntToPtr(Addr4, FP64PtrTy);
+            Addr5 = Builder.CreateIntToPtr(Addr5, FP64PtrTy);
+            Addr6 = Builder.CreateIntToPtr(Addr6, FP64PtrTy);
+            Addr7 = Builder.CreateIntToPtr(Addr7, FP64PtrTy);
+            Addr8 = Builder.CreateIntToPtr(Addr8, FP64PtrTy);
+            S2_1 = Builder.CreateLoad(Addr1);
+            S2_2 = Builder.CreateLoad(Addr2);
+            S2_3 = Builder.CreateLoad(Addr3);
+            S2_4 = Builder.CreateLoad(Addr4);
+            S2_5 = Builder.CreateLoad(Addr5);
+            S2_6 = Builder.CreateLoad(Addr6);
+            S2_7 = Builder.CreateLoad(Addr7);
+            S2_8 = Builder.CreateLoad(Addr8);
+        }
+        S2_1 = Builder.CreateFMul(S2_1, S1_1);
+        D1 = Builder.CreateFAdd(D1, S2_1);
+        Builder.CreateStore(D1, getXMMPtr(DestOpnd.GetZMMID(), 0, FP64PtrTy));
+
+        S2_2 = Builder.CreateFMul(S2_2, S1_2);
+        D2 = Builder.CreateFAdd(D2, S2_2);
+        Builder.CreateStore(D2, getXMMPtr(DestOpnd.GetZMMID(), 8, FP64PtrTy));
+
+        S2_3 = Builder.CreateFMul(S2_3, S1_3);
+        D3 = Builder.CreateFAdd(D3, S2_3);
+        Builder.CreateStore(D3, getXMMPtr(DestOpnd.GetZMMID(), 16, FP64PtrTy));
+
+        S2_4 = Builder.CreateFMul(S2_4, S1_4);
+        D4 = Builder.CreateFAdd(D4, S2_4);
+        Builder.CreateStore(D4, getXMMPtr(DestOpnd.GetZMMID(), 24, FP64PtrTy));
+
+        S2_5 = Builder.CreateFMul(S2_5, S1_5);
+        D5 = Builder.CreateFAdd(D5, S2_5);
+        Builder.CreateStore(D5, getXMMPtr(DestOpnd.GetZMMID(), 32, FP64PtrTy));
+
+        S2_6 = Builder.CreateFMul(S2_6, S1_6);
+        D6 = Builder.CreateFAdd(D6, S2_6);
+        Builder.CreateStore(D6, getXMMPtr(DestOpnd.GetZMMID(), 40, FP64PtrTy));
+
+        S2_7 = Builder.CreateFMul(S2_7, S1_7);
+        D7 = Builder.CreateFAdd(D7, S2_7);
+        Builder.CreateStore(D7, getXMMPtr(DestOpnd.GetZMMID(), 48, FP64PtrTy));
+
+        S2_8 = Builder.CreateFMul(S2_8, S1_8);
+        D8 = Builder.CreateFAdd(D8, S2_8);
+        Builder.CreateStore(D8, getXMMPtr(DestOpnd.GetZMMID(), 56, FP64PtrTy));
+    }
 }
 void X86Translator::translate_vfmaddps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vfmaddps\n";
@@ -2005,20 +4459,126 @@ void X86Translator::translate_vfmadd231ps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vfmaddsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vfmaddsd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(2));
+    X86OperandHandler SrcOpnd3(InstHdl.getOpnd(3));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(0));
+
+    assert(DestOpnd.isXMM() && "vfmaddsd : XMM only");
+
+    Value *S2_1 =
+        Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+
+    Value *S3_1 =
+        Builder.CreateLoad(getXMMPtr(SrcOpnd3.GetXMMID(), 0, FP64PtrTy));
+
+    Value *S1_1 = nullptr;
+
+    if (SrcOpnd1.isXMM()) {
+        S1_1 = Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+    } else {
+        Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+
+        Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+
+        S1_1 = Builder.CreateLoad(Addr1);
+    }
+    Value *V1 = Builder.CreateFMul(S1_1, S2_1);
+    V1 = Builder.CreateFAdd(V1, S3_1);
+
+    Builder.CreateStore(V1, getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
 }
 void X86Translator::translate_vfmadd213sd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vfmadd213sd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *D1 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+        Value *S1_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+
+        Value *S2_1 = nullptr;
+
+        if (SrcOpnd2.isXMM()) {
+            S2_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+            S2_1 = Builder.CreateLoad(Addr1);
+        }
+        D1 = Builder.CreateFMul(D1, S1_1);
+        D1 = Builder.CreateFAdd(D1, S2_1);
+        Builder.CreateStore(D1, getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+    } else {
+        llvm_unreachable("vfmadd213sd : error");
+    }
 }
 void X86Translator::translate_vfmadd132sd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vfmadd132sd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *D1 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+        Value *S1_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+
+        Value *S2_1 = nullptr;
+
+        if (SrcOpnd2.isXMM()) {
+            S2_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+            S2_1 = Builder.CreateLoad(Addr1);
+        }
+        D1 = Builder.CreateFMul(D1, S2_1);
+        D1 = Builder.CreateFAdd(D1, S1_1);
+        Builder.CreateStore(D1, getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+    } else {
+        llvm_unreachable("vfmadd132sd : error");
+    }
 }
 void X86Translator::translate_vfmadd231sd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vfmadd231sd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *D1 =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+        Value *S1_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+
+        Value *S2_1 = nullptr;
+
+        if (SrcOpnd2.isXMM()) {
+            S2_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+            S2_1 = Builder.CreateLoad(Addr1);
+        }
+        S1_1 = Builder.CreateFMul(S1_1, S2_1);
+        D1 = Builder.CreateFAdd(D1, S1_1);
+        Builder.CreateStore(D1, getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+    } else {
+        llvm_unreachable("vfmadd231sd : error");
+    }
 }
 void X86Translator::translate_vfmaddss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vfmaddss\n";
@@ -2133,8 +4693,36 @@ void X86Translator::translate_vfmsub231ps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vfmsubsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vfmsubsd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(2));
+    X86OperandHandler SrcOpnd3(InstHdl.getOpnd(3));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(0));
+
+    assert(DestOpnd.isXMM() && "vfmsubsd : XMM only");
+
+    Value *S2_1 =
+        Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+
+    Value *S3_1 =
+        Builder.CreateLoad(getXMMPtr(SrcOpnd3.GetXMMID(), 0, FP64PtrTy));
+
+    Value *S1_1 = nullptr;
+
+    if (SrcOpnd1.isXMM()) {
+        S1_1 = Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+    } else {
+        Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+
+        Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+
+        S1_1 = Builder.CreateLoad(Addr1);
+    }
+    Value *V1 = Builder.CreateFMul(S1_1, S2_1);
+    V1 = Builder.CreateFSub(V1, S3_1);
+
+    Builder.CreateStore(V1, getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
 }
 void X86Translator::translate_vfmsub213sd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vfmsub213sd\n";
@@ -2197,8 +4785,37 @@ void X86Translator::translate_vfnmadd231ps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vfnmaddsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vfnmaddsd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(2));
+    X86OperandHandler SrcOpnd3(InstHdl.getOpnd(3));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(0));
+
+    assert(DestOpnd.isXMM() && "vfnmaddpd : XMM only");
+
+    Value *S2_1 =
+        Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+
+    Value *S3_1 =
+        Builder.CreateLoad(getXMMPtr(SrcOpnd3.GetXMMID(), 0, FP64PtrTy));
+
+    Value *S1_1 = nullptr;
+
+    if (SrcOpnd1.isXMM()) {
+        S1_1 = Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+    } else {
+        Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+
+        Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+
+        S1_1 = Builder.CreateLoad(Addr1);
+    }
+    Value *V1 = Builder.CreateFMul(S1_1, S2_1);
+    V1 = Builder.CreateFNeg(V1);
+    V1 = Builder.CreateFAdd(V1, S3_1);
+
+    Builder.CreateStore(V1, getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
 }
 void X86Translator::translate_vfnmadd213sd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vfnmadd213sd\n";
@@ -2309,20 +4926,353 @@ void X86Translator::translate_vfrczss(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vorpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vorpd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src2_1 = nullptr;
+        Value *Dest1 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int128PtrTy));
+        if (SrcOpnd1.isXMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int128PtrTy));
+        } else {
+            Src1_1 = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+        }
+        Dest1 = Builder.CreateOr(Src1_1, Src2_1);
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+    } else if (DestOpnd.isYMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 0, Int128PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 16, Int128PtrTy));
+
+        if (SrcOpnd1.isYMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 0, Int128PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 16, Int128PtrTy));
+
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Src1_1 = Builder.CreateLoad(Int128Ty, Addr1);
+            Src1_2 = Builder.CreateLoad(Int128Ty, Addr2);
+        }
+
+        Dest1 = Builder.CreateOr(Src1_1, Src2_1);
+        Dest2 = Builder.CreateOr(Src1_2, Src2_2);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetYMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetYMMID(), 16, Int128PtrTy));
+    } else if (DestOpnd.isZMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+        Value *Src1_3 = nullptr;
+        Value *Src1_4 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+        Value *Src2_3 = nullptr;
+        Value *Src2_4 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+        Value *Dest3 = nullptr;
+        Value *Dest4 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 0, Int128PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 16, Int128PtrTy));
+        Src2_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 32, Int128PtrTy));
+        Src2_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 48, Int128PtrTy));
+        if (SrcOpnd1.isZMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 0, Int128PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 16, Int128PtrTy));
+            Src1_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 32, Int128PtrTy));
+            Src1_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 48, Int128PtrTy));
+        } else {
+            llvm_unreachable("vorpd: error");
+        }
+
+        Dest1 = Builder.CreateOr(Src1_1, Src2_1);
+        Dest2 = Builder.CreateOr(Src1_2, Src2_2);
+        Dest3 = Builder.CreateOr(Src1_3, Src2_3);
+        Dest4 = Builder.CreateOr(Src1_4, Src2_4);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetZMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetZMMID(), 16, Int128PtrTy));
+        Builder.CreateStore(Dest3,
+                            getXMMPtr(DestOpnd.GetZMMID(), 32, Int128PtrTy));
+        Builder.CreateStore(Dest4,
+                            getXMMPtr(DestOpnd.GetZMMID(), 48, Int128PtrTy));
+    }
 }
 void X86Translator::translate_vorps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vorps\n";
     exit(-1);
 }
 void X86Translator::translate_vxorpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vxorpd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src2_1 = nullptr;
+        Value *Dest1 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int128PtrTy));
+        if (SrcOpnd1.isXMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int128PtrTy));
+        } else {
+            Src1_1 = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+        }
+        Dest1 = Builder.CreateXor(Src1_1, Src2_1);
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+    } else if (DestOpnd.isYMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 0, Int128PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 16, Int128PtrTy));
+
+        if (SrcOpnd1.isYMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 0, Int128PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 16, Int128PtrTy));
+
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Src1_1 = Builder.CreateLoad(Int128Ty, Addr1);
+            Src1_2 = Builder.CreateLoad(Int128Ty, Addr2);
+        }
+
+        Dest1 = Builder.CreateXor(Src1_1, Src2_1);
+        Dest2 = Builder.CreateXor(Src1_2, Src2_2);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetYMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetYMMID(), 16, Int128PtrTy));
+    } else if (DestOpnd.isZMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+        Value *Src1_3 = nullptr;
+        Value *Src1_4 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+        Value *Src2_3 = nullptr;
+        Value *Src2_4 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+        Value *Dest3 = nullptr;
+        Value *Dest4 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 0, Int128PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 16, Int128PtrTy));
+        Src2_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 32, Int128PtrTy));
+        Src2_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 48, Int128PtrTy));
+        if (SrcOpnd1.isZMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 0, Int128PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 16, Int128PtrTy));
+            Src1_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 32, Int128PtrTy));
+            Src1_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 48, Int128PtrTy));
+        } else {
+            llvm_unreachable("vorpd: error");
+        }
+
+        Dest1 = Builder.CreateXor(Src1_1, Src2_1);
+        Dest2 = Builder.CreateXor(Src1_2, Src2_2);
+        Dest3 = Builder.CreateXor(Src1_3, Src2_3);
+        Dest4 = Builder.CreateXor(Src1_4, Src2_4);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetZMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetZMMID(), 16, Int128PtrTy));
+        Builder.CreateStore(Dest3,
+                            getXMMPtr(DestOpnd.GetZMMID(), 32, Int128PtrTy));
+        Builder.CreateStore(Dest4,
+                            getXMMPtr(DestOpnd.GetZMMID(), 48, Int128PtrTy));
+    }
 }
 void X86Translator::translate_vxorps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vxorps\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src2_1 = nullptr;
+        Value *Dest1 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int128PtrTy));
+        if (SrcOpnd1.isXMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int128PtrTy));
+        } else {
+            Src1_1 = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+        }
+        Dest1 = Builder.CreateXor(Src1_1, Src2_1);
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+    } else if (DestOpnd.isYMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 0, Int128PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 16, Int128PtrTy));
+
+        if (SrcOpnd1.isYMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 0, Int128PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 16, Int128PtrTy));
+
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Src1_1 = Builder.CreateLoad(Int128Ty, Addr1);
+            Src1_2 = Builder.CreateLoad(Int128Ty, Addr2);
+        }
+
+        Dest1 = Builder.CreateXor(Src1_1, Src2_1);
+        Dest2 = Builder.CreateXor(Src1_2, Src2_2);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetYMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetYMMID(), 16, Int128PtrTy));
+    } else if (DestOpnd.isZMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+        Value *Src1_3 = nullptr;
+        Value *Src1_4 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+        Value *Src2_3 = nullptr;
+        Value *Src2_4 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+        Value *Dest3 = nullptr;
+        Value *Dest4 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 0, Int128PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 16, Int128PtrTy));
+        Src2_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 32, Int128PtrTy));
+        Src2_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 48, Int128PtrTy));
+        if (SrcOpnd1.isZMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 0, Int128PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 16, Int128PtrTy));
+            Src1_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 32, Int128PtrTy));
+            Src1_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 48, Int128PtrTy));
+        } else {
+            llvm_unreachable("vorps: error");
+        }
+
+        Dest1 = Builder.CreateXor(Src1_1, Src2_1);
+        Dest2 = Builder.CreateXor(Src1_2, Src2_2);
+        Dest3 = Builder.CreateXor(Src1_3, Src2_3);
+        Dest4 = Builder.CreateXor(Src1_4, Src2_4);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetZMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetZMMID(), 16, Int128PtrTy));
+        Builder.CreateStore(Dest3,
+                            getXMMPtr(DestOpnd.GetZMMID(), 32, Int128PtrTy));
+        Builder.CreateStore(Dest4,
+                            getXMMPtr(DestOpnd.GetZMMID(), 48, Int128PtrTy));
+    }
 }
 void X86Translator::translate_vgatherdpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vgatherdpd\n";
@@ -2373,8 +5323,94 @@ void X86Translator::translate_vgatherqps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vhaddpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vhaddpd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *Src1_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+        Value *Src1_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 8, FP64PtrTy));
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+
+        if (SrcOpnd2.isXMM()) {
+            Src2_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+            Src2_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 8, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 8));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, FP64PtrTy);
+
+            Src2_1 = Builder.CreateLoad(Addr1);
+            Src2_2 = Builder.CreateLoad(Addr2);
+        }
+
+        Value *low = Builder.CreateFAdd(Src1_2, Src1_1);
+        Value *high = Builder.CreateFAdd(Src2_2, Src2_1);
+        Builder.CreateStore(low, getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+        Builder.CreateStore(high, getXMMPtr(DestOpnd.GetXMMID(), 8, FP64PtrTy));
+
+    } else if (SrcOpnd2.isYMM()) {
+        Value *Src1_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 0, FP64PtrTy));
+        Value *Src1_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 8, FP64PtrTy));
+        Value *Src1_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 16, FP64PtrTy));
+        Value *Src1_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 24, FP64PtrTy));
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+        Value *Src2_3 = nullptr;
+        Value *Src2_4 = nullptr;
+
+        if (SrcOpnd2.isYMM()) {
+            Src2_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetYMMID(), 0, FP64PtrTy));
+            Src2_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetYMMID(), 8, FP64PtrTy));
+            Src2_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetYMMID(), 16, FP64PtrTy));
+            Src2_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetYMMID(), 24, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 8));
+            Value *Addr3 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Value *Addr4 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 24));
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, FP64PtrTy);
+            Addr3 = Builder.CreateIntToPtr(Addr3, FP64PtrTy);
+            Addr4 = Builder.CreateIntToPtr(Addr4, FP64PtrTy);
+
+            Src2_1 = Builder.CreateLoad(Addr1);
+            Src2_2 = Builder.CreateLoad(Addr2);
+            Src2_3 = Builder.CreateLoad(Addr3);
+            Src2_4 = Builder.CreateLoad(Addr4);
+        }
+
+        Value *D1 = Builder.CreateFAdd(Src1_2, Src1_1);
+        Value *D2 = Builder.CreateFAdd(Src2_2, Src2_1);
+        Value *D3 = Builder.CreateFAdd(Src1_3, Src1_4);
+        Value *D4 = Builder.CreateFAdd(Src2_3, Src2_4);
+        Builder.CreateStore(D1, getXMMPtr(DestOpnd.GetYMMID(), 0, FP64PtrTy));
+        Builder.CreateStore(D2, getXMMPtr(DestOpnd.GetYMMID(), 8, FP64PtrTy));
+        Builder.CreateStore(D3, getXMMPtr(DestOpnd.GetYMMID(), 16, FP64PtrTy));
+        Builder.CreateStore(D4, getXMMPtr(DestOpnd.GetYMMID(), 24, FP64PtrTy));
+    }
 }
 void X86Translator::translate_vhaddps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vhaddps\n";
@@ -2389,8 +5425,34 @@ void X86Translator::translate_vhsubps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vinsertf128(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vinsertf128\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(2));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(3));
+    X86OperandHandler Imm8(InstHdl.getOpnd(0));
+    Value *V = nullptr;
+    if (SrcOpnd2.isXMM()) {
+        V = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int128PtrTy));
+    } else {
+        V = LoadOperand(InstHdl.getOpnd(1), Int128Ty);
+    }
+    Value *Imm = LoadOperand(InstHdl.getOpnd(0), Int1Ty);
+    ConstantInt *CI = dyn_cast<ConstantInt>(Imm);
+    int constIntValue = CI->getZExtValue();
+    Value *V2 = nullptr;
+    if (constIntValue == 0) {
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetYMMID(), 0, Int128PtrTy));
+        V2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 16, Int128PtrTy));
+        Builder.CreateStore(V2,
+                            getXMMPtr(DestOpnd.GetYMMID(), 16, Int128PtrTy));
+
+    } else {
+        Builder.CreateStore(V, getXMMPtr(DestOpnd.GetYMMID(), 16, Int128PtrTy));
+        V2 = Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(V2, getXMMPtr(DestOpnd.GetYMMID(), 0, Int128PtrTy));
+    }
 }
 void X86Translator::translate_vinsertf32x4(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vinsertf32x4\n";
@@ -2409,8 +5471,7 @@ void X86Translator::translate_vinsertf64x4(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vinserti128(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vinserti128\n";
-    exit(-1);
+    translate_vinsertf128(Inst);
 }
 void X86Translator::translate_vinserti32x4(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vinserti32x4\n";
@@ -2437,8 +5498,7 @@ void X86Translator::translate_vlddqu(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vldmxcsr(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vldmxcsr\n";
-    exit(-1);
+    translate_ldmxcsr(Inst);
 }
 void X86Translator::translate_vmaskmovdqu(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmaskmovdqu\n";
@@ -2461,8 +5521,73 @@ void X86Translator::translate_vmaxps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vmaxsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmaxsd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    BasicBlock *EndBB = BasicBlock::Create(Context, "End", TransFunc, ExitBB);
+
+    if (InstHdl.getOpndNum() == 2) {
+
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+        Value *Src = nullptr;
+        Value *Dest =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+
+        if (SrcOpnd.isXMM()) {
+            Src =
+                Builder.CreateLoad(getXMMPtr(SrcOpnd.GetXMMID(), 0, FP64PtrTy));
+
+        } else {
+            Src = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
+        }
+        BasicBlock *LessBB1 =
+            BasicBlock::Create(Context, "Less1", TransFunc, ExitBB);
+        BasicBlock *LargBB1 =
+            BasicBlock::Create(Context, "Larg1", TransFunc, ExitBB);
+        Value *Cond = Builder.CreateFCmpOGE(Dest, Src);
+
+        Builder.CreateCondBr(Cond, LargBB1, LessBB1);
+
+        Builder.SetInsertPoint(LargBB1);
+        ;
+        Builder.CreateBr(EndBB);
+
+        Builder.SetInsertPoint(LessBB1);
+        Builder.CreateStore(Src, getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+        Builder.CreateBr(EndBB);
+
+    } else if (InstHdl.getOpndNum() == 3) {
+
+        X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+        X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+        X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+        Value *Src1 = nullptr;
+        Value *Src2 = nullptr;
+
+        if (SrcOpnd1.isMem())
+            Src1 = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
+        else
+            Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+
+        Src2 = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+
+        BasicBlock *LessBB2 =
+            BasicBlock::Create(Context, "Less2", TransFunc, ExitBB);
+        BasicBlock *LargBB2 =
+            BasicBlock::Create(Context, "Larg2", TransFunc, ExitBB);
+        Value *Cond = Builder.CreateFCmpOGE(Src1, Src2);
+
+        Builder.CreateCondBr(Cond, LargBB2, LessBB2);
+
+        Builder.SetInsertPoint(LargBB2);
+        Builder.CreateStore(Src1, getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+        Builder.CreateBr(EndBB);
+
+        Builder.SetInsertPoint(LessBB2);
+        Builder.CreateStore(Src2, getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+        Builder.CreateBr(EndBB);
+    }
+    Builder.SetInsertPoint(EndBB);
 }
 void X86Translator::translate_vmaxss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmaxss\n";
@@ -2489,8 +5614,74 @@ void X86Translator::translate_vminps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vminsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vminsd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    BasicBlock *EndBB = BasicBlock::Create(Context, "End", TransFunc, ExitBB);
+
+    if (InstHdl.getOpndNum() == 2) {
+
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+        Value *Src = nullptr;
+        Value *Dest =
+            Builder.CreateLoad(getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+
+        if (SrcOpnd.isXMM()) {
+            Src =
+                Builder.CreateLoad(getXMMPtr(SrcOpnd.GetXMMID(), 0, FP64PtrTy));
+
+        } else {
+            Src = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
+        }
+        BasicBlock *LessBB1 =
+            BasicBlock::Create(Context, "Less1", TransFunc, ExitBB);
+        BasicBlock *LargBB1 =
+            BasicBlock::Create(Context, "Larg1", TransFunc, ExitBB);
+        Value *Cond = Builder.CreateFCmpOGE(Dest, Src);
+
+        Builder.CreateCondBr(Cond, LargBB1, LessBB1);
+
+        Builder.SetInsertPoint(LargBB1);
+        Builder.CreateStore(Src, getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+
+        Builder.CreateBr(EndBB);
+
+        Builder.SetInsertPoint(LessBB1);
+        ;
+        Builder.CreateBr(EndBB);
+
+    } else if (InstHdl.getOpndNum() == 3) {
+
+        X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+        X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+        X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+        Value *Src1 = nullptr;
+        Value *Src2 = nullptr;
+
+        if (SrcOpnd1.isMem())
+            Src1 = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
+        else
+            Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+
+        Src2 = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+
+        BasicBlock *LessBB2 =
+            BasicBlock::Create(Context, "Less2", TransFunc, ExitBB);
+        BasicBlock *LargBB2 =
+            BasicBlock::Create(Context, "Larg2", TransFunc, ExitBB);
+        Value *Cond = Builder.CreateFCmpOGE(Src1, Src2);
+
+        Builder.CreateCondBr(Cond, LargBB2, LessBB2);
+
+        Builder.SetInsertPoint(LargBB2);
+        Builder.CreateStore(Src2, getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+        Builder.CreateBr(EndBB);
+
+        Builder.SetInsertPoint(LessBB2);
+        Builder.CreateStore(Src1, getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+        Builder.CreateBr(EndBB);
+    }
+    Builder.SetInsertPoint(EndBB);
 }
 void X86Translator::translate_vminss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vminss\n";
@@ -2509,28 +5700,197 @@ void X86Translator::translate_vmmcall(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vmovq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovq\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+    Value *Src = nullptr, *Dest = nullptr;
+    if (SrcOpnd.isXMM() || SrcOpnd.isMMX()) { // Dest must be r/m64
+        Src = LoadOperand(InstHdl.getOpnd(0), Int64Ty);
+        StoreOperand(Src, InstHdl.getOpnd(1));
+    } else if (DestOpnd.isXMM()) {
+        Src = LoadOperand(InstHdl.getOpnd(0)); // Src must be r/m64
+        Dest = Builder.CreateZExt(Src, Int128Ty);
+        StoreOperand(Dest, InstHdl.getOpnd(1));
+    } else if (DestOpnd.isMMX()) {                      // Dest must be mmx
+        Src = LoadOperand(InstHdl.getOpnd(0), Int64Ty); // Src must be r/m64
+        StoreOperand(Dest, InstHdl.getOpnd(1));
+    } else {
+        llvm_unreachable("vmovq : error");
+    }
 }
 void X86Translator::translate_vmovddup(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmovddup\n";
     exit(-1);
 }
 void X86Translator::translate_vmovd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+    Value *Src = nullptr, *Dest = nullptr;
+    if (SrcOpnd.isXMM() || SrcOpnd.isMMX()) { // Dest must be r/m32
+        Src = LoadOperand(InstHdl.getOpnd(0), Int32Ty);
+        StoreOperand(Src, InstHdl.getOpnd(1));
+    } else if (DestOpnd.isXMM()) {
+        Src = LoadOperand(InstHdl.getOpnd(0)); // Src must be r/m32
+        Dest = Builder.CreateZExt(Src, Int128Ty);
+        StoreOperand(Dest, InstHdl.getOpnd(1));
+    } else if (DestOpnd.isMMX()) {             // Dest must be mmx
+        Src = LoadOperand(InstHdl.getOpnd(0)); // Src must be r/m32
+        Dest = Builder.CreateZExt(Src, Int64Ty);
+        StoreOperand(Dest, InstHdl.getOpnd(1));
+    } else {
+        llvm_unreachable("vmovd : error");
+    }
 }
 void X86Translator::translate_vmovdqa32(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmovdqa32\n";
     exit(-1);
 }
 void X86Translator::translate_vmovdqa64(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovdqa64\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+    if (DestOpnd.isZMM()) {
+
+        Value *Src1 = nullptr;
+        Value *Src2 = nullptr;
+        Value *Src3 = nullptr;
+        Value *Src4 = nullptr;
+        if (SrcOpnd.isZMM()) {
+            Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 0, Int128PtrTy));
+            Src2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 16, Int128PtrTy));
+            Src3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 32, Int128PtrTy));
+            Src4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 48, Int128PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Value *Addr3 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 32));
+            Value *Addr4 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 48));
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+            Addr3 = Builder.CreateIntToPtr(Addr3, Int128PtrTy);
+            Addr4 = Builder.CreateIntToPtr(Addr4, Int128PtrTy);
+            Src1 = Builder.CreateLoad(Int128Ty, Addr1);
+            Src2 = Builder.CreateLoad(Int128Ty, Addr2);
+            Src3 = Builder.CreateLoad(Int128Ty, Addr3);
+            Src4 = Builder.CreateLoad(Int128Ty, Addr4);
+        }
+        Builder.CreateStore(Src1,
+                            getXMMPtr(DestOpnd.GetZMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Src2,
+                            getXMMPtr(DestOpnd.GetZMMID(), 16, Int128PtrTy));
+        Builder.CreateStore(Src3,
+                            getXMMPtr(DestOpnd.GetZMMID(), 32, Int128PtrTy));
+        Builder.CreateStore(Src4,
+                            getXMMPtr(DestOpnd.GetZMMID(), 48, Int128PtrTy));
+    } else if (SrcOpnd.isZMM()) {
+        Value *Src1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(), 0, Int128PtrTy));
+        Value *Src2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(), 16, Int128PtrTy));
+        Value *Src3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(), 32, Int128PtrTy));
+        Value *Src4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(), 48, Int128PtrTy));
+        Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(1));
+        Value *Addr2 = Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+        Value *Addr3 = Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 32));
+        Value *Addr4 = Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 48));
+
+        Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+        Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+        Addr3 = Builder.CreateIntToPtr(Addr3, Int128PtrTy);
+        Addr4 = Builder.CreateIntToPtr(Addr4, Int128PtrTy);
+
+        Builder.CreateStore(Src1, Addr1);
+        Builder.CreateStore(Src2, Addr2);
+        Builder.CreateStore(Src3, Addr3);
+        Builder.CreateStore(Src4, Addr4);
+    } else {
+        llvm_unreachable("vmovdqa64: error");
+    }
 }
 void X86Translator::translate_vmovdqa(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovdqa\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+    if (DestOpnd.isXMM()) {
+
+        Value *Src = nullptr;
+        if (SrcOpnd.isXMM())
+            Src = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy));
+        else {
+            Src = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+        }
+        Builder.CreateStore(Src,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+    }
+
+    else if (DestOpnd.isYMM()) {
+
+        Value *Src1 = nullptr;
+        Value *Src2 = nullptr;
+
+        if (SrcOpnd.isYMM()) {
+            Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetYMMID(), 0, Int128PtrTy));
+            Src2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetYMMID(), 16, Int128PtrTy));
+
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Src1 = Builder.CreateLoad(Int128Ty, Addr1);
+            Src2 = Builder.CreateLoad(Int128Ty, Addr2);
+        }
+        Builder.CreateStore(Src1,
+                            getXMMPtr(DestOpnd.GetYMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Src2,
+                            getXMMPtr(DestOpnd.GetYMMID(), 16, Int128PtrTy));
+
+    }
+
+    else { // is mem
+        if (SrcOpnd.isXMM()) {
+            Value *Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy));
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(1));
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Builder.CreateStore(Src1, Addr1);
+        } else if (SrcOpnd.isYMM()) {
+            Value *Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetYMMID(), 0, Int128PtrTy));
+            Value *Src2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetYMMID(), 16, Int128PtrTy));
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(1));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Builder.CreateStore(Src1, Addr1);
+            Builder.CreateStore(Src2, Addr2);
+        }
+    }
 }
 void X86Translator::translate_vmovdqu16(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmovdqu16\n";
@@ -2541,24 +5901,192 @@ void X86Translator::translate_vmovdqu32(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vmovdqu64(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovdqu64\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+    if (DestOpnd.isZMM()) {
+
+        Value *Src1 = nullptr;
+        Value *Src2 = nullptr;
+        Value *Src3 = nullptr;
+        Value *Src4 = nullptr;
+        if (SrcOpnd.isZMM()) {
+            Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 0, Int128PtrTy));
+            Src2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 16, Int128PtrTy));
+            Src3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 32, Int128PtrTy));
+            Src4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 48, Int128PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Value *Addr3 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 32));
+            Value *Addr4 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 48));
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+            Addr3 = Builder.CreateIntToPtr(Addr3, Int128PtrTy);
+            Addr4 = Builder.CreateIntToPtr(Addr4, Int128PtrTy);
+            Src1 = Builder.CreateLoad(Int128Ty, Addr1);
+            Src2 = Builder.CreateLoad(Int128Ty, Addr2);
+            Src3 = Builder.CreateLoad(Int128Ty, Addr3);
+            Src4 = Builder.CreateLoad(Int128Ty, Addr4);
+        }
+        Builder.CreateStore(Src1,
+                            getXMMPtr(DestOpnd.GetZMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Src2,
+                            getXMMPtr(DestOpnd.GetZMMID(), 16, Int128PtrTy));
+        Builder.CreateStore(Src3,
+                            getXMMPtr(DestOpnd.GetZMMID(), 32, Int128PtrTy));
+        Builder.CreateStore(Src4,
+                            getXMMPtr(DestOpnd.GetZMMID(), 48, Int128PtrTy));
+    } else if (SrcOpnd.isZMM()) {
+        Value *Src1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(), 0, Int128PtrTy));
+        Value *Src2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(), 16, Int128PtrTy));
+        Value *Src3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(), 32, Int128PtrTy));
+        Value *Src4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(), 48, Int128PtrTy));
+        Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(1));
+        Value *Addr2 = Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+        Value *Addr3 = Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 32));
+        Value *Addr4 = Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 48));
+
+        Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+        Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+        Addr3 = Builder.CreateIntToPtr(Addr3, Int128PtrTy);
+        Addr4 = Builder.CreateIntToPtr(Addr4, Int128PtrTy);
+
+        Builder.CreateStore(Src1, Addr1);
+        Builder.CreateStore(Src2, Addr2);
+        Builder.CreateStore(Src3, Addr3);
+        Builder.CreateStore(Src4, Addr4);
+    } else {
+        llvm_unreachable("vmovdqu64: error");
+    }
 }
 void X86Translator::translate_vmovdqu8(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmovdqu8\n";
     exit(-1);
 }
 void X86Translator::translate_vmovdqu(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovdqu\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+    if (DestOpnd.isXMM()) {
+
+        Value *Src = nullptr;
+        if (SrcOpnd.isXMM())
+            Src = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy));
+        else {
+            Src = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+        }
+        Builder.CreateStore(Src,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+    }
+
+    else if (DestOpnd.isYMM()) {
+
+        Value *Src1 = nullptr;
+        Value *Src2 = nullptr;
+
+        if (SrcOpnd.isYMM()) {
+            Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetYMMID(), 0, Int128PtrTy));
+            Src2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetYMMID(), 16, Int128PtrTy));
+
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Src1 = Builder.CreateLoad(Int128Ty, Addr1);
+            Src2 = Builder.CreateLoad(Int128Ty, Addr2);
+        }
+        Builder.CreateStore(Src1,
+                            getXMMPtr(DestOpnd.GetYMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Src2,
+                            getXMMPtr(DestOpnd.GetYMMID(), 16, Int128PtrTy));
+
+    }
+
+    else { // is mem
+        if (SrcOpnd.isXMM()) {
+            Value *Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy));
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(1));
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Builder.CreateStore(Src1, Addr1);
+        } else if (SrcOpnd.isYMM()) {
+            Value *Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetYMMID(), 0, Int128PtrTy));
+            Value *Src2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetYMMID(), 16, Int128PtrTy));
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(1));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Builder.CreateStore(Src1, Addr1);
+            Builder.CreateStore(Src2, Addr2);
+        }
+    }
 }
+
 void X86Translator::translate_vmovhlps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmovhlps\n";
     exit(-1);
 }
 void X86Translator::translate_vmovhpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovhpd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    if (InstHdl.getOpndNum() == 2) {
+
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+        if (SrcOpnd.isXMM()) {
+            Value *Src = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetXMMID(), 8, Int64PtrTy));
+            StoreOperand(Src, InstHdl.getOpnd(1));
+        } else {
+            Value *Src = LoadOperand(InstHdl.getOpnd(0), Int64Ty);
+            Builder.CreateStore(Src,
+                                getXMMPtr(DestOpnd.GetXMMID(), 8, Int64PtrTy));
+        }
+
+    } else if (InstHdl.getOpndNum() == 3) {
+
+        X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+        X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+        X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+        assert(SrcOpnd1.isMem());
+        Value *Src1 = LoadOperand(InstHdl.getOpnd(0), Int64Ty);
+
+        Value *Src2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int64PtrTy));
+
+        Builder.CreateStore(Src1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+        Builder.CreateStore(Src2,
+                            getXMMPtr(DestOpnd.GetXMMID(), 8, Int64PtrTy));
+    }
 }
 void X86Translator::translate_vmovhps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmovhps\n";
@@ -2569,8 +6097,39 @@ void X86Translator::translate_vmovlhps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vmovlpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovlpd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    if (InstHdl.getOpndNum() == 2) {
+
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+        if (SrcOpnd.isXMM()) {
+            Value *Src = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetXMMID(), 0, Int64PtrTy));
+            StoreOperand(Src, InstHdl.getOpnd(1));
+        } else {
+            Value *Src = LoadOperand(InstHdl.getOpnd(0), Int64Ty);
+            Builder.CreateStore(Src,
+                                getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+        }
+
+    } else if (InstHdl.getOpndNum() == 3) {
+
+        X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+        X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+        X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+        assert(SrcOpnd1.isMem());
+        Value *Src1 = LoadOperand(InstHdl.getOpnd(0), Int64Ty);
+
+        Value *Src2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 8, Int64PtrTy));
+
+        Builder.CreateStore(Src1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+        Builder.CreateStore(Src2,
+                            getXMMPtr(DestOpnd.GetXMMID(), 8, Int64PtrTy));
+    }
 }
 void X86Translator::translate_vmovlps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmovlps\n";
@@ -2589,8 +6148,55 @@ void X86Translator::translate_vmovntdqa(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vmovntdq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovntdq\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+    if (SrcOpnd.isXMM()) {
+        Value *Src1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy));
+        Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(1));
+        Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+        Builder.CreateStore(Src1, Addr1);
+    } else if (SrcOpnd.isYMM()) {
+        Value *Src1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd.GetYMMID(), 0, Int128PtrTy));
+        Value *Src2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd.GetYMMID(), 16, Int128PtrTy));
+        Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(1));
+        Value *Addr2 = Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+
+        Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+        Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+        Builder.CreateStore(Src1, Addr1);
+        Builder.CreateStore(Src2, Addr2);
+
+    } else if (SrcOpnd.isZMM()) {
+        Value *Src1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(), 0, Int128PtrTy));
+        Value *Src2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(), 16, Int128PtrTy));
+        Value *Src3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(), 32, Int128PtrTy));
+        Value *Src4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(), 48, Int128PtrTy));
+        Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(1));
+        Value *Addr2 = Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+        Value *Addr3 = Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 32));
+        Value *Addr4 = Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 48));
+
+        Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+        Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+        Addr3 = Builder.CreateIntToPtr(Addr3, Int128PtrTy);
+        Addr4 = Builder.CreateIntToPtr(Addr4, Int128PtrTy);
+
+        Builder.CreateStore(Src1, Addr1);
+        Builder.CreateStore(Src2, Addr2);
+        Builder.CreateStore(Src3, Addr3);
+        Builder.CreateStore(Src4, Addr4);
+    }
 }
 void X86Translator::translate_vmovntpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmovntpd\n";
@@ -2601,8 +6207,39 @@ void X86Translator::translate_vmovntps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vmovsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovsd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    if (InstHdl.getOpndNum() == 2) {
+
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+        Value *Src = nullptr;
+        if (DestOpnd.isXMM()) {
+            Src = LoadOperand(InstHdl.getOpnd(0), Int64Ty);
+            Builder.CreateStore(Src,
+                                getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+        } else {
+            Src = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetXMMID(), 0, Int64PtrTy));
+            StoreOperand(Src, InstHdl.getOpnd(1));
+        }
+    } else if (InstHdl.getOpndNum() == 3) {
+
+        X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+        X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+        X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+        Value *Src1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int64PtrTy));
+        Value *Src2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int64PtrTy));
+
+        Builder.CreateStore(Src1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+        Builder.CreateStore(Src2,
+                            getXMMPtr(DestOpnd.GetXMMID(), 8, Int64PtrTy));
+    }
 }
 void X86Translator::translate_vmovshdup(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmovshdup\n";
@@ -2616,13 +6253,268 @@ void X86Translator::translate_vmovss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmovss\n";
     exit(-1);
 }
+
 void X86Translator::translate_vmovupd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovupd\n";
-    exit(-1);
+
+    translate_vmovapd(Inst);
+    /*
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+    if(DestOpnd.isXMM()){
+
+        Value * Src = nullptr;
+        if (SrcOpnd.isXMM())
+            Src=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetXMMID(),0,Int128PtrTy));
+        else {
+            Src = LoadOperand(InstHdl.getOpnd(0),Int128Ty);
+        }
+        Builder.CreateStore(Src,getXMMPtr(DestOpnd.GetXMMID(),0,Int128PtrTy));
+    }
+
+    else  if(DestOpnd.isYMM()){
+
+        Value * Src1 = nullptr;
+        Value * Src2 = nullptr;
+
+        if (SrcOpnd.isYMM()){
+            Src1=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetYMMID(),0,Int128PtrTy));
+            Src2=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetYMMID(),16,Int128PtrTy));
+
+        }
+        else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Src1 = Builder.CreateLoad(Int128Ty, Addr1);
+            Src2 = Builder.CreateLoad(Int128Ty, Addr2);
+
+        }
+        Builder.CreateStore(Src1,getXMMPtr(DestOpnd.GetYMMID(),0,Int128PtrTy));
+        Builder.CreateStore(Src2,getXMMPtr(DestOpnd.GetYMMID(),16,Int128PtrTy));
+
+    }
+    else if(DestOpnd.isZMM()){
+
+        Value * Src1 = nullptr;
+        Value * Src2 = nullptr;
+        Value * Src3 = nullptr;
+        Value * Src4 = nullptr;
+        if (SrcOpnd.isZMM()){
+            Src1=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(),0,Int128PtrTy));
+            Src2=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(),16,Int128PtrTy));
+            Src3=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(),32,Int128PtrTy));
+            Src4=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(),48,Int128PtrTy));
+        }
+        else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Value *Addr3 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 32));
+            Value *Addr4 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 48));
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+            Addr3 = Builder.CreateIntToPtr(Addr3, Int128PtrTy);
+            Addr4 = Builder.CreateIntToPtr(Addr4, Int128PtrTy);
+            Src1 = Builder.CreateLoad(Int128Ty, Addr1);
+            Src2 = Builder.CreateLoad(Int128Ty, Addr2);
+            Src3 = Builder.CreateLoad(Int128Ty, Addr3);
+            Src4 = Builder.CreateLoad(Int128Ty, Addr4);
+        }
+        Builder.CreateStore(Src1,getXMMPtr(DestOpnd.GetZMMID(),0,Int128PtrTy));
+        Builder.CreateStore(Src2,getXMMPtr(DestOpnd.GetZMMID(),16,Int128PtrTy));
+        Builder.CreateStore(Src3,getXMMPtr(DestOpnd.GetZMMID(),32,Int128PtrTy));
+        Builder.CreateStore(Src4,getXMMPtr(DestOpnd.GetZMMID(),48,Int128PtrTy));
+    }
+    else {//is mem
+        if(SrcOpnd.isXMM()){
+            Value *Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy));
+            Value *Addr1=CalcMemAddr(InstHdl.getOpnd(1));
+            Addr1=Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Builder.CreateStore(Src1, Addr1);
+        }
+        else if(SrcOpnd.isYMM()){
+            Value *Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetYMMID(), 0, Int128PtrTy));
+            Value *Src2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetYMMID(), 16, Int128PtrTy));
+            Value *Addr1=CalcMemAddr(InstHdl.getOpnd(1));
+            Value *Addr2=Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(),
+    16));
+
+            Addr1=Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2=Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Builder.CreateStore(Src1, Addr1);
+            Builder.CreateStore(Src2, Addr2);
+
+        }
+        else if(SrcOpnd.isZMM()){
+            Value *Src1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 0, Int128PtrTy));
+            Value *Src2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 16, Int128PtrTy));
+            Value *Src3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 32, Int128PtrTy));
+            Value *Src4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd.GetZMMID(), 48, Int128PtrTy));
+            Value *Addr1=CalcMemAddr(InstHdl.getOpnd(1));
+            Value *Addr2=Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(),
+    16)); Value *Addr3=Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 32));
+            Value *Addr4=Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(),
+    48));
+
+            Addr1=Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2=Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+            Addr3=Builder.CreateIntToPtr(Addr3, Int128PtrTy);
+            Addr4=Builder.CreateIntToPtr(Addr4, Int128PtrTy);
+
+            Builder.CreateStore(Src1, Addr1);
+            Builder.CreateStore(Src2, Addr2);
+            Builder.CreateStore(Src3, Addr3);
+            Builder.CreateStore(Src4, Addr4);
+        }
+    }
+    */
 }
+
 void X86Translator::translate_vmovups(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmovups\n";
-    exit(-1);
+    translate_vmovapd(Inst);
+    /*
+        X86InstHandler InstHdl(Inst);
+
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+        if(DestOpnd.isXMM()){
+
+            Value * Src = nullptr;
+            if (SrcOpnd.isXMM())
+                Src=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetXMMID(),0,Int128PtrTy));
+            else {
+                Src = LoadOperand(InstHdl.getOpnd(0),Int128Ty);
+            }
+            Builder.CreateStore(Src,getXMMPtr(DestOpnd.GetXMMID(),0,Int128PtrTy));
+        }
+
+        else  if(DestOpnd.isYMM()){
+
+            Value * Src1 = nullptr;
+            Value * Src2 = nullptr;
+
+            if (SrcOpnd.isYMM()){
+                Src1=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetYMMID(),0,Int128PtrTy));
+                Src2=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetYMMID(),16,Int128PtrTy));
+
+            }
+            else {
+                Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+                Value *Addr2 =
+                    Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+                Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+                Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+                Src1 = Builder.CreateLoad(Int128Ty, Addr1);
+                Src2 = Builder.CreateLoad(Int128Ty, Addr2);
+
+            }
+            Builder.CreateStore(Src1,getXMMPtr(DestOpnd.GetYMMID(),0,Int128PtrTy));
+            Builder.CreateStore(Src2,getXMMPtr(DestOpnd.GetYMMID(),16,Int128PtrTy));
+
+        }
+        else if(DestOpnd.isZMM()){
+
+            Value * Src1 = nullptr;
+            Value * Src2 = nullptr;
+            Value * Src3 = nullptr;
+            Value * Src4 = nullptr;
+            if (SrcOpnd.isZMM()){
+                Src1=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(),0,Int128PtrTy));
+                Src2=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(),16,Int128PtrTy));
+                Src3=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(),32,Int128PtrTy));
+                Src4=Builder.CreateLoad(getXMMPtr(SrcOpnd.GetZMMID(),48,Int128PtrTy));
+            }
+            else {
+                Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+                Value *Addr2 =
+                    Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+                Value *Addr3 =
+                    Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 32));
+                Value *Addr4 =
+                    Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 48));
+                Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+                Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+                Addr3 = Builder.CreateIntToPtr(Addr3, Int128PtrTy);
+                Addr4 = Builder.CreateIntToPtr(Addr4, Int128PtrTy);
+                Src1 = Builder.CreateLoad(Int128Ty, Addr1);
+                Src2 = Builder.CreateLoad(Int128Ty, Addr2);
+                Src3 = Builder.CreateLoad(Int128Ty, Addr3);
+                Src4 = Builder.CreateLoad(Int128Ty, Addr4);
+            }
+            Builder.CreateStore(Src1,getXMMPtr(DestOpnd.GetZMMID(),0,Int128PtrTy));
+            Builder.CreateStore(Src2,getXMMPtr(DestOpnd.GetZMMID(),16,Int128PtrTy));
+            Builder.CreateStore(Src3,getXMMPtr(DestOpnd.GetZMMID(),32,Int128PtrTy));
+            Builder.CreateStore(Src4,getXMMPtr(DestOpnd.GetZMMID(),48,Int128PtrTy));
+        }
+        else {//is mem
+            if(SrcOpnd.isXMM()){
+                Value *Src1 = Builder.CreateLoad(
+                    getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy));
+                Value *Addr1=CalcMemAddr(InstHdl.getOpnd(1));
+                Addr1=Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+                Builder.CreateStore(Src1, Addr1);
+            }
+            else if(SrcOpnd.isYMM()){
+                Value *Src1 = Builder.CreateLoad(
+                    getXMMPtr(SrcOpnd.GetYMMID(), 0, Int128PtrTy));
+                Value *Src2 = Builder.CreateLoad(
+                    getXMMPtr(SrcOpnd.GetYMMID(), 16, Int128PtrTy));
+                Value *Addr1=CalcMemAddr(InstHdl.getOpnd(1));
+                Value *Addr2=Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(),
+       16));
+
+                Addr1=Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+                Addr2=Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+                Builder.CreateStore(Src1, Addr1);
+                Builder.CreateStore(Src2, Addr2);
+
+            }
+            else if(SrcOpnd.isZMM()){
+                Value *Src1 = Builder.CreateLoad(
+                    getXMMPtr(SrcOpnd.GetZMMID(), 0, Int128PtrTy));
+                Value *Src2 = Builder.CreateLoad(
+                    getXMMPtr(SrcOpnd.GetZMMID(), 16, Int128PtrTy));
+                Value *Src3 = Builder.CreateLoad(
+                    getXMMPtr(SrcOpnd.GetZMMID(), 32, Int128PtrTy));
+                Value *Src4 = Builder.CreateLoad(
+                    getXMMPtr(SrcOpnd.GetZMMID(), 48, Int128PtrTy));
+                Value *Addr1=CalcMemAddr(InstHdl.getOpnd(1));
+                Value *Addr2=Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(),
+       16)); Value *Addr3=Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(),
+       32)); Value *Addr4=Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(),
+       48));
+
+                Addr1=Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+                Addr2=Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+                Addr3=Builder.CreateIntToPtr(Addr3, Int128PtrTy);
+                Addr4=Builder.CreateIntToPtr(Addr4, Int128PtrTy);
+
+                Builder.CreateStore(Src1, Addr1);
+                Builder.CreateStore(Src2, Addr2);
+                Builder.CreateStore(Src3, Addr3);
+                Builder.CreateStore(Src4, Addr4);
+            }
+        }
+        */
 }
 void X86Translator::translate_vmpsadbw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmpsadbw\n";
@@ -2653,20 +6545,313 @@ void X86Translator::translate_vmsave(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vmulpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmulpd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 8, FP64PtrTy));
+        if (SrcOpnd1.isXMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 8, FP64PtrTy));
+        } else {
+            Src1_2 = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+            Src1_1 = Builder.CreateTrunc(Src1_2, Int64Ty);
+            Src1_2 = Builder.CreateLShr(Src1_2, ConstInt(Int128Ty, 64));
+            Src1_2 = Builder.CreateTrunc(Src1_2, Int64Ty);
+            Src1_1 = Builder.CreateBitCast(Src1_1, FP64Ty);
+            Src1_2 = Builder.CreateBitCast(Src1_2, FP64Ty);
+        }
+        Dest1 = Builder.CreateFMul(Src1_1, Src2_1);
+        Dest2 = Builder.CreateFMul(Src1_2, Src2_2);
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetXMMID(), 8, FP64PtrTy));
+    } else if (DestOpnd.isYMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+        Value *Src1_3 = nullptr;
+        Value *Src1_4 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+        Value *Src2_3 = nullptr;
+        Value *Src2_4 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+        Value *Dest3 = nullptr;
+        Value *Dest4 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 0, FP64PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 8, FP64PtrTy));
+        Src2_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 16, FP64PtrTy));
+        Src2_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 24, FP64PtrTy));
+        if (SrcOpnd1.isYMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 0, FP64PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 8, FP64PtrTy));
+            Src1_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 16, FP64PtrTy));
+            Src1_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 24, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 8));
+            Value *Addr3 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+            Value *Addr4 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 24));
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, FP64PtrTy);
+            Addr3 = Builder.CreateIntToPtr(Addr3, FP64PtrTy);
+            Addr4 = Builder.CreateIntToPtr(Addr4, FP64PtrTy);
+            Src1_1 = Builder.CreateLoad(FP64Ty, Addr1);
+            Src1_2 = Builder.CreateLoad(FP64Ty, Addr2);
+            Src1_3 = Builder.CreateLoad(FP64Ty, Addr3);
+            Src1_4 = Builder.CreateLoad(FP64Ty, Addr4);
+        }
+
+        Dest1 = Builder.CreateFMul(Src1_1, Src2_1);
+        Dest2 = Builder.CreateFMul(Src1_2, Src2_2);
+        Dest3 = Builder.CreateFMul(Src1_3, Src2_3);
+        Dest4 = Builder.CreateFMul(Src1_4, Src2_4);
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetYMMID(), 0, FP64PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetYMMID(), 8, FP64PtrTy));
+        Builder.CreateStore(Dest3,
+                            getXMMPtr(DestOpnd.GetYMMID(), 16, FP64PtrTy));
+        Builder.CreateStore(Dest4,
+                            getXMMPtr(DestOpnd.GetYMMID(), 24, FP64PtrTy));
+    } else if (DestOpnd.isZMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+        Value *Src1_3 = nullptr;
+        Value *Src1_4 = nullptr;
+        Value *Src1_5 = nullptr;
+        Value *Src1_6 = nullptr;
+        Value *Src1_7 = nullptr;
+        Value *Src1_8 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+        Value *Src2_3 = nullptr;
+        Value *Src2_4 = nullptr;
+        Value *Src2_5 = nullptr;
+        Value *Src2_6 = nullptr;
+        Value *Src2_7 = nullptr;
+        Value *Src2_8 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+        Value *Dest3 = nullptr;
+        Value *Dest4 = nullptr;
+        Value *Dest5 = nullptr;
+        Value *Dest6 = nullptr;
+        Value *Dest7 = nullptr;
+        Value *Dest8 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 0, FP64PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 8, FP64PtrTy));
+        Src2_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 16, FP64PtrTy));
+        Src2_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 24, FP64PtrTy));
+        Src2_5 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 32, FP64PtrTy));
+        Src2_6 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 40, FP64PtrTy));
+        Src2_7 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 48, FP64PtrTy));
+        Src2_8 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 56, FP64PtrTy));
+        if (SrcOpnd1.isZMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 0, FP64PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 8, FP64PtrTy));
+            Src1_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 16, FP64PtrTy));
+            Src1_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 24, FP64PtrTy));
+            Src1_5 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 32, FP64PtrTy));
+            Src1_6 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 40, FP64PtrTy));
+            Src1_7 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 48, FP64PtrTy));
+            Src1_8 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 56, FP64PtrTy));
+        } else {
+            llvm_unreachable("vmulpd: error");
+        }
+
+        Dest1 = Builder.CreateFMul(Src1_1, Src2_1);
+        Dest2 = Builder.CreateFMul(Src1_2, Src2_2);
+        Dest3 = Builder.CreateFMul(Src1_3, Src2_3);
+        Dest4 = Builder.CreateFMul(Src1_4, Src2_4);
+        Dest5 = Builder.CreateFMul(Src1_5, Src2_5);
+        Dest6 = Builder.CreateFMul(Src1_6, Src2_6);
+        Dest7 = Builder.CreateFMul(Src1_7, Src2_7);
+        Dest8 = Builder.CreateFMul(Src1_8, Src2_8);
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetZMMID(), 0, FP64PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetZMMID(), 8, FP64PtrTy));
+        Builder.CreateStore(Dest3,
+                            getXMMPtr(DestOpnd.GetZMMID(), 16, FP64PtrTy));
+        Builder.CreateStore(Dest4,
+                            getXMMPtr(DestOpnd.GetZMMID(), 24, FP64PtrTy));
+        Builder.CreateStore(Dest5,
+                            getXMMPtr(DestOpnd.GetZMMID(), 32, FP64PtrTy));
+        Builder.CreateStore(Dest6,
+                            getXMMPtr(DestOpnd.GetZMMID(), 40, FP64PtrTy));
+        Builder.CreateStore(Dest7,
+                            getXMMPtr(DestOpnd.GetZMMID(), 48, FP64PtrTy));
+        Builder.CreateStore(Dest8,
+                            getXMMPtr(DestOpnd.GetZMMID(), 56, FP64PtrTy));
+    }
 }
 void X86Translator::translate_vmulps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmulps\n";
     exit(-1);
 }
 void X86Translator::translate_vmulsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmulsd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src2_1 = nullptr;
+        Value *Dest1 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+        if (SrcOpnd1.isXMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+
+            Src1_1 = Builder.CreateLoad(FP64Ty, Addr1);
+        }
+        Dest1 = Builder.CreateFMul(Src2_1, Src1_1);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+
+    } else {
+        llvm_unreachable("vmulsd : error!");
+    }
 }
 void X86Translator::translate_vmulss(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vmulss\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src2_1 = nullptr;
+        Value *Dest1 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP32PtrTy));
+        if (SrcOpnd1.isXMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP32PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP32PtrTy);
+
+            Src1_1 = Builder.CreateLoad(FP32Ty, Addr1);
+        }
+        Dest1 = Builder.CreateFMul(Src1_1, Src2_1);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, FP32PtrTy));
+
+    } else if (DestOpnd.isYMM()) {
+        Value *Src1_1 = nullptr;
+
+        Value *Src2_1 = nullptr;
+
+        Value *Dest1 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 0, FP32PtrTy));
+
+        if (SrcOpnd1.isYMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 0, FP32PtrTy));
+
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP32PtrTy);
+
+            Src1_1 = Builder.CreateLoad(FP32Ty, Addr1);
+        }
+
+        Dest1 = Builder.CreateFMul(Src1_1, Src2_1);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetYMMID(), 0, FP32PtrTy));
+
+    } else if (DestOpnd.isZMM()) {
+        Value *Src1_1 = nullptr;
+
+        Value *Src2_1 = nullptr;
+
+        Value *Dest1 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 0, FP32PtrTy));
+
+        if (SrcOpnd1.isZMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 0, FP32PtrTy));
+
+        } else {
+            llvm_unreachable("vmulsd: error");
+        }
+
+        Dest1 = Builder.CreateFMul(Src1_1, Src2_1);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetZMMID(), 0, FP32PtrTy));
+    }
 }
 void X86Translator::translate_vmwrite(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vmwrite\n";
@@ -2745,8 +6930,37 @@ void X86Translator::translate_vpaddw(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpalignr(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpalignr\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(2));
+
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(3));
+    X86OperandHandler ImmOpnd(InstHdl.getOpnd(0));
+
+    Value *Imm8 = LoadOperand(InstHdl.getOpnd(0));
+    Imm8 = Builder.CreateAnd(Imm8, ConstInt(Imm8->getType(), 7));
+    if (SrcOpnd1.isXMM()) {
+        Value *Src1 = Builder.CreateLoad(
+            Int128Ty, getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int128PtrTy));
+        Value *Src2 = Builder.CreateLoad(
+            Int128Ty, getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(ConstInt(Int128Ty, 0),
+                            getXMMT0Ptr(32, Int128PtrTy));
+
+        Builder.CreateStore(Src1, getXMMT0Ptr(16, Int128PtrTy));
+        Builder.CreateStore(Src2, getXMMT0Ptr(0, Int128PtrTy));
+
+        ConstantInt *CI = dyn_cast<ConstantInt>(Imm8);
+        int constIntValue = CI->getZExtValue();
+        Value *Dest = Builder.CreateLoad(
+            Int128Ty, getXMMT0Ptr(constIntValue, Int128PtrTy));
+        Builder.CreateStore(Dest,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+
+    } else {
+        llvm_unreachable("vpalignr:error!do not finish ymm reg");
+    }
 }
 void X86Translator::translate_vpandd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpandd\n";
@@ -2761,16 +6975,148 @@ void X86Translator::translate_vpandnq(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpandn(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpandn\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src2_1 = nullptr;
+        Value *Dest1 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int128PtrTy));
+        if (SrcOpnd1.isXMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int128PtrTy));
+        } else {
+            Src1_1 = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+        }
+
+        Src2_1 = Builder.CreateNot(Src2_1);
+
+        Dest1 = Builder.CreateAnd(Src1_1, Src2_1);
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+    } else if (DestOpnd.isYMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 0, Int128PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 16, Int128PtrTy));
+
+        if (SrcOpnd1.isYMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 0, Int128PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 16, Int128PtrTy));
+
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Src1_1 = Builder.CreateLoad(Int128Ty, Addr1);
+            Src1_2 = Builder.CreateLoad(Int128Ty, Addr2);
+        }
+
+        Src2_1 = Builder.CreateNot(Src2_1);
+        Src2_2 = Builder.CreateNot(Src2_2);
+
+        Dest1 = Builder.CreateAnd(Src1_1, Src2_1);
+        Dest2 = Builder.CreateAnd(Src1_2, Src2_2);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetYMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetYMMID(), 16, Int128PtrTy));
+    } else {
+        llvm_unreachable("vpandn:error");
+    }
 }
 void X86Translator::translate_vpandq(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpandq\n";
     exit(-1);
 }
 void X86Translator::translate_vpand(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpand\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src2_1 = nullptr;
+        Value *Dest1 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int128PtrTy));
+        if (SrcOpnd1.isXMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int128PtrTy));
+        } else {
+            Src1_1 = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+        }
+        Dest1 = Builder.CreateAnd(Src1_1, Src2_1);
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+    } else if (DestOpnd.isYMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 0, Int128PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 16, Int128PtrTy));
+
+        if (SrcOpnd1.isYMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 0, Int128PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 16, Int128PtrTy));
+
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Src1_1 = Builder.CreateLoad(Int128Ty, Addr1);
+            Src1_2 = Builder.CreateLoad(Int128Ty, Addr2);
+        }
+
+        Dest1 = Builder.CreateAnd(Src1_1, Src2_1);
+        Dest2 = Builder.CreateAnd(Src1_2, Src2_2);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetYMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetYMMID(), 16, Int128PtrTy));
+    } else {
+        llvm_unreachable("vpand ; error!");
+    }
 }
 void X86Translator::translate_vpavgb(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpavgb\n";
@@ -2849,16 +7195,237 @@ void X86Translator::translate_vpcmpd(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpcmpeqb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpcmpeqb\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (!DestOpnd.isXMM()) {
+        llvm_unreachable("vpcmpeqb : only xmm");
+    } else {
+        Value *Src1_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int8PtrTy));
+        Value *Src1_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 1, Int8PtrTy));
+        Value *Src1_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 2, Int8PtrTy));
+        Value *Src1_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 3, Int8PtrTy));
+        Value *Src1_5 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 4, Int8PtrTy));
+        Value *Src1_6 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 5, Int8PtrTy));
+        Value *Src1_7 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 6, Int8PtrTy));
+        Value *Src1_8 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 7, Int8PtrTy));
+        Value *Src1_9 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 8, Int8PtrTy));
+        Value *Src1_10 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 9, Int8PtrTy));
+        Value *Src1_11 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 10, Int8PtrTy));
+        Value *Src1_12 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 11, Int8PtrTy));
+        Value *Src1_13 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 12, Int8PtrTy));
+        Value *Src1_14 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 13, Int8PtrTy));
+        Value *Src1_15 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 14, Int8PtrTy));
+        Value *Src1_16 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 15, Int8PtrTy));
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+        Value *Src2_3 = nullptr;
+        Value *Src2_4 = nullptr;
+        Value *Src2_5 = nullptr;
+        Value *Src2_6 = nullptr;
+        Value *Src2_7 = nullptr;
+        Value *Src2_8 = nullptr;
+        Value *Src2_9 = nullptr;
+        Value *Src2_10 = nullptr;
+        Value *Src2_11 = nullptr;
+        Value *Src2_12 = nullptr;
+        Value *Src2_13 = nullptr;
+        Value *Src2_14 = nullptr;
+        Value *Src2_15 = nullptr;
+        Value *Src2_16 = nullptr;
+
+        if (SrcOpnd2.isXMM()) {
+            Src2_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int8PtrTy));
+            Src2_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 1, Int8PtrTy));
+            Src2_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 2, Int8PtrTy));
+            Src2_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 3, Int8PtrTy));
+            Src2_5 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 4, Int8PtrTy));
+            Src2_6 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 5, Int8PtrTy));
+            Src2_7 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 6, Int8PtrTy));
+            Src2_8 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 7, Int8PtrTy));
+            Src2_9 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 8, Int8PtrTy));
+            Src2_10 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 9, Int8PtrTy));
+            Src2_11 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 10, Int8PtrTy));
+            Src2_12 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 11, Int8PtrTy));
+            Src2_13 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 12, Int8PtrTy));
+            Src2_14 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 13, Int8PtrTy));
+            Src2_15 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 14, Int8PtrTy));
+            Src2_16 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 15, Int8PtrTy));
+        } else {
+            llvm_unreachable("vpcmpeqb : only xmm");
+        }
+        Value *EQ = ConstInt(Int8Ty, 0xff);
+        Value *Dest1 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpEQ(Src1_1, Src2_1), Int8Ty),
+            EQ);
+        Value *Dest2 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpEQ(Src1_2, Src2_2), Int8Ty),
+            EQ);
+        Value *Dest3 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpEQ(Src1_3, Src2_3), Int8Ty),
+            EQ);
+        Value *Dest4 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpEQ(Src1_4, Src2_4), Int8Ty),
+            EQ);
+        Value *Dest5 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpEQ(Src1_5, Src2_5), Int8Ty),
+            EQ);
+        Value *Dest6 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpEQ(Src1_6, Src2_6), Int8Ty),
+            EQ);
+        Value *Dest7 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpEQ(Src1_7, Src2_7), Int8Ty),
+            EQ);
+        Value *Dest8 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpEQ(Src1_8, Src2_8), Int8Ty),
+            EQ);
+        Value *Dest9 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpEQ(Src1_9, Src2_9), Int8Ty),
+            EQ);
+        Value *Dest10 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpEQ(Src1_10, Src2_10), Int8Ty),
+            EQ);
+        Value *Dest11 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpEQ(Src1_11, Src2_11), Int8Ty),
+            EQ);
+        Value *Dest12 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpEQ(Src1_12, Src2_12), Int8Ty),
+            EQ);
+        Value *Dest13 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpEQ(Src1_13, Src2_13), Int8Ty),
+            EQ);
+        Value *Dest14 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpEQ(Src1_14, Src2_14), Int8Ty),
+            EQ);
+        Value *Dest15 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpEQ(Src1_15, Src2_15), Int8Ty),
+            EQ);
+        Value *Dest16 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpEQ(Src1_16, Src2_16), Int8Ty),
+            EQ);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int8PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetXMMID(), 1, Int8PtrTy));
+        Builder.CreateStore(Dest3,
+                            getXMMPtr(DestOpnd.GetXMMID(), 2, Int8PtrTy));
+        Builder.CreateStore(Dest4,
+                            getXMMPtr(DestOpnd.GetXMMID(), 3, Int8PtrTy));
+        Builder.CreateStore(Dest5,
+                            getXMMPtr(DestOpnd.GetXMMID(), 4, Int8PtrTy));
+        Builder.CreateStore(Dest6,
+                            getXMMPtr(DestOpnd.GetXMMID(), 5, Int8PtrTy));
+        Builder.CreateStore(Dest7,
+                            getXMMPtr(DestOpnd.GetXMMID(), 6, Int8PtrTy));
+        Builder.CreateStore(Dest8,
+                            getXMMPtr(DestOpnd.GetXMMID(), 7, Int8PtrTy));
+        Builder.CreateStore(Dest9,
+                            getXMMPtr(DestOpnd.GetXMMID(), 8, Int8PtrTy));
+        Builder.CreateStore(Dest10,
+                            getXMMPtr(DestOpnd.GetXMMID(), 9, Int8PtrTy));
+        Builder.CreateStore(Dest11,
+                            getXMMPtr(DestOpnd.GetXMMID(), 10, Int8PtrTy));
+        Builder.CreateStore(Dest12,
+                            getXMMPtr(DestOpnd.GetXMMID(), 11, Int8PtrTy));
+        Builder.CreateStore(Dest13,
+                            getXMMPtr(DestOpnd.GetXMMID(), 12, Int8PtrTy));
+        Builder.CreateStore(Dest14,
+                            getXMMPtr(DestOpnd.GetXMMID(), 13, Int8PtrTy));
+        Builder.CreateStore(Dest15,
+                            getXMMPtr(DestOpnd.GetXMMID(), 14, Int8PtrTy));
+        Builder.CreateStore(Dest16,
+                            getXMMPtr(DestOpnd.GetXMMID(), 15, Int8PtrTy));
+    }
 }
 void X86Translator::translate_vpcmpeqd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpcmpeqd\n";
     exit(-1);
 }
 void X86Translator::translate_vpcmpeqq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpcmpeqq\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (!DestOpnd.isXMM()) {
+        llvm_unreachable("vpcmpeqb : only xmm");
+    } else {
+        Value *Src1_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int8PtrTy));
+        Value *Src1_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 8, Int8PtrTy));
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+
+        if (SrcOpnd2.isXMM()) {
+            Src2_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int8PtrTy));
+            Src2_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 8, Int8PtrTy));
+
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 8));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int64PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int64PtrTy);
+
+            Src2_1 = Builder.CreateLoad(Int64Ty, Addr1);
+            Src2_2 = Builder.CreateLoad(Int64Ty, Addr2);
+        }
+        Value *EQ = ConstInt(Int64Ty, 0xffffffff);
+        Value *Dest1 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpEQ(Src1_1, Src2_1), Int64Ty),
+            EQ);
+        Value *Dest2 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpEQ(Src1_2, Src2_2), Int64Ty),
+            EQ);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int8PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetXMMID(), 8, Int8PtrTy));
+    }
 }
 void X86Translator::translate_vpcmpeqw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpcmpeqw\n";
@@ -2873,8 +7440,184 @@ void X86Translator::translate_vpcmpestrm(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpcmpgtb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpcmpgtb\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (!DestOpnd.isXMM()) {
+        llvm_unreachable("vpcmpgtb : only xmm");
+    } else {
+        Value *Src1_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int8PtrTy));
+        Value *Src1_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 1, Int8PtrTy));
+        Value *Src1_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 2, Int8PtrTy));
+        Value *Src1_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 3, Int8PtrTy));
+        Value *Src1_5 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 4, Int8PtrTy));
+        Value *Src1_6 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 5, Int8PtrTy));
+        Value *Src1_7 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 6, Int8PtrTy));
+        Value *Src1_8 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 7, Int8PtrTy));
+        Value *Src1_9 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 8, Int8PtrTy));
+        Value *Src1_10 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 9, Int8PtrTy));
+        Value *Src1_11 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 10, Int8PtrTy));
+        Value *Src1_12 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 11, Int8PtrTy));
+        Value *Src1_13 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 12, Int8PtrTy));
+        Value *Src1_14 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 13, Int8PtrTy));
+        Value *Src1_15 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 14, Int8PtrTy));
+        Value *Src1_16 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 15, Int8PtrTy));
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+        Value *Src2_3 = nullptr;
+        Value *Src2_4 = nullptr;
+        Value *Src2_5 = nullptr;
+        Value *Src2_6 = nullptr;
+        Value *Src2_7 = nullptr;
+        Value *Src2_8 = nullptr;
+        Value *Src2_9 = nullptr;
+        Value *Src2_10 = nullptr;
+        Value *Src2_11 = nullptr;
+        Value *Src2_12 = nullptr;
+        Value *Src2_13 = nullptr;
+        Value *Src2_14 = nullptr;
+        Value *Src2_15 = nullptr;
+        Value *Src2_16 = nullptr;
+
+        if (SrcOpnd2.isXMM()) {
+            Src2_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int8PtrTy));
+            Src2_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 1, Int8PtrTy));
+            Src2_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 2, Int8PtrTy));
+            Src2_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 3, Int8PtrTy));
+            Src2_5 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 4, Int8PtrTy));
+            Src2_6 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 5, Int8PtrTy));
+            Src2_7 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 6, Int8PtrTy));
+            Src2_8 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 7, Int8PtrTy));
+            Src2_9 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 8, Int8PtrTy));
+            Src2_10 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 9, Int8PtrTy));
+            Src2_11 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 10, Int8PtrTy));
+            Src2_12 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 11, Int8PtrTy));
+            Src2_13 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 12, Int8PtrTy));
+            Src2_14 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 13, Int8PtrTy));
+            Src2_15 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 14, Int8PtrTy));
+            Src2_16 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 15, Int8PtrTy));
+        } else {
+            llvm_unreachable("vpcmpgtb : only xmm");
+        }
+        Value *EQ = ConstInt(Int8Ty, 0xff);
+        Value *Dest1 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpSGT(Src1_1, Src2_1), Int8Ty),
+            EQ);
+        Value *Dest2 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpSGT(Src1_2, Src2_2), Int8Ty),
+            EQ);
+        Value *Dest3 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpSGT(Src1_3, Src2_3), Int8Ty),
+            EQ);
+        Value *Dest4 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpSGT(Src1_4, Src2_4), Int8Ty),
+            EQ);
+        Value *Dest5 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpSGT(Src1_5, Src2_5), Int8Ty),
+            EQ);
+        Value *Dest6 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpSGT(Src1_6, Src2_6), Int8Ty),
+            EQ);
+        Value *Dest7 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpSGT(Src1_7, Src2_7), Int8Ty),
+            EQ);
+        Value *Dest8 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpSGT(Src1_8, Src2_8), Int8Ty),
+            EQ);
+        Value *Dest9 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpSGT(Src1_9, Src2_9), Int8Ty),
+            EQ);
+        Value *Dest10 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpSGT(Src1_10, Src2_10), Int8Ty),
+            EQ);
+        Value *Dest11 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpSGT(Src1_11, Src2_11), Int8Ty),
+            EQ);
+        Value *Dest12 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpSGT(Src1_12, Src2_12), Int8Ty),
+            EQ);
+        Value *Dest13 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpSGT(Src1_13, Src2_13), Int8Ty),
+            EQ);
+        Value *Dest14 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpSGT(Src1_14, Src2_14), Int8Ty),
+            EQ);
+        Value *Dest15 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpSGT(Src1_15, Src2_15), Int8Ty),
+            EQ);
+        Value *Dest16 = Builder.CreateMul(
+            Builder.CreateZExt(Builder.CreateICmpSGT(Src1_16, Src2_16), Int8Ty),
+            EQ);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int8PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetXMMID(), 1, Int8PtrTy));
+        Builder.CreateStore(Dest3,
+                            getXMMPtr(DestOpnd.GetXMMID(), 2, Int8PtrTy));
+        Builder.CreateStore(Dest4,
+                            getXMMPtr(DestOpnd.GetXMMID(), 3, Int8PtrTy));
+        Builder.CreateStore(Dest5,
+                            getXMMPtr(DestOpnd.GetXMMID(), 4, Int8PtrTy));
+        Builder.CreateStore(Dest6,
+                            getXMMPtr(DestOpnd.GetXMMID(), 5, Int8PtrTy));
+        Builder.CreateStore(Dest7,
+                            getXMMPtr(DestOpnd.GetXMMID(), 6, Int8PtrTy));
+        Builder.CreateStore(Dest8,
+                            getXMMPtr(DestOpnd.GetXMMID(), 7, Int8PtrTy));
+        Builder.CreateStore(Dest9,
+                            getXMMPtr(DestOpnd.GetXMMID(), 8, Int8PtrTy));
+        Builder.CreateStore(Dest10,
+                            getXMMPtr(DestOpnd.GetXMMID(), 9, Int8PtrTy));
+        Builder.CreateStore(Dest11,
+                            getXMMPtr(DestOpnd.GetXMMID(), 10, Int8PtrTy));
+        Builder.CreateStore(Dest12,
+                            getXMMPtr(DestOpnd.GetXMMID(), 11, Int8PtrTy));
+        Builder.CreateStore(Dest13,
+                            getXMMPtr(DestOpnd.GetXMMID(), 12, Int8PtrTy));
+        Builder.CreateStore(Dest14,
+                            getXMMPtr(DestOpnd.GetXMMID(), 13, Int8PtrTy));
+        Builder.CreateStore(Dest15,
+                            getXMMPtr(DestOpnd.GetXMMID(), 14, Int8PtrTy));
+        Builder.CreateStore(Dest16,
+                            getXMMPtr(DestOpnd.GetXMMID(), 15, Int8PtrTy));
+    }
 }
 void X86Translator::translate_vpcmpgtd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpcmpgtd\n";
@@ -2889,8 +7632,7 @@ void X86Translator::translate_vpcmpgtw(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpcmpistri(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpcmpistri\n";
-    exit(-1);
+    translate_pcmpistri(Inst);
 }
 void X86Translator::translate_vpcmpistrm(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpcmpistrm\n";
@@ -2969,8 +7711,81 @@ void X86Translator::translate_vpconflictq(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vperm2f128(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vperm2f128\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler Imm(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(2));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(3));
+
+    Value *Imm8 = LoadOperand(InstHdl.getOpnd(0), Int8Ty);
+    Value *S1_1 =
+        Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 0, Int128PtrTy));
+    Value *S1_2 =
+        Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetYMMID(), 16, Int128PtrTy));
+
+    Value *S2_1 = nullptr;
+    Value *S2_2 = nullptr;
+    ConstantInt *CI = dyn_cast<ConstantInt>(Imm8);
+    int IMM8 = CI->getZExtValue();
+
+    if (SrcOpnd2.isYMM()) {
+        S2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 0, Int128PtrTy));
+        S2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 16, Int128PtrTy));
+    } else {
+        Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+        Value *Addr2 = Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+
+        Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+        Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+        S2_1 = Builder.CreateLoad(Int128Ty, Addr1);
+        S2_2 = Builder.CreateLoad(Int128Ty, Addr2);
+    }
+    Value *Dest1 = nullptr;
+    Value *Dest2 = nullptr;
+
+    switch (IMM8 & 0x3) {
+    case 0:
+        Dest1 = S1_1;
+        break;
+    case 1:
+        Dest1 = S1_2;
+        break;
+    case 2:
+        Dest1 = S2_1;
+        break;
+    case 3:
+        Dest1 = S2_2;
+        break;
+    default:
+        break;
+    }
+    switch (IMM8 & 0x30) {
+    case 0:
+        Dest2 = S1_1;
+        break;
+    case 1:
+        Dest2 = S1_2;
+        break;
+    case 2:
+        Dest2 = S2_1;
+        break;
+    case 3:
+        Dest2 = S2_2;
+        break;
+    default:
+        break;
+    }
+    if (IMM8 & 0x4) {
+        Dest1 = ConstInt(Int128Ty, 0);
+    }
+    if (IMM8 & 0x40) {
+        Dest2 = ConstInt(Int128Ty, 0);
+    }
+    Builder.CreateStore(Dest1, getXMMPtr(DestOpnd.GetYMMID(), 0, Int128PtrTy));
+    Builder.CreateStore(Dest2, getXMMPtr(DestOpnd.GetYMMID(), 16, Int128PtrTy));
 }
 void X86Translator::translate_vperm2i128(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vperm2i128\n";
@@ -3177,8 +7992,22 @@ void X86Translator::translate_vpinsrd(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpinsrq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpinsrq\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(2));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(3));
+    // X86OperandHandler Imm8(InstHdl.getOpnd(0));
+    assert(SrcOpnd1.isXMM());
+    Value *Insr = LoadOperand(InstHdl.getOpnd(1), Int64Ty);
+    Value *Imm8V = LoadOperand(InstHdl.getOpnd(0), Int1Ty);
+    ConstantInt *CI = dyn_cast<ConstantInt>(Imm8V);
+    int constIntValue = CI->getZExtValue();
+    Builder.CreateStore(
+        Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int128PtrTy)),
+        getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+    Builder.CreateStore(
+        Insr, getXMMPtr(DestOpnd.GetXMMID(), constIntValue * 8, Int64PtrTy));
 }
 void X86Translator::translate_vpinsrw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpinsrw\n";
@@ -3345,8 +8174,20 @@ void X86Translator::translate_vpmovm2w(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpmovmskb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpmovmskb\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    FunctionType *FTy =
+        FunctionType::get(Int32Ty, {Int8PtrTy, Int128PtrTy}, false);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+
+    assert(SrcOpnd.isXMM());
+    Value *Addr = getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy);
+    Value *res = CallFunc(FTy, "helper_pmovmskb_xmm", {CPUEnv, Addr});
+    if (DestOpnd.getOpndSize() == 4)
+        res = Builder.CreateZExt(res, Int32Ty);
+    else if (DestOpnd.getOpndSize() == 8)
+        res = Builder.CreateZExt(res, Int64Ty);
+    StoreOperand(res, InstHdl.getOpnd(1));
 }
 void X86Translator::translate_vpmovqb(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpmovqb\n";
@@ -3489,8 +8330,119 @@ void X86Translator::translate_vporq(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpor(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpor\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src2_1 = nullptr;
+        Value *Dest1 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int128PtrTy));
+        if (SrcOpnd1.isXMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int128PtrTy));
+        } else {
+            Src1_1 = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+        }
+        Dest1 = Builder.CreateOr(Src1_1, Src2_1);
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+    } else if (DestOpnd.isYMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 0, Int128PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 16, Int128PtrTy));
+
+        if (SrcOpnd1.isYMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 0, Int128PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 16, Int128PtrTy));
+
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Src1_1 = Builder.CreateLoad(Int128Ty, Addr1);
+            Src1_2 = Builder.CreateLoad(Int128Ty, Addr2);
+        }
+
+        Dest1 = Builder.CreateOr(Src1_1, Src2_1);
+        Dest2 = Builder.CreateOr(Src1_2, Src2_2);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetYMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetYMMID(), 16, Int128PtrTy));
+    } else if (DestOpnd.isZMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+        Value *Src1_3 = nullptr;
+        Value *Src1_4 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+        Value *Src2_3 = nullptr;
+        Value *Src2_4 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+        Value *Dest3 = nullptr;
+        Value *Dest4 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 0, Int128PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 16, Int128PtrTy));
+        Src2_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 32, Int128PtrTy));
+        Src2_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 48, Int128PtrTy));
+        if (SrcOpnd1.isZMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 0, Int128PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 16, Int128PtrTy));
+            Src1_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 32, Int128PtrTy));
+            Src1_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 48, Int128PtrTy));
+        } else {
+            llvm_unreachable("vpor: error");
+        }
+
+        Dest1 = Builder.CreateOr(Src1_1, Src2_1);
+        Dest2 = Builder.CreateOr(Src1_2, Src2_2);
+        Dest3 = Builder.CreateOr(Src1_3, Src2_3);
+        Dest4 = Builder.CreateOr(Src1_4, Src2_4);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetZMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetZMMID(), 16, Int128PtrTy));
+        Builder.CreateStore(Dest3,
+                            getXMMPtr(DestOpnd.GetZMMID(), 32, Int128PtrTy));
+        Builder.CreateStore(Dest4,
+                            getXMMPtr(DestOpnd.GetZMMID(), 48, Int128PtrTy));
+    }
 }
 void X86Translator::translate_vpperm(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpperm\n";
@@ -3565,12 +8517,56 @@ void X86Translator::translate_vpshlw(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpshufb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpshufb\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    FunctionType *FuncTy = FunctionType::get(
+        Int32Ty, {Int8PtrTy, Int128PtrTy, Int128PtrTy}, false);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+    assert(DestOpnd.isXMM());
+    Value *Addr1 = getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int128PtrTy);
+    Value *Addr2 = nullptr;
+    Value *tmp = Builder.CreateLoad(Addr1);
+    if (SrcOpnd2.isXMM()) {
+        Addr2 = getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int128PtrTy);
+    } else {
+        Addr2 = CalcMemAddr(InstHdl.getOpnd(0));
+        Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+    }
+    CallFunc(FuncTy, "helper_pshufb_xmm", {CPUEnv, Addr1, Addr2});
+    Builder.CreateStore(Builder.CreateLoad(Addr1),
+                        getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+    Builder.CreateStore(tmp, Addr1);
 }
 void X86Translator::translate_vpshufd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpshufd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    FunctionType *FuncTy = FunctionType::get(
+        Int32Ty, {Int8PtrTy, Int128PtrTy, Int128PtrTy, Int64Ty}, false);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
+    X86OperandHandler Imm8(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    Value *Imm8V = LoadOperand(InstHdl.getOpnd(0), Int8Ty);
+    Imm8V = Builder.CreateZExt(Imm8V, Int64Ty);
+
+    assert(DestOpnd.isZMM() && SrcOpnd.isZMM() && "only for zmm now");
+
+    Value *S_Addr1 = getXMMPtr(SrcOpnd.GetZMMID(), 0, Int128PtrTy);
+    Value *S_Addr2 = getXMMPtr(SrcOpnd.GetZMMID(), 16, Int128PtrTy);
+    Value *S_Addr3 = getXMMPtr(SrcOpnd.GetZMMID(), 32, Int128PtrTy);
+    Value *S_Addr4 = getXMMPtr(SrcOpnd.GetZMMID(), 48, Int128PtrTy);
+
+    Value *D_Addr1 = getXMMPtr(DestOpnd.GetZMMID(), 0, Int128PtrTy);
+    Value *D_Addr2 = getXMMPtr(DestOpnd.GetZMMID(), 16, Int128PtrTy);
+    Value *D_Addr3 = getXMMPtr(DestOpnd.GetZMMID(), 32, Int128PtrTy);
+    Value *D_Addr4 = getXMMPtr(DestOpnd.GetZMMID(), 48, Int128PtrTy);
+
+    CallFunc(FuncTy, "helper_pshufd_xmm", {CPUEnv, D_Addr1, S_Addr1, Imm8V});
+    CallFunc(FuncTy, "helper_pshufd_xmm", {CPUEnv, D_Addr2, S_Addr2, Imm8V});
+    CallFunc(FuncTy, "helper_pshufd_xmm", {CPUEnv, D_Addr3, S_Addr3, Imm8V});
+    CallFunc(FuncTy, "helper_pshufd_xmm", {CPUEnv, D_Addr4, S_Addr4, Imm8V});
 }
 void X86Translator::translate_vpshufhw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpshufhw\n";
@@ -3593,8 +8589,24 @@ void X86Translator::translate_vpsignw(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpslldq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpslldq\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
+    // X86OperandHandler Imm8(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+    assert(DestOpnd.isXMM());
+    Value *Dest = nullptr;
+    Value *Imm8V = LoadOperand(InstHdl.getOpnd(0), Int8Ty);
+    Imm8V = Builder.CreateZExt(Imm8V, Int128Ty);
+    Imm8V = Builder.CreateMul(Imm8V, ConstInt(Int128Ty, 8));
+    if (SrcOpnd.isXMM()) {
+        Dest =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy));
+    } else {
+        Dest = LoadOperand(InstHdl.getOpnd(1), Int128Ty);
+    }
+    Dest = Builder.CreateShl(Dest, Imm8V);
+    Builder.CreateStore(Dest, getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
 }
 void X86Translator::translate_vpslld(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpslld\n";
@@ -3637,8 +8649,24 @@ void X86Translator::translate_vpsraw(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpsrldq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpsrldq\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
+    // X86OperandHandler Imm8(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+    assert(DestOpnd.isXMM());
+    Value *Dest = nullptr;
+    Value *Imm8V = LoadOperand(InstHdl.getOpnd(0), Int8Ty);
+    Imm8V = Builder.CreateZExt(Imm8V, Int128Ty);
+    Imm8V = Builder.CreateMul(Imm8V, ConstInt(Int128Ty, 8));
+    if (SrcOpnd.isXMM()) {
+        Dest =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd.GetXMMID(), 0, Int128PtrTy));
+    } else {
+        Dest = LoadOperand(InstHdl.getOpnd(1), Int128Ty);
+    }
+    Dest = Builder.CreateLShr(Dest, Imm8V);
+    Builder.CreateStore(Dest, getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
 }
 void X86Translator::translate_vpsrld(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpsrld\n";
@@ -3661,8 +8689,215 @@ void X86Translator::translate_vpsrlw(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpsubb(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpsubb\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (!DestOpnd.isXMM()) {
+        llvm_unreachable("vpsubb : only xmm");
+    } else {
+        Value *Src1_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int8PtrTy));
+        Value *Src1_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 1, Int8PtrTy));
+        Value *Src1_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 2, Int8PtrTy));
+        Value *Src1_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 3, Int8PtrTy));
+        Value *Src1_5 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 4, Int8PtrTy));
+        Value *Src1_6 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 5, Int8PtrTy));
+        Value *Src1_7 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 6, Int8PtrTy));
+        Value *Src1_8 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 7, Int8PtrTy));
+        Value *Src1_9 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 8, Int8PtrTy));
+        Value *Src1_10 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 9, Int8PtrTy));
+        Value *Src1_11 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 10, Int8PtrTy));
+        Value *Src1_12 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 11, Int8PtrTy));
+        Value *Src1_13 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 12, Int8PtrTy));
+        Value *Src1_14 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 13, Int8PtrTy));
+        Value *Src1_15 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 14, Int8PtrTy));
+        Value *Src1_16 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 15, Int8PtrTy));
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+        Value *Src2_3 = nullptr;
+        Value *Src2_4 = nullptr;
+        Value *Src2_5 = nullptr;
+        Value *Src2_6 = nullptr;
+        Value *Src2_7 = nullptr;
+        Value *Src2_8 = nullptr;
+        Value *Src2_9 = nullptr;
+        Value *Src2_10 = nullptr;
+        Value *Src2_11 = nullptr;
+        Value *Src2_12 = nullptr;
+        Value *Src2_13 = nullptr;
+        Value *Src2_14 = nullptr;
+        Value *Src2_15 = nullptr;
+        Value *Src2_16 = nullptr;
+
+        if (SrcOpnd2.isXMM()) {
+            Src2_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int8PtrTy));
+            Src2_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 1, Int8PtrTy));
+            Src2_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 2, Int8PtrTy));
+            Src2_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 3, Int8PtrTy));
+            Src2_5 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 4, Int8PtrTy));
+            Src2_6 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 5, Int8PtrTy));
+            Src2_7 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 6, Int8PtrTy));
+            Src2_8 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 7, Int8PtrTy));
+            Src2_9 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 8, Int8PtrTy));
+            Src2_10 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 9, Int8PtrTy));
+            Src2_11 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 10, Int8PtrTy));
+            Src2_12 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 11, Int8PtrTy));
+            Src2_13 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 12, Int8PtrTy));
+            Src2_14 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 13, Int8PtrTy));
+            Src2_15 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 14, Int8PtrTy));
+            Src2_16 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd2.GetXMMID(), 15, Int8PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 1));
+            Value *Addr3 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 2));
+            Value *Addr4 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 3));
+            Value *Addr5 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 4));
+            Value *Addr6 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 5));
+            Value *Addr7 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 6));
+            Value *Addr8 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 7));
+            Value *Addr9 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 8));
+            Value *Addr10 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 9));
+            Value *Addr11 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 10));
+            Value *Addr12 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 11));
+            Value *Addr13 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 12));
+            Value *Addr14 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 13));
+            Value *Addr15 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 14));
+            Value *Addr16 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 15));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int8PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int8PtrTy);
+            Addr3 = Builder.CreateIntToPtr(Addr3, Int8PtrTy);
+            Addr4 = Builder.CreateIntToPtr(Addr4, Int8PtrTy);
+            Addr5 = Builder.CreateIntToPtr(Addr5, Int8PtrTy);
+            Addr6 = Builder.CreateIntToPtr(Addr6, Int8PtrTy);
+            Addr7 = Builder.CreateIntToPtr(Addr7, Int8PtrTy);
+            Addr8 = Builder.CreateIntToPtr(Addr8, Int8PtrTy);
+            Addr9 = Builder.CreateIntToPtr(Addr9, Int8PtrTy);
+            Addr10 = Builder.CreateIntToPtr(Addr10, Int8PtrTy);
+            Addr11 = Builder.CreateIntToPtr(Addr11, Int8PtrTy);
+            Addr12 = Builder.CreateIntToPtr(Addr12, Int8PtrTy);
+            Addr13 = Builder.CreateIntToPtr(Addr13, Int8PtrTy);
+            Addr14 = Builder.CreateIntToPtr(Addr14, Int8PtrTy);
+            Addr15 = Builder.CreateIntToPtr(Addr15, Int8PtrTy);
+            Addr16 = Builder.CreateIntToPtr(Addr16, Int8PtrTy);
+
+            Src2_1 = Builder.CreateLoad(Int8Ty, Addr1);
+            Src2_2 = Builder.CreateLoad(Int8Ty, Addr2);
+            Src2_3 = Builder.CreateLoad(Int8Ty, Addr3);
+            Src2_4 = Builder.CreateLoad(Int8Ty, Addr4);
+            Src2_5 = Builder.CreateLoad(Int8Ty, Addr1);
+            Src2_6 = Builder.CreateLoad(Int8Ty, Addr2);
+            Src2_7 = Builder.CreateLoad(Int8Ty, Addr3);
+            Src2_8 = Builder.CreateLoad(Int8Ty, Addr4);
+            Src2_9 = Builder.CreateLoad(Int8Ty, Addr1);
+            Src2_10 = Builder.CreateLoad(Int8Ty, Addr2);
+            Src2_11 = Builder.CreateLoad(Int8Ty, Addr3);
+            Src2_12 = Builder.CreateLoad(Int8Ty, Addr4);
+            Src2_13 = Builder.CreateLoad(Int8Ty, Addr1);
+            Src2_14 = Builder.CreateLoad(Int8Ty, Addr2);
+            Src2_15 = Builder.CreateLoad(Int8Ty, Addr3);
+            Src2_16 = Builder.CreateLoad(Int8Ty, Addr4);
+        }
+        Value *Dest1 = Builder.CreateSub(Src1_1, Src2_1);
+        Value *Dest2 = Builder.CreateSub(Src1_2, Src2_2);
+        Value *Dest3 = Builder.CreateSub(Src1_3, Src2_3);
+        Value *Dest4 = Builder.CreateSub(Src1_4, Src2_4);
+        Value *Dest5 = Builder.CreateSub(Src1_5, Src2_5);
+        Value *Dest6 = Builder.CreateSub(Src1_6, Src2_6);
+        Value *Dest7 = Builder.CreateSub(Src1_7, Src2_7);
+        Value *Dest8 = Builder.CreateSub(Src1_8, Src2_8);
+        Value *Dest9 = Builder.CreateSub(Src1_9, Src2_9);
+        Value *Dest10 = Builder.CreateSub(Src1_10, Src2_10);
+        Value *Dest11 = Builder.CreateSub(Src1_11, Src2_11);
+        Value *Dest12 = Builder.CreateSub(Src1_12, Src2_12);
+        Value *Dest13 = Builder.CreateSub(Src1_13, Src2_13);
+        Value *Dest14 = Builder.CreateSub(Src1_14, Src2_14);
+        Value *Dest15 = Builder.CreateSub(Src1_15, Src2_15);
+        Value *Dest16 = Builder.CreateSub(Src1_16, Src2_16);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int8PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetXMMID(), 1, Int8PtrTy));
+        Builder.CreateStore(Dest3,
+                            getXMMPtr(DestOpnd.GetXMMID(), 2, Int8PtrTy));
+        Builder.CreateStore(Dest4,
+                            getXMMPtr(DestOpnd.GetXMMID(), 3, Int8PtrTy));
+        Builder.CreateStore(Dest5,
+                            getXMMPtr(DestOpnd.GetXMMID(), 4, Int8PtrTy));
+        Builder.CreateStore(Dest6,
+                            getXMMPtr(DestOpnd.GetXMMID(), 5, Int8PtrTy));
+        Builder.CreateStore(Dest7,
+                            getXMMPtr(DestOpnd.GetXMMID(), 6, Int8PtrTy));
+        Builder.CreateStore(Dest8,
+                            getXMMPtr(DestOpnd.GetXMMID(), 7, Int8PtrTy));
+        Builder.CreateStore(Dest9,
+                            getXMMPtr(DestOpnd.GetXMMID(), 8, Int8PtrTy));
+        Builder.CreateStore(Dest10,
+                            getXMMPtr(DestOpnd.GetXMMID(), 9, Int8PtrTy));
+        Builder.CreateStore(Dest11,
+                            getXMMPtr(DestOpnd.GetXMMID(), 10, Int8PtrTy));
+        Builder.CreateStore(Dest12,
+                            getXMMPtr(DestOpnd.GetXMMID(), 11, Int8PtrTy));
+        Builder.CreateStore(Dest13,
+                            getXMMPtr(DestOpnd.GetXMMID(), 12, Int8PtrTy));
+        Builder.CreateStore(Dest14,
+                            getXMMPtr(DestOpnd.GetXMMID(), 13, Int8PtrTy));
+        Builder.CreateStore(Dest15,
+                            getXMMPtr(DestOpnd.GetXMMID(), 14, Int8PtrTy));
+        Builder.CreateStore(Dest16,
+                            getXMMPtr(DestOpnd.GetXMMID(), 15, Int8PtrTy));
+    }
 }
 void X86Translator::translate_vpsubd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpsubd\n";
@@ -3737,8 +8972,36 @@ void X86Translator::translate_vpunpckldq(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpunpcklqdq(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpunpcklqdq\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    // helper_punpcklvw_xxx function type.
+    FunctionType *FuncTy =
+        FunctionType::get(Int32Ty, {Int8PtrTy, Int64PtrTy, Int64PtrTy}, false);
+
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    Value *Src1Ptr = nullptr;
+    Value *Src2Ptr = nullptr;
+
+    if (DestOpnd.isXMM()) {
+        Src1Ptr = getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int64PtrTy);
+        if (SrcOpnd2.isXMM())
+            Src2Ptr = getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int64PtrTy);
+        else {
+            Src2Ptr = CalcMemAddr(InstHdl.getOpnd(1));
+            Src2Ptr = Builder.CreateIntToPtr(Src2Ptr, Int64PtrTy);
+        }
+        Value *Src2 = Builder.CreateLoad(Src2Ptr);
+        CallFunc(FuncTy, "helper_punpcklqdq_xmm", {CPUEnv, Src2Ptr, Src1Ptr});
+        Builder.CreateStore(
+            Builder.CreateLoad(Builder.CreateBitCast(Src2Ptr, Int128PtrTy)),
+            getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Src2, Src2Ptr);
+    } else {
+        llvm_unreachable("vpunpcklqdq: only xmm ");
+    }
 }
 void X86Translator::translate_vpunpcklwd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vpunpcklwd\n";
@@ -3753,8 +9016,119 @@ void X86Translator::translate_vpxorq(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vpxor(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vpxor\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src2_1 = nullptr;
+        Value *Dest1 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int128PtrTy));
+        if (SrcOpnd1.isXMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int128PtrTy));
+        } else {
+            Src1_1 = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+        }
+        Dest1 = Builder.CreateXor(Src1_1, Src2_1);
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, Int128PtrTy));
+    } else if (DestOpnd.isYMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 0, Int128PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetYMMID(), 16, Int128PtrTy));
+
+        if (SrcOpnd1.isYMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 0, Int128PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetYMMID(), 16, Int128PtrTy));
+
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+            Value *Addr2 =
+                Builder.CreateAdd(Addr1, ConstInt(Addr1->getType(), 16));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, Int128PtrTy);
+            Addr2 = Builder.CreateIntToPtr(Addr2, Int128PtrTy);
+
+            Src1_1 = Builder.CreateLoad(Int128Ty, Addr1);
+            Src1_2 = Builder.CreateLoad(Int128Ty, Addr2);
+        }
+
+        Dest1 = Builder.CreateXor(Src1_1, Src2_1);
+        Dest2 = Builder.CreateXor(Src1_2, Src2_2);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetYMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetYMMID(), 16, Int128PtrTy));
+    } else if (DestOpnd.isZMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src1_2 = nullptr;
+        Value *Src1_3 = nullptr;
+        Value *Src1_4 = nullptr;
+
+        Value *Src2_1 = nullptr;
+        Value *Src2_2 = nullptr;
+        Value *Src2_3 = nullptr;
+        Value *Src2_4 = nullptr;
+
+        Value *Dest1 = nullptr;
+        Value *Dest2 = nullptr;
+        Value *Dest3 = nullptr;
+        Value *Dest4 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 0, Int128PtrTy));
+        Src2_2 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 16, Int128PtrTy));
+        Src2_3 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 32, Int128PtrTy));
+        Src2_4 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetZMMID(), 48, Int128PtrTy));
+        if (SrcOpnd1.isZMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 0, Int128PtrTy));
+            Src1_2 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 16, Int128PtrTy));
+            Src1_3 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 32, Int128PtrTy));
+            Src1_4 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetZMMID(), 48, Int128PtrTy));
+        } else {
+            llvm_unreachable("vpxor: error");
+        }
+
+        Dest1 = Builder.CreateXor(Src1_1, Src2_1);
+        Dest2 = Builder.CreateXor(Src1_2, Src2_2);
+        Dest3 = Builder.CreateXor(Src1_3, Src2_3);
+        Dest4 = Builder.CreateXor(Src1_4, Src2_4);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetZMMID(), 0, Int128PtrTy));
+        Builder.CreateStore(Dest2,
+                            getXMMPtr(DestOpnd.GetZMMID(), 16, Int128PtrTy));
+        Builder.CreateStore(Dest3,
+                            getXMMPtr(DestOpnd.GetZMMID(), 32, Int128PtrTy));
+        Builder.CreateStore(Dest4,
+                            getXMMPtr(DestOpnd.GetZMMID(), 48, Int128PtrTy));
+    }
 }
 void X86Translator::translate_vrcp14pd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vrcp14pd\n";
@@ -3933,16 +9307,50 @@ void X86Translator::translate_vsqrtps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vsqrtsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vsqrtsd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src2_1 = nullptr;
+        // Value * Dest1 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 8, FP64PtrTy));
+        if (SrcOpnd1.isXMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+
+            Src1_1 = Builder.CreateLoad(FP64Ty, Addr1);
+        }
+        //
+        Src1_1 = Builder.CreateCall(
+            Intrinsic::getDeclaration(
+                Builder.GetInsertBlock()->getParent()->getParent(),
+                Intrinsic::sqrt, Src1_1->getType()),
+            Src1_1);
+        Builder.CreateStore(Src1_1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+        Builder.CreateStore(Src2_1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 8, FP64PtrTy));
+
+    } else {
+        llvm_unreachable("vsqrtsd : error!");
+    }
 }
 void X86Translator::translate_vsqrtss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vsqrtss\n";
     exit(-1);
 }
 void X86Translator::translate_vstmxcsr(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vstmxcsr\n";
-    exit(-1);
+    translate_stmxcsr(Inst);
 }
 void X86Translator::translate_vsubpd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vsubpd\n";
@@ -3953,8 +9361,40 @@ void X86Translator::translate_vsubps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vsubsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vsubsd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    if (DestOpnd.isXMM()) {
+        Value *Src1_1 = nullptr;
+        Value *Src2_1 = nullptr;
+        Value *Dest1 = nullptr;
+
+        Src2_1 =
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+        if (SrcOpnd1.isXMM()) {
+            Src1_1 = Builder.CreateLoad(
+                getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+        } else {
+            Value *Addr1 = CalcMemAddr(InstHdl.getOpnd(0));
+
+            Addr1 = Builder.CreateIntToPtr(Addr1, FP64PtrTy);
+
+            Src1_1 = Builder.CreateLoad(FP64Ty, Addr1);
+        }
+        Dest1 = Builder.CreateFSub(Src2_1, Src1_1);
+
+        Builder.CreateStore(Dest1,
+                            getXMMPtr(DestOpnd.GetXMMID(), 0, FP64PtrTy));
+        Builder.CreateStore(
+            Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 8, FP64PtrTy)),
+            getXMMPtr(DestOpnd.GetXMMID(), 8, FP64PtrTy));
+
+    } else {
+        llvm_unreachable("vsubsd : error!");
+    }
 }
 void X86Translator::translate_vsubss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vsubss\n";
@@ -3977,8 +9417,24 @@ void X86Translator::translate_vunpckhps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vunpcklpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vunpcklpd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(0));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(1));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    Value *Low = nullptr;
+
+    if (SrcOpnd1.isXMM())
+        Low = Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, Int64PtrTy));
+    else {
+        Low = LoadOperand(InstHdl.getOpnd(0), Int128Ty);
+        Low = Builder.CreateTrunc(Low, Int64Ty);
+    }
+    Value *High =
+        Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, Int64PtrTy));
+    Builder.CreateStore(High, getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+    Builder.CreateStore(Low, getXMMPtr(DestOpnd.GetXMMID(), 8, Int64PtrTy));
 }
 void X86Translator::translate_vunpcklps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vunpcklps\n";
@@ -3989,8 +9445,69 @@ void X86Translator::translate_vzeroall(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vzeroupper(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vzeroupper\n";
-    exit(-1);
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(0, 16, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(0, 32, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(0, 48, Int128PtrTy));
+
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(1, 16, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(1, 32, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(1, 48, Int128PtrTy));
+
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(2, 16, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(2, 32, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(2, 48, Int128PtrTy));
+
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(3, 16, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(3, 32, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(3, 48, Int128PtrTy));
+
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(4, 16, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(4, 32, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(4, 48, Int128PtrTy));
+
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(5, 16, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(5, 32, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(5, 48, Int128PtrTy));
+
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(6, 16, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(6, 32, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(6, 48, Int128PtrTy));
+
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(7, 16, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(7, 32, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(7, 48, Int128PtrTy));
+
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(8, 16, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(8, 32, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(8, 48, Int128PtrTy));
+
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(9, 16, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(9, 32, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(9, 48, Int128PtrTy));
+
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(10, 16, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(10, 32, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(10, 48, Int128PtrTy));
+
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(11, 16, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(11, 32, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(11, 48, Int128PtrTy));
+
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(12, 16, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(12, 32, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(12, 48, Int128PtrTy));
+
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(13, 16, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(13, 32, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(13, 48, Int128PtrTy));
+
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(14, 16, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(14, 32, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(14, 48, Int128PtrTy));
+
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(15, 16, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(15, 32, Int128PtrTy));
+    Builder.CreateStore(ConstInt(Int128Ty, 0), getXMMPtr(15, 48, Int128PtrTy));
 }
 void X86Translator::translate_wbinvd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction wbinvd\n";
@@ -4045,8 +9562,16 @@ void X86Translator::translate_xend(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_xgetbv(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction xgetbv\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *ECX = LoadGMRValue(Int32Ty, X86Config::ECX);
+    FunctionType *FTy = FunctionType::get(Int64Ty, {Int8PtrTy, Int32Ty}, false);
+    Value *Res = CallFunc(FTy, "helper_xgetbv", {CPUEnv, ECX});
+    Value *high = Builder.CreateLShr(Res, ConstInt(Int64Ty, 32));
+    high = Builder.CreateTrunc(high, Int32Ty);
+    Value *low = Builder.CreateTrunc(Res, Int32Ty);
+
+    StoreGMRValue(high, X86Config::EDX);
+    StoreGMRValue(low, X86Config::EAX);
 }
 void X86Translator::translate_xlatb(GuestInst *Inst) {
     dbgs() << "Untranslated instruction xlatb\n";
@@ -4057,8 +9582,18 @@ void X86Translator::translate_xrelease(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_xrstor(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction xrstor\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int8PtrTy, Int64Ty}, false);
+    Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
+    Value *EDX = LoadGMRValue(Int32Ty, X86Config::EDX);
+    Value *EAX = LoadGMRValue(Int32Ty, X86Config::EAX);
+    EAX = Builder.CreateZExt(EAX, Int64Ty);
+    EDX = Builder.CreateZExt(EDX, Int64Ty);
+    EDX = Builder.CreateShl(EDX, ConstInt(Int64Ty, 32));
+    EDX = Builder.CreateOr(EDX, EAX);
+    CallFunc(FTy, "helper_xrstor", {CPUEnv, Addr, EDX});
 }
 void X86Translator::translate_xrstor64(GuestInst *Inst) {
     dbgs() << "Untranslated instruction xrstor64\n";
@@ -4073,17 +9608,24 @@ void X86Translator::translate_xrstors64(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_xsave(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction xsave\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    FunctionType *FTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int8PtrTy, Int64Ty}, false);
+    Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
+    Value *EDX = LoadGMRValue(Int32Ty, X86Config::EDX);
+    Value *EAX = LoadGMRValue(Int32Ty, X86Config::EAX);
+    EAX = Builder.CreateZExt(EAX, Int64Ty);
+    EDX = Builder.CreateZExt(EDX, Int64Ty);
+    EDX = Builder.CreateShl(EDX, ConstInt(Int64Ty, 32));
+    EDX = Builder.CreateOr(EDX, EAX);
+    CallFunc(FTy, "helper_xsave", {CPUEnv, Addr, EDX});
 }
 void X86Translator::translate_xsave64(GuestInst *Inst) {
     dbgs() << "Untranslated instruction xsave64\n";
     exit(-1);
 }
-void X86Translator::translate_xsavec(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction xsavec\n";
-    exit(-1);
-}
+void X86Translator::translate_xsavec(GuestInst *Inst) { translate_xsave(Inst); }
 void X86Translator::translate_xsavec64(GuestInst *Inst) {
     dbgs() << "Untranslated instruction xsavec64\n";
     exit(-1);
@@ -4160,10 +9702,31 @@ void X86Translator::translate_cmpnltss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cmpnltss\n";
     exit(-1);
 }
+// void X86Translator::translate_cmpnless(GuestInst *Inst) {
+//     dbgs() << "Untranslated instruction cmpnless\n";
+//     exit(-1);
+// }
+
 void X86Translator::translate_cmpnless(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction cmpnless\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *SrcInt = nullptr;
+    if (SrcOpnd.isXMM()) {
+        Value *XMMptr = getXMMPtr(SrcOpnd.GetXMMID(), 0, FP32PtrTy);
+        SrcInt = Builder.CreateLoad(FP32Ty, XMMptr);
+    } else {
+        SrcInt = LoadOperand(InstHdl.getOpnd(0), FP32Ty);
+    }
+    Value *DestInt = Builder.CreateLoad(
+        FP32Ty, getXMMPtr(DestOpnd.GetXMMID(), 0, FP32PtrTy));
+    // not less == greater and equal
+    Value *cmp_res = Builder.CreateFCmpOGE(DestInt, SrcInt);
+    cmp_res = Builder.CreateSExt(cmp_res, Int32Ty);
+    DestInt = Builder.CreateMul(cmp_res, ConstInt(Int32Ty, 0xffffffff));
+    Builder.CreateStore(DestInt, getXMMPtr(DestOpnd.GetXMMID(), 0, Int32PtrTy));
 }
+
 void X86Translator::translate_cmpordss(GuestInst *Inst) {
     dbgs() << "Untranslated instruction cmpordss\n";
     exit(-1);
@@ -4381,8 +9944,44 @@ void X86Translator::translate_vcmpeqsd(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vcmpltsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vcmpltsd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    Value *Src1 =
+        Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+    Value *Src2 = nullptr;
+    if (SrcOpnd2.isXMM()) {
+        Src2 = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+    } else {
+        Src2 = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
+    }
+    Value *Cond = Builder.CreateFCmpOLT(Src1, Src2);
+    BasicBlock *EndBB = BasicBlock::Create(Context, "End", TransFunc, ExitBB);
+    BasicBlock *LessBB = BasicBlock::Create(Context, "Less", TransFunc, ExitBB);
+    BasicBlock *LargBB = BasicBlock::Create(Context, "Larg", TransFunc, ExitBB);
+    Builder.CreateCondBr(Cond, LargBB, LessBB);
+
+    Builder.SetInsertPoint(LargBB);
+
+    Builder.CreateStore(ConstInt(Int64Ty, 0xffffffffffffffff),
+                        getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+
+    Builder.CreateBr(EndBB);
+    //-----------------------------------------------
+    Builder.SetInsertPoint(LessBB);
+
+    Builder.CreateStore(ConstInt(Int64Ty, 0),
+                        getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+
+    Builder.CreateBr(EndBB);
+    //-------------------------------------------------
+    Builder.SetInsertPoint(EndBB);
+
+    Src2 = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 8, FP64PtrTy));
+    Builder.CreateStore(Src2, getXMMPtr(DestOpnd.GetXMMID(), 8, FP64PtrTy));
 }
 void X86Translator::translate_vcmplesd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vcmplesd\n";
@@ -4401,8 +10000,44 @@ void X86Translator::translate_vcmpnltsd(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vcmpnlesd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vcmpnlesd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    Value *Src1 =
+        Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+    Value *Src2 = nullptr;
+    if (SrcOpnd2.isXMM()) {
+        Src2 = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+    } else {
+        Src2 = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
+    }
+    Value *Cond = Builder.CreateFCmpOLE(Src1, Src2);
+    BasicBlock *EndBB = BasicBlock::Create(Context, "End", TransFunc, ExitBB);
+    BasicBlock *LessBB = BasicBlock::Create(Context, "Less", TransFunc, ExitBB);
+    BasicBlock *LargBB = BasicBlock::Create(Context, "Larg", TransFunc, ExitBB);
+    Builder.CreateCondBr(Cond, LessBB, LargBB);
+
+    Builder.SetInsertPoint(LargBB);
+
+    Builder.CreateStore(ConstInt(Int64Ty, 0xffffffffffffffff),
+                        getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+
+    Builder.CreateBr(EndBB);
+    //-----------------------------------------------
+    Builder.SetInsertPoint(LessBB);
+
+    Builder.CreateStore(ConstInt(Int64Ty, 0),
+                        getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+
+    Builder.CreateBr(EndBB);
+    //-------------------------------------------------
+    Builder.SetInsertPoint(EndBB);
+
+    Src2 = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 8, FP64PtrTy));
+    Builder.CreateStore(Src2, getXMMPtr(DestOpnd.GetXMMID(), 8, FP64PtrTy));
 }
 void X86Translator::translate_vcmpordsd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vcmpordsd\n";
@@ -4433,8 +10068,44 @@ void X86Translator::translate_vcmpgesd(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_vcmpgtsd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction vcmpgtsd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+    X86OperandHandler SrcOpnd2(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(2));
+
+    Value *Src1 =
+        Builder.CreateLoad(getXMMPtr(SrcOpnd1.GetXMMID(), 0, FP64PtrTy));
+    Value *Src2 = nullptr;
+    if (SrcOpnd2.isXMM()) {
+        Src2 = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 0, FP64PtrTy));
+    } else {
+        Src2 = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
+    }
+    Value *Cond = Builder.CreateFCmpOGT(Src1, Src2);
+    BasicBlock *EndBB = BasicBlock::Create(Context, "End", TransFunc, ExitBB);
+    BasicBlock *LessBB = BasicBlock::Create(Context, "Less", TransFunc, ExitBB);
+    BasicBlock *LargBB = BasicBlock::Create(Context, "Larg", TransFunc, ExitBB);
+    Builder.CreateCondBr(Cond, LargBB, LessBB);
+
+    Builder.SetInsertPoint(LargBB);
+
+    Builder.CreateStore(ConstInt(Int64Ty, 0xffffffffffffffff),
+                        getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+
+    Builder.CreateBr(EndBB);
+    //-----------------------------------------------
+    Builder.SetInsertPoint(LessBB);
+
+    Builder.CreateStore(ConstInt(Int64Ty, 0),
+                        getXMMPtr(DestOpnd.GetXMMID(), 0, Int64PtrTy));
+
+    Builder.CreateBr(EndBB);
+    //-------------------------------------------------
+    Builder.SetInsertPoint(EndBB);
+
+    Src2 = Builder.CreateLoad(getXMMPtr(SrcOpnd2.GetXMMID(), 8, FP64PtrTy));
+    Builder.CreateStore(Src2, getXMMPtr(DestOpnd.GetXMMID(), 8, FP64PtrTy));
 }
 void X86Translator::translate_vcmptruesd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction vcmptruesd\n";

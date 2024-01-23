@@ -116,6 +116,88 @@ int X86OperandHandler::GetXMMID() {
     }
 }
 
+int X86OperandHandler::GetYMMID() {
+    if (Opnd->type != X86_OP_REG)
+        return -1;
+    switch (Opnd->reg) {
+    case X86_REG_YMM0:
+        return 0;
+    case X86_REG_YMM1:
+        return 1;
+    case X86_REG_YMM2:
+        return 2;
+    case X86_REG_YMM3:
+        return 3;
+    case X86_REG_YMM4:
+        return 4;
+    case X86_REG_YMM5:
+        return 5;
+    case X86_REG_YMM6:
+        return 6;
+    case X86_REG_YMM7:
+        return 7;
+    case X86_REG_YMM8:
+        return 8;
+    case X86_REG_YMM9:
+        return 9;
+    case X86_REG_YMM10:
+        return 10;
+    case X86_REG_YMM11:
+        return 11;
+    case X86_REG_YMM12:
+        return 12;
+    case X86_REG_YMM13:
+        return 13;
+    case X86_REG_YMM14:
+        return 14;
+    case X86_REG_YMM15:
+        return 15;
+    default:
+        return -1;
+    }
+}
+
+int X86OperandHandler::GetZMMID() {
+    if (Opnd->type != X86_OP_REG)
+        return -1;
+    switch (Opnd->reg) {
+    case X86_REG_ZMM0:
+        return 0;
+    case X86_REG_ZMM1:
+        return 1;
+    case X86_REG_ZMM2:
+        return 2;
+    case X86_REG_ZMM3:
+        return 3;
+    case X86_REG_ZMM4:
+        return 4;
+    case X86_REG_ZMM5:
+        return 5;
+    case X86_REG_ZMM6:
+        return 6;
+    case X86_REG_ZMM7:
+        return 7;
+    case X86_REG_ZMM8:
+        return 8;
+    case X86_REG_ZMM9:
+        return 9;
+    case X86_REG_ZMM10:
+        return 10;
+    case X86_REG_ZMM11:
+        return 11;
+    case X86_REG_ZMM12:
+        return 12;
+    case X86_REG_ZMM13:
+        return 13;
+    case X86_REG_ZMM14:
+        return 14;
+    case X86_REG_ZMM15:
+        return 15;
+    default:
+        return -1;
+    }
+}
+
 int X86OperandHandler::GetMMXID() {
     if (Opnd->type != X86_OP_REG)
         return -1;
@@ -297,6 +379,58 @@ bool X86OperandHandler::isXMM() {
     case X86_REG_XMM13:
     case X86_REG_XMM14:
     case X86_REG_XMM15:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+bool X86OperandHandler::isYMM() {
+    if (Opnd->type != X86_OP_REG)
+        return 0;
+    switch (Opnd->reg) {
+    case X86_REG_YMM0:
+    case X86_REG_YMM1:
+    case X86_REG_YMM2:
+    case X86_REG_YMM3:
+    case X86_REG_YMM4:
+    case X86_REG_YMM5:
+    case X86_REG_YMM6:
+    case X86_REG_YMM7:
+    case X86_REG_YMM8:
+    case X86_REG_YMM9:
+    case X86_REG_YMM10:
+    case X86_REG_YMM11:
+    case X86_REG_YMM12:
+    case X86_REG_YMM13:
+    case X86_REG_YMM14:
+    case X86_REG_YMM15:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+bool X86OperandHandler::isZMM() {
+    if (Opnd->type != X86_OP_REG)
+        return 0;
+    switch (Opnd->reg) {
+    case X86_REG_ZMM0:
+    case X86_REG_ZMM1:
+    case X86_REG_ZMM2:
+    case X86_REG_ZMM3:
+    case X86_REG_ZMM4:
+    case X86_REG_ZMM5:
+    case X86_REG_ZMM6:
+    case X86_REG_ZMM7:
+    case X86_REG_ZMM8:
+    case X86_REG_ZMM9:
+    case X86_REG_ZMM10:
+    case X86_REG_ZMM11:
+    case X86_REG_ZMM12:
+    case X86_REG_ZMM13:
+    case X86_REG_ZMM14:
+    case X86_REG_ZMM15:
         return 1;
     default:
         return 0;

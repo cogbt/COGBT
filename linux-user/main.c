@@ -72,6 +72,7 @@ extern void aot_tb_register(TranslationBlock *tb);
 #endif
 
 char *exec_path;
+char path_name[100];
 
 int singlestep;
 static const char *argv0;
@@ -700,6 +701,7 @@ static int parse_args(int argc, char **argv)
 
     exec_path = argv[optind];
 
+    sprintf(path_name, "%s.path", exec_path);
     return optind;
 }
 

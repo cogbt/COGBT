@@ -27,11 +27,63 @@ quiet-@ = $(if $(V),,@)
 quiet-command = $(quiet-@)$(call quiet-command-run,$1,$2,$3)
 
 UNCHECKED_GOALS := %clean TAGS cscope ctags dist \
-    help check-help print-% \
-    docker docker-% vm-help vm-test vm-build-%
+	help check-help print-% \
+	docker docker-% vm-help vm-test vm-build-%
+
+current_dir = $(notdir $(shell pwd))
 
 all:
-.PHONY: all clean distclean recurse-all dist msi FORCE
+.PHONY: all clean distclean recurse-all dist msi FORCE ssh sync_to_server sync_from_server user run tmp
+
+ssh:
+	ssh 5k
+
+sync_to_server:
+	rsync -av --delete ./ 5k:/home/lab/${current_dir}/ >/dev/null
+
+sync_from_server:
+	rsync -av --delete 5k:/home/lab/${current_dir}/ ./ >/dev/null
+
+user: e1.c
+	/usr/local/musl/bin/musl-gcc e1.c -o e1.out -static -mfpmath=387
+	rm -f ./e1.out.path
+
+test_file:
+	cp ~/dbt5_ut/${TEST_FILE} ./e1.out
+	# cp  ~/dbt5_ut/farith/fmul ./e1.out
+	rm -f ./e1.out.path
+
+obj: user
+	objdump -S e1.out > e1.obj
+
+test_run: test_file sync_to_server
+	ssh 5k "cd ~/${current_dir}; bash run.sh ${COGBT_DEBUG_MODE}"
+	make sync_from_server
+
+run: user sync_to_server
+	ssh 5k "cd ~/${current_dir}; bash run.sh ${COGBT_DEBUG_MODE}"
+	make sync_from_server
+
+debug: user
+	objdump e1.out -S > e1.log
+
+server_build: sync_to_server
+	@ssh 5k " \
+cd ~/${current_dir}; \
+rm -rf build; \
+mkdir build; \
+cd build; \
+../configure --target-list=x86_64-linux-user --enable-cogbt; \
+ninja; \
+cd ..; \
+rm -rf buildqemu; \
+mkdir buildqemu; \
+cd buildqemu; \
+../configure --target-list=x86_64-linux-user --enable-debug; \
+ninja; \
+"
+	make sync_from_server
+
 
 # Don't try to regenerate Makefile or configure
 # We don't generate any of them
@@ -142,8 +194,8 @@ MAKE.k = $(findstring k,$(firstword $(filter-out --%,$(MAKEFLAGS))))
 MAKE.q = $(findstring q,$(firstword $(filter-out --%,$(MAKEFLAGS))))
 MAKE.nq = $(if $(word 2, $(MAKE.n) $(MAKE.q)),nq)
 NINJAFLAGS = $(if $V,-v) $(if $(MAKE.n), -n) $(if $(MAKE.k), -k0) \
-        $(filter-out -j, $(lastword -j1 $(filter -l% -j%, $(MAKEFLAGS)))) \
-        -d keepdepfile
+		$(filter-out -j, $(lastword -j1 $(filter -l% -j%, $(MAKEFLAGS)))) \
+		-d keepdepfile
 ninja-cmd-goals = $(or $(MAKECMDGOALS), all)
 ninja-cmd-goals += $(foreach g, $(MAKECMDGOALS), $(.ninja-goals.$g))))
 
@@ -249,7 +301,7 @@ gtags:
 		rm -f "$(SRC_PATH)/"GPATH, 	\
 		"GTAGS", "Remove old $@ files")
 	$(call quiet-command, 				\
-	        (cd $(SRC_PATH) && 			\
+			(cd $(SRC_PATH) && 			\
 		 $(find-src-path) -print | gtags -f -),	\
 		"GTAGS", "Re-index $(SRC_PATH)")
 
