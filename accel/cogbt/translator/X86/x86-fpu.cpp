@@ -126,14 +126,14 @@ void X86Translator::translate_fadd(GuestInst *Inst) {
             StoreGMRValue(MemVal, X87GetCurrST0());
         } else {
             // DestOpnd is st(0) e.g fsub st(1) means st(0) - st(1) -> st(0)
-            Value *STI = LoadOperand(InstHdl.getOpnd(0), DoubleTy);
-            Value *ST0 = LoadGMRValue(DoubleTy, X87GetCurrST0());
+            Value *STI = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
+            Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
             ST0 = Builder.CreateFAdd(STI, ST0);
             StoreGMRValue(ST0, X87GetCurrST0());
         }
     } else { // e.g fsub st0, sti means st(i) - st(0) -> st(i)
-        Value *STI = LoadOperand(InstHdl.getOpnd(0), DoubleTy);
-        Value *ST0 = LoadGMRValue(DoubleTy, X87GetCurrST0());
+        Value *STI = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
+        Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
         STI = Builder.CreateFAdd(STI, ST0);
         StoreOperand(STI, InstHdl.getOpnd(0));
     }
@@ -478,7 +478,9 @@ void X86Translator::translate_fild(GuestInst *Inst) {
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     assert(InstHdl.getOpndNum() == 1 && SrcOpnd.isMem());
     Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
-    FlushFPRValue("ST0", MemVal, true);
+    MemVal = Builder.CreateSIToFP(MemVal, FP64Ty);
+    X87FPR_Push();
+    StoreGMRValue(MemVal, X87GetCurrST0());
 }
 
 void X86Translator::translate_fisttp(GuestInst *Inst) {
@@ -584,7 +586,7 @@ void X86Translator::translate_fld(GuestInst *Inst) {
             StoreGMRValue(MemVal, X87GetCurrST0());
         }
     } else {
-        Value *STI = LoadOperand(InstHdl.getOpnd(0), DoubleTy);
+        Value *STI = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
         X87FPR_Push();
         StoreGMRValue(STI, X87GetCurrST0());
     }
@@ -626,14 +628,14 @@ void X86Translator::translate_fstp(GuestInst *Inst) {
             Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
             CallFunc(FSTTTy, "helper_fstt_ST0", {CPUEnv, Addr});
         } else if (SrcOpnd.getOpndSize() == 32) {
-            Value *ST0 = LoadGMRValue(FloatTy, X87GetCurrST0());
+            Value *ST0 = LoadGMRValue(FP32Ty, X87GetCurrST0());
             StoreOperand(ST0, InstHdl.getOpnd(0));
         } else if (SrcOpnd.getOpndSize() == 64) {
-            Value *ST0 = LoadGMRValue(DoubleTy, X87GetCurrST0());
+            Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
             StoreOperand(ST0, InstHdl.getOpnd(0));
         }
     } else {
-        Value *ST0 = LoadGMRValue(DoubleTy, X87GetCurrST0());
+        Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
         StoreOperand(ST0, InstHdl.getOpnd(0));
     }
     X87FPR_Pop();

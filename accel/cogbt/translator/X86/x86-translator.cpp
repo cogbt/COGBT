@@ -35,7 +35,7 @@ Type *X86Translator::X86RegTyToLLVMTy(X86RegType type) {
     case X86RegXMMType:
         return V2F64Ty;
     case X86RegFPRType:
-        return DoubleTy;
+        return FP64Ty;
     }
 }
 
@@ -378,7 +378,7 @@ void X86Translator::GenPrologue() {
         int Off = GuestFPROffset(i);
         Value *Addr =
             Builder.CreateGEP(Int8Ty, ENV, ConstantInt::get(Int64Ty, Off));
-        Value *Ptr = Builder.CreateBitCast(Addr, DoublePtrTy);
+        Value *Ptr = Builder.CreateBitCast(Addr, FP64PtrTy);
         GuestFPRVals[i] =
             Builder.CreateLoad(X86RegTyToLLVMTy(X86RegFPRType), Ptr);
     }
@@ -484,7 +484,7 @@ void X86Translator::GenEpilogue() {
         int off = GuestFPROffset(i);
         Value *Addr =
             Builder.CreateGEP(Int8Ty, CPUEnv, ConstantInt::get(Int64Ty, off));
-        Value *Ptr = Builder.CreateBitCast(Addr, DoublePtrTy);
+        Value *Ptr = Builder.CreateBitCast(Addr, FP64PtrTy);
         Builder.CreateStore(GuestFPRVals[i], Ptr, true);
     }
 
@@ -686,7 +686,7 @@ Value *X86Translator::LoadGMRValue(Type *Ty, X86MappedRegsId GMRId,
         return V;
     } else if (type == X86RegFPRType) {
         assert(Ty->isFloatTy());
-        V = Builder.CreateFPTrunc(V, FloatTy);
+        V = Builder.CreateFPTrunc(V, FP32Ty);
         return V;
     } else {
         fprintf(stderr, "unsupported type.\n");
@@ -708,10 +708,10 @@ void X86Translator::StoreGMRValue(Value *V, X86MappedRegsId GMRId,
     }
 
     if (type == X86RegFPRType && V->getType() == Int64Ty) {
-        V = Builder.CreateBitCast(V, DoubleTy);
+        V = Builder.CreateBitCast(V, FP64Ty);
     } else if (type == X86RegFPRType && V->getType() == Int32Ty) {
-        V = Builder.CreateBitCast(V, FloatTy);
-        V = Builder.CreateFPExt(V, DoubleTy);
+        V = Builder.CreateBitCast(V, FP32Ty);
+        V = Builder.CreateFPExt(V, FP64Ty);
     }
 
     if (V->getType() == X86RegTyToLLVMTy(type)) {
@@ -885,9 +885,9 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd, Type *LoadTy) {
 #endif
         } else if (OpndHdl.isFPR()) {
             if (LLVMTy == Int32Ty)
-                LLVMTy = FloatTy;
+                LLVMTy = FP32Ty;
             else if (LLVMTy == Int64Ty)
-                LLVMTy = DoubleTy;
+                LLVMTy = FP64Ty;
 
             Res = LoadGMRValue(
                 LLVMTy,
@@ -930,7 +930,7 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
             ResVal = Builder.CreateTrunc(ResVal, GetOpndLLVMType(DestOpnd));
         } else if (ResVal->getType()->isDoubleTy() &&
                    OpndHdl.getOpndSize() == 4) {
-            ResVal = Builder.CreateFPTrunc(ResVal, FloatTy);
+            ResVal = Builder.CreateFPTrunc(ResVal, FP32Ty);
         }
     }
 
@@ -997,6 +997,9 @@ void X86Translator::FlushMMXT0(Value *MMXV, Type *FlushTy) {
 
 CallInst *X86Translator::CallFunc(FunctionType *FuncTy, StringRef Name,
                                   ArrayRef<Value *> Args) {
+    if (Name.startswith("helper_f")) {
+        dbgs() << "Call Float Func: " << Name << "\n";
+    }
 #if (LLVM_VERSION_MAJOR > 8)
     FunctionCallee F = Mod->getOrInsertFunction(Name, FuncTy);
     CallInst *callInst = Builder.CreateCall(FuncTy, F.getCallee(), Args);
@@ -1257,6 +1260,9 @@ void X86Translator::Translate() {
                 assert(0 && "Unknown x86 opcode!");
 #define HANDLE_X86_INST(opcode, name)                                          \
     case opcode:                                                               \
+        if (#name[0] == 'f') {                                                 \
+            dbgs() << "Translate Float Inst: " << #name << "\n";               \
+        }                                                                      \
         translate_##name(&inst);                                               \
         break;
 #include "x86-inst.def"

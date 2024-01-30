@@ -196,7 +196,8 @@ protected:
     Type *Int1Ty, *Int8Ty, *Int16Ty, *Int32Ty, *Int64Ty, *Int128Ty, *Int256Ty,
          *Int512Ty, *VoidTy, *Int8PtrTy, *Int16PtrTy, *Int32PtrTy, *Int64PtrTy,
          *Int128PtrTy, *CPUX86StatePtrTy, *Int80Ty, *Int80PtrTy,
-         *FloatTy, *DoubleTy, *FloatPtrTy, *DoublePtrTy,
+        //  *FloatTy, *DoubleTy, *FloatPtrTy, *DoublePtrTy,
+         *FP32Ty, *FP64Ty, *FP80Ty, *FP32PtrTy, *FP64PtrTy, *FP80PtrTy,
          *V2I64Ty, *V2F64Ty, *V2I64PtrTy, *V2F64PtrTy,
          *V4I32Ty, *V4F32Ty, *V4I32PtrTy, *V4F32PtrTy;
 

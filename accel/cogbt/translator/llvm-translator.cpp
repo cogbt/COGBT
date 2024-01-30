@@ -71,14 +71,21 @@ void LLVMTranslator::InitializeTypes() {
     Int128PtrTy = Type::getIntNPtrTy(Context, 128);
     Int80Ty = Type::getIntNTy(Context, 80);
     Int80PtrTy = Type::getIntNPtrTy(Context, 80);
-    FloatTy = Type::getFloatTy(Context);
-    DoubleTy = Type::getDoubleTy(Context);
-    FloatPtrTy = Type::getFloatPtrTy(Context);
-    DoublePtrTy = Type::getDoublePtrTy(Context);
+    // FloatTy = Type::getFloatTy(Context);
+    // DoubleTy = Type::getDoubleTy(Context);
+    // FloatPtrTy = Type::getFloatPtrTy(Context);
+    // DoublePtrTy = Type::getDoublePtrTy(Context);
+    FP32Ty = Type::getFloatTy(Context);
+    FP64Ty = Type::getDoubleTy(Context);
+    FP80Ty = Type::getX86_FP80Ty(Context);
+    FP32PtrTy = Type::getFloatPtrTy(Context);
+    FP64PtrTy = Type::getDoublePtrTy(Context);
+    FP80PtrTy = Type::getX86_FP80PtrTy(Context);
+
     V2I64Ty = FixedVectorType::get(Int64Ty, 2);
-    V2F64Ty = FixedVectorType::get(DoubleTy, 2);
+    V2F64Ty = FixedVectorType::get(FP64Ty, 2);
     V4I32Ty = FixedVectorType::get(Int32Ty, 4);
-    V4F32Ty = FixedVectorType::get(FloatTy, 4);
+    V4F32Ty = FixedVectorType::get(FP32Ty, 4);
     V2I64PtrTy = V2I64Ty->getPointerTo();
     V2F64PtrTy = V2F64Ty->getPointerTo();
     V4I32PtrTy = V4I32Ty->getPointerTo();
