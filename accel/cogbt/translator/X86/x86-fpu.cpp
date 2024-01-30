@@ -1,15 +1,11 @@
 #include "x86-translator.h"
 
-void X86Translator::X87FPR_Push() {
-    CurrTBTop = (CurrTBTop - 1) & 7;
-}
+void X86Translator::X87FPR_Push() { CurrTBTop = (CurrTBTop - 1) & 7; }
 
-void X86Translator::X87FPR_Pop() {
-    CurrTBTop = (CurrTBTop + 1) & 7;
-}
+void X86Translator::X87FPR_Pop() { CurrTBTop = (CurrTBTop + 1) & 7; }
 
 X86Config::X86MappedRegsId X86Translator::X87GetCurrST0() {
-    return (X86Config::X86MappedRegsId) (X86Config::ST0 + CurrTBTop);
+    return (X86Config::X86MappedRegsId)(X86Config::ST0 + CurrTBTop);
 }
 
 void X86Translator::FlushFPRValue(std::string FPR, Value *FV, bool isInt) {
@@ -66,7 +62,7 @@ enum FPUFlag : int {
 // OneOpndModifySTN IsInt WithFPop
 void X86Translator::GenFPUHelper(GuestInst *Inst, std::string Name, int Flags) {
     X86InstHandler InstHdl(Inst);
-    bool MemValisInteger = Flags &  MEM_VAL_IS_INT;
+    bool MemValisInteger = Flags & MEM_VAL_IS_INT;
     bool DestOrFirstSrcIsST0 = Flags & DEST_IS_ST0;
     bool ShouldPopOnce = Flags & SHOULD_POP_ONCE;
     bool ShouldPopTwice = Flags & SHOULD_POP_TWICE;
@@ -102,8 +98,7 @@ void X86Translator::GenFPUHelper(GuestInst *Inst, std::string Name, int Flags) {
             CallFunc(FTy, "helper_fpop", CPUEnv);
             CallFunc(FTy, "helper_fpop", CPUEnv);
         }
-    }
-    else { // e.g fsub st0, sti means st(i) - st(0) -> st(i)
+    } else { // e.g fsub st0, sti means st(i) - st(0) -> st(i)
         FunctionType *FTy2 =
             FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
         X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
@@ -309,7 +304,7 @@ void X86Translator::translate_fldl2e(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     X87FPR_Push();
     StoreGMRValue(ConstantFP::get(Context, APFloat(1.4426950408889633870)),
-                X87GetCurrST0());
+                  X87GetCurrST0());
 }
 
 void X86Translator::translate_fldl2t(GuestInst *Inst) {
@@ -561,8 +556,7 @@ void X86Translator::translate_fistp(GuestInst *Inst) {
 void X86Translator::translate_fldz(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     X87FPR_Push();
-    StoreGMRValue(ConstantFP::get(Context, APFloat(0.0)),
-                X87GetCurrST0());
+    StoreGMRValue(ConstantFP::get(Context, APFloat(0.0)), X87GetCurrST0());
 }
 
 void X86Translator::translate_fld1(GuestInst *Inst) {
