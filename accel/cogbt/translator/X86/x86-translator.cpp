@@ -685,8 +685,14 @@ Value *X86Translator::LoadGMRValue(Type *Ty, X86MappedRegsId GMRId,
         V = Builder.CreateExtractElement(V, ConstantInt::get(Int32Ty, 0));
         return V;
     } else if (type == X86RegFPRType) {
-        assert(Ty->isFloatTy());
-        V = Builder.CreateFPTrunc(V, FP32Ty);
+        std::string typeStr;
+        llvm::raw_string_ostream rso(typeStr);
+        // V->getType()->print(rso);
+        // dbgs() << rso.str() << "\n";
+        Ty->print(rso);
+        dbgs() << rso.str() << "\n";
+        assert(Ty->isDoubleTy() || Ty->isFloatTy());
+        V = Builder.CreateFPTrunc(V, FP64Ty);
         return V;
     } else {
         fprintf(stderr, "unsupported type.\n");
@@ -708,8 +714,10 @@ void X86Translator::StoreGMRValue(Value *V, X86MappedRegsId GMRId,
     }
 
     if (type == X86RegFPRType && V->getType() == Int64Ty) {
+        // assert(0 && "it is developing...");
         V = Builder.CreateBitCast(V, FP64Ty);
     } else if (type == X86RegFPRType && V->getType() == Int32Ty) {
+        // assert(0 && "it is developing...");
         V = Builder.CreateBitCast(V, FP32Ty);
         V = Builder.CreateFPExt(V, FP64Ty);
     }
@@ -773,7 +781,16 @@ void X86Translator::StoreGMRValue(Value *V, X86MappedRegsId GMRId,
             }
         }
     } else if (type == X86RegFPRType) {
+        // std::string typeStr;
+        // llvm::raw_string_ostream rso(typeStr);
+        // V->getType()->print(rso);
+        // dbgs() << rso.str() << "\n";
         assert(0 && "it is developing...");
+        if (V->getType() == FP32Ty) {
+            V = Builder.CreateFPExt(V, FP64Ty);
+        } else {
+            assert(0 && "it is developing...");
+        }
     } else {
         fprintf(stderr, "unsupported type.\n");
         exit(-1);

@@ -1,16 +1,30 @@
+#include "emulator.h"
 #include "x86-translator.h"
+
+// void X86Translator::SetQemuSTI(int i, Value *Val) {}
 
 void X86Translator::X87FPR_Push() { CurrTBTop = (CurrTBTop - 1) & 7; }
 
 void X86Translator::X87FPR_Pop() { CurrTBTop = (CurrTBTop + 1) & 7; }
 
 X86Config::X86MappedRegsId X86Translator::X87GetCurrST0() {
+    // assert(0 && "Not implemented X87GetCurrST0");
     return (X86Config::X86MappedRegsId)(X86Config::ST0 + CurrTBTop);
 }
 
+X86Config::X86MappedRegsId X86Translator::X87GetCurrSTI(int i) {
+    // assert(0 && "Not implemented X87GetCurrSTI");
+    int idx = (CurrTBTop + i) & 7;
+    return (X86Config::X86MappedRegsId)(X86Config::ST0 + idx);
+}
+
 void X86Translator::FlushFPRValue(std::string FPR, Value *FV, bool isInt) {
+    // dbgs() << "00\n";
+    dbgs() << "00\n";
+    FV = Builder.CreateBitCast(FV, Int64Ty);
     FunctionType *FuncTy = nullptr;
-    int FVBitWidth = FV->getType()->getIntegerBitWidth();
+    // int FVBitWidth = FV->getType()->getIntegerBitWidth();
+    int FVBitWidth = 64;
     if (FVBitWidth == 16) {
         FV = Builder.CreateSExt(FV, Int32Ty);
         FuncTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
@@ -23,6 +37,7 @@ void X86Translator::FlushFPRValue(std::string FPR, Value *FV, bool isInt) {
         else
             CallFunc(FuncTy, "helper_flds_" + FPR, {CPUEnv, FV});
     } else if (FVBitWidth == 64) {
+        // dbgs() << "11\n";
         FuncTy = FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false);
         if (isInt)
             CallFunc(FuncTy, "helper_fildll_" + FPR, {CPUEnv, FV});
@@ -92,8 +107,9 @@ void X86Translator::GenFPUHelper(GuestInst *Inst, std::string Name, int Flags) {
             }
         }
 
-        if (ShouldPopOnce)
+        if (ShouldPopOnce) {
             CallFunc(FTy, "helper_fpop", CPUEnv);
+        }
         if (ShouldPopTwice) {
             CallFunc(FTy, "helper_fpop", CPUEnv);
             CallFunc(FTy, "helper_fpop", CPUEnv);
@@ -112,32 +128,38 @@ void X86Translator::translate_fabs(GuestInst *Inst) {
     FunctionType *FuncTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FuncTy, "helper_fabs_ST0", CPUEnv);
 }
-
 void X86Translator::translate_fadd(GuestInst *Inst) {
-    /* GenFPUHelper(Inst, "fadd", DEST_IS_ST0); */
-    X86InstHandler InstHdl(Inst);
-    assert(InstHdl.getOpndNum() == 1 || InstHdl.getOpndNum() == 2);
-
-    if (InstHdl.getOpndNum() == 1) {
-        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-
-        if (SrcOpnd.isMem()) { // e.g fadd m32fp / m64fp
-            Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
-            StoreGMRValue(MemVal, X87GetCurrST0());
-        } else {
-            // DestOpnd is st(0) e.g fsub st(1) means st(0) - st(1) -> st(0)
-            Value *STI = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
-            Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
-            ST0 = Builder.CreateFAdd(STI, ST0);
-            StoreGMRValue(ST0, X87GetCurrST0());
-        }
-    } else { // e.g fsub st0, sti means st(i) - st(0) -> st(i)
-        Value *STI = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
-        Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
-        STI = Builder.CreateFAdd(STI, ST0);
-        StoreOperand(STI, InstHdl.getOpnd(0));
-    }
+    GenFPUHelper(Inst, "fadd", DEST_IS_ST0);
 }
+// void X86Translator::translate_fadd(GuestInst *Inst) {
+//     /* GenFPUHelper(Inst, "fadd", DEST_IS_ST0); */
+//     X86InstHandler InstHdl(Inst);
+//     assert(InstHdl.getOpndNum() == 1 || InstHdl.getOpndNum() == 2);
+
+//     if (InstHdl.getOpndNum() == 1) {
+//         X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+
+//         if (SrcOpnd.isMem()) { // e.g fadd m32fp / m64fp
+//             int op_size = SrcOpnd.getOpndSize();
+//             assert(op_size == 4 || op_size == 8);
+//             Value *MemVal = LoadOperand(InstHdl.getOpnd(0),
+//                                         (op_size == 4) ? FP32Ty : FP64Ty);
+//             StoreGMRValue(MemVal, X87GetCurrST0());
+//         } else {
+//             assert(SrcOpnd.isReg());
+//             // DestOpnd is st(0) e.g fsub st(1) means st(0) - st(1) -> st(0)
+//             Value *STI = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
+//             Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+//             ST0 = Builder.CreateFAdd(STI, ST0);
+//             StoreGMRValue(ST0, X87GetCurrST0());
+//         }
+//     } else { // e.g fsub st0, sti means st(i) - st(0) -> st(i)
+//         Value *STI = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
+//         Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+//         STI = Builder.CreateFAdd(STI, ST0);
+//         StoreOperand(STI, InstHdl.getOpnd(0));
+//     }
+// }
 
 void X86Translator::translate_fiadd(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
@@ -280,6 +302,7 @@ void X86Translator::translate_ficomp(GuestInst *Inst) {
 void X86Translator::translate_fincstp(GuestInst *Inst) {
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fincstp", CPUEnv);
+    // X87FPR_Pop();
 }
 
 void X86Translator::translate_fldcw(GuestInst *Inst) {
@@ -302,10 +325,17 @@ void X86Translator::translate_fldenv(GuestInst *Inst) {
 
 void X86Translator::translate_fldl2e(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
-    X87FPR_Push();
-    StoreGMRValue(ConstantFP::get(Context, APFloat(1.4426950408889633870)),
-                  X87GetCurrST0());
+    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+    CallFunc(FTy, "helper_fpush", {CPUEnv});
+    CallFunc(FTy, "helper_fldl2e_ST0", {CPUEnv});
 }
+
+// void X86Translator::translate_fldl2e(GuestInst *Inst) {
+//     X86InstHandler InstHdl(Inst);
+//     X87FPR_Push();
+//     StoreGMRValue(ConstantFP::get(Context, APFloat(1.4426950408889633870)),
+//                   X87GetCurrST0());
+// }
 
 void X86Translator::translate_fldl2t(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
@@ -478,10 +508,18 @@ void X86Translator::translate_fild(GuestInst *Inst) {
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     assert(InstHdl.getOpndNum() == 1 && SrcOpnd.isMem());
     Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
-    MemVal = Builder.CreateSIToFP(MemVal, FP64Ty);
-    X87FPR_Push();
-    StoreGMRValue(MemVal, X87GetCurrST0());
+    FlushFPRValue("ST0", MemVal, true);
 }
+
+// void X86Translator::translate_fild(GuestInst *Inst) {
+//     X86InstHandler InstHdl(Inst);
+//     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+//     assert(InstHdl.getOpndNum() == 1 && SrcOpnd.isMem());
+//     Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+//     MemVal = Builder.CreateSIToFP(MemVal, FP64Ty);
+//     X87FPR_Push();
+//     StoreGMRValue(MemVal, X87GetCurrST0());
+// }
 
 void X86Translator::translate_fisttp(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
@@ -555,10 +593,17 @@ void X86Translator::translate_fistp(GuestInst *Inst) {
     CallFunc(UnaryFunTy, "helper_fpop", CPUEnv);
 }
 
+// void X86Translator::translate_fldz(GuestInst *Inst) {
+//     X86InstHandler InstHdl(Inst);
+//     X87FPR_Push();
+//     StoreGMRValue(ConstantFP::get(Context, APFloat(0.0)), X87GetCurrST0());
+// }
+
 void X86Translator::translate_fldz(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
-    X87FPR_Push();
-    StoreGMRValue(ConstantFP::get(Context, APFloat(0.0)), X87GetCurrST0());
+    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+    CallFunc(FTy, "helper_fpush", {CPUEnv});
+    CallFunc(FTy, "helper_fldz_ST0", {CPUEnv});
 }
 
 void X86Translator::translate_fld1(GuestInst *Inst) {
@@ -582,15 +627,48 @@ void X86Translator::translate_fld(GuestInst *Inst) {
             Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
             CallFunc(FLDTTy, "helper_fldt_ST0", {CPUEnv, Addr});
         } else {
+            // dbgs() << "load mem"
+            //        << "\n";
+            // int op_size = SrcOpnd.getOpndSize();
+            // assert(op_size == 4 || op_size == 8);
+            // Value *MemVal = LoadOperand(InstHdl.getOpnd(0),
+            //                             (op_size == 4) ? FP32Ty : FP64Ty);
             Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
             StoreGMRValue(MemVal, X87GetCurrST0());
         }
     } else {
+        dbgs() << "load reg"
+               << "\n";
         Value *STI = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
         X87FPR_Push();
         StoreGMRValue(STI, X87GetCurrST0());
     }
 }
+
+// void X86Translator::translate_fld(GuestInst *Inst) {
+//     X86InstHandler InstHdl(Inst);
+//     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+
+//     FunctionType *FPUSHTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+//     FunctionType *FMOVTy =
+//         FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
+//     FunctionType *FLDTTy =
+//         FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false);
+
+//     if (SrcOpnd.isMem()) {
+//         if (SrcOpnd.getOpndSize() == 10) {
+//             Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
+//             CallFunc(FLDTTy, "helper_fldt_ST0", {CPUEnv, Addr});
+//         } else {
+//             Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+//             FlushFPRValue("ST0", MemVal, false);
+//         }
+//     } else {
+//         Value *DestFPRID = ConstInt(Int32Ty, (SrcOpnd.GetFPRID() + 1) & 7);
+//         CallFunc(FPUSHTy, "helper_fpush", {CPUEnv});
+//         CallFunc(FMOVTy, "helper_fmov_ST0_STN", {CPUEnv, DestFPRID});
+//     }
+// }
 
 void X86Translator::translate_fsin(GuestInst *Inst) {
     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
@@ -605,14 +683,17 @@ void X86Translator::translate_fsqrt(GuestInst *Inst) {
 void X86Translator::translate_fst(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-    FunctionType *FTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
+    // FunctionType *FTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty},
+    // false);
 
     if (SrcOpnd.isMem()) {
-        Value *MemVal = ReloadFPRValue("ST0", SrcOpnd.getOpndSize(), false);
-        StoreOperand(MemVal, InstHdl.getOpnd(0));
+        // Value *MemVal = ReloadFPRValue("ST0", SrcOpnd.getOpndSize(), false);
+        StoreOperand(LoadGMRValue(FP64Ty, X87GetCurrSTI(0)),
+                     InstHdl.getOpnd(0));
     } else {
-        Value *DestFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
-        CallFunc(FTy, "helper_fmov_STN_ST0", {CPUEnv, DestFPRID});
+        assert(0 && "it is developing");
+        // Value *DestFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+        // CallFunc(FTy, "helper_fmov_STN_ST0", {CPUEnv, DestFPRID});
     }
 }
 
@@ -640,6 +721,30 @@ void X86Translator::translate_fstp(GuestInst *Inst) {
     }
     X87FPR_Pop();
 }
+
+// void X86Translator::translate_fstp(GuestInst *Inst) {
+//     X86InstHandler InstHdl(Inst);
+//     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+//     FunctionType *FPOPTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+//     FunctionType *FMOVTy =
+//         FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
+//     FunctionType *FSTTTy =
+//         FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false);
+
+//     if (SrcOpnd.isMem()) {
+//         if (SrcOpnd.getOpndSize() == 10) {
+//             Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
+//             CallFunc(FSTTTy, "helper_fstt_ST0", {CPUEnv, Addr});
+//         } else {
+//             Value *MemVal = ReloadFPRValue("ST0", SrcOpnd.getOpndSize(),
+//             false); StoreOperand(MemVal, InstHdl.getOpnd(0));
+//         }
+//     } else {
+//         Value *DestFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+//         CallFunc(FMOVTy, "helper_fmov_STN_ST0", {CPUEnv, DestFPRID});
+//     }
+//     CallFunc(FPOPTy, "helper_fpop", CPUEnv);
+// }
 
 void X86Translator::translate_fstpnce(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fstpnce\n";
@@ -680,6 +785,25 @@ void X86Translator::translate_fsubp(GuestInst *Inst) {
     GenFPUHelper(Inst, "fsub", SHOULD_POP_ONCE);
 }
 
+// void X86Translator::translate_fsubp(GuestInst *Inst) {
+//     X86InstHandler InstHdl(Inst);
+//     X86Config::X86MappedRegsId fpi = X87GetCurrST0();
+//     Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
+//     if (InstHdl.getOpndNum() == 0) {
+//         fpi = X87GetCurrSTI(1);
+//     } else {
+//         X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+//         if (!SrcOpnd.isFPR()) {
+//             llvm_unreachable("fsubp:Opnd err\n");
+//         }
+//         fpi = X87GetCurrSTI(SrcOpnd.GetFPRID());
+//     }
+//     Value *LHS = LoadGMRValue(FP64Ty, fpi);
+//     Value *res = Builder.CreateFSub(LHS, RHS);
+//     StoreGMRValue(res, fpi);
+//     X87FPR_Pop();
+// }
+
 void X86Translator::translate_ftst(GuestInst *Inst) {
     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(UnaryFunTy, "helper_fldz_FT0", CPUEnv);
@@ -687,23 +811,8 @@ void X86Translator::translate_ftst(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fucomip(GuestInst *Inst) {
-    X86InstHandler InstHdl(Inst);
-    assert(InstHdl.getOpndNum() == 1);
-
-    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-    assert(SrcOpnd.isReg());
-
-    FunctionType *FMOVTy =
-        FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
-    FunctionType *FPOPTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    FunctionType *FUCOMITy = FunctionType::get(VoidTy, Int8PtrTy, false);
-
-    FlushGMRValue(X86Config::EFLAG);
-    Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
-    CallFunc(FMOVTy, "helper_fmov_FT0_STN", {CPUEnv, SrcFPRID});
-    CallFunc(FUCOMITy, "helper_fucomi_ST0_FT0_cogbt", CPUEnv);
-    CallFunc(FPOPTy, "helper_fpop", CPUEnv);
-    ReloadGMRValue(X86Config::EFLAG);
+    translate_fucomi(Inst);
+    X87FPR_Pop();
 }
 
 void X86Translator::translate_fucomi(GuestInst *Inst) {
@@ -713,14 +822,20 @@ void X86Translator::translate_fucomi(GuestInst *Inst) {
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     assert(SrcOpnd.isReg());
 
-    FunctionType *FMOVTy =
-        FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
+    // FunctionType *FMOVTy =
+    //     FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
+    // FunctionType *FPOPTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     FunctionType *FUCOMITy = FunctionType::get(VoidTy, Int8PtrTy, false);
 
     FlushGMRValue(X86Config::EFLAG);
-    Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
-    CallFunc(FMOVTy, "helper_fmov_FT0_STN", {CPUEnv, SrcFPRID});
+    // Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
+    // CallFunc(FMOVTy, "helper_fmov_FT0_STN", {CPUEnv, SrcFPRID});
+    Value *STI = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
+    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    FlushFPRValue("FT0", STI, false);
+    FlushFPRValue("ST0", ST0, false);
     CallFunc(FUCOMITy, "helper_fucomi_ST0_FT0_cogbt", CPUEnv);
+    // CallFunc(FPOPTy, "helper_fpop", CPUEnv);
     ReloadGMRValue(X86Config::EFLAG);
 }
 

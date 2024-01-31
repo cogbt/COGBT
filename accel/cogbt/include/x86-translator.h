@@ -57,6 +57,7 @@ private: /// Currently translated instruction.
     void X87FPR_Push();
     void X87FPR_Pop();
     X86Config::X86MappedRegsId X87GetCurrST0();
+    X86Config::X86MappedRegsId X87GetCurrSTI(int i);
 
     /// ConstInt - Get a integer constant value.
     Value *ConstInt(Type *Ty, uint64_t Val) {
