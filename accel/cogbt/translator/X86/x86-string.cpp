@@ -18,6 +18,10 @@ void X86Translator::translate_cmpsb(GuestInst *Inst) {
         Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
         Value *isZero = Builder.CreateICmpEQ(RCX, ConstInt(Int64Ty, 0));
         SyncAllGMRValue();
+        Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
+        Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 9));
+        Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 1));
         Builder.CreateCondBr(isZero, EndBB, LoopBodyBB);
 
         Builder.SetInsertPoint(LoopBodyBB);
@@ -26,14 +30,10 @@ void X86Translator::translate_cmpsb(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         RSI = Builder.CreateIntToPtr(RSI, Int8PtrTy);
         RDI = Builder.CreateIntToPtr(RDI, Int8PtrTy);
-        Value *Src1 = Builder.CreateLoad(Int64Ty, RSI);
-        Value *Src0 = Builder.CreateLoad(Int64Ty, RDI);
+        Value *Src1 = Builder.CreateLoad(Int8Ty, RSI);
+        Value *Src0 = Builder.CreateLoad(Int8Ty, RDI);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RSI and RDI
-        Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
-        Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 9));
-        Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 1));
         RSI = LoadGMRValue(Int64Ty, X86Config::RSI);
         RSI = Builder.CreateSub(RSI, Step);
         StoreGMRValue(RSI, X86Config::RSI);
@@ -52,6 +52,8 @@ void X86Translator::translate_cmpsb(GuestInst *Inst) {
         } else if (InstHdl.hasRepne()) {
             Value *ResIsZ = Builder.CreateICmpEQ(Res, ConstInt(Int8Ty, 0));
             ExitCond = Builder.CreateOr(ExitCond, ResIsZ);
+        } else {
+            assert(0 && "rep prefix is unsupported.");
         }
         SyncAllGMRValue();
         Builder.CreateCondBr(ExitCond, FlagBB, LoopBodyBB);
@@ -68,8 +70,8 @@ void X86Translator::translate_cmpsb(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         Value *Src1 = Builder.CreateIntToPtr(RSI, Int8PtrTy);
         Value *Src0 = Builder.CreateIntToPtr(RDI, Int8PtrTy);
-        Src1 = Builder.CreateLoad(Int64Ty, Src1);
-        Src0 = Builder.CreateLoad(Int64Ty, Src0);
+        Src1 = Builder.CreateLoad(Int8Ty, Src1);
+        Src0 = Builder.CreateLoad(Int8Ty, Src0);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RSI and RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -103,6 +105,10 @@ void X86Translator::translate_cmpsw(GuestInst *Inst) {
         Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
         Value *isZero = Builder.CreateICmpEQ(RCX, ConstInt(Int64Ty, 0));
         SyncAllGMRValue();
+        Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
+        Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 8));
+        Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 2));
         Builder.CreateCondBr(isZero, EndBB, LoopBodyBB);
 
         Builder.SetInsertPoint(LoopBodyBB);
@@ -111,14 +117,10 @@ void X86Translator::translate_cmpsw(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         RSI = Builder.CreateIntToPtr(RSI, Int16PtrTy);
         RDI = Builder.CreateIntToPtr(RDI, Int16PtrTy);
-        Value *Src1 = Builder.CreateLoad(Int64Ty, RSI);
-        Value *Src0 = Builder.CreateLoad(Int64Ty, RDI);
+        Value *Src1 = Builder.CreateLoad(Int16Ty, RSI);
+        Value *Src0 = Builder.CreateLoad(Int16Ty, RDI);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RSI and RDI
-        Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
-        Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 8));
-        Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 2));
         RSI = LoadGMRValue(Int64Ty, X86Config::RSI);
         RSI = Builder.CreateSub(RSI, Step);
         StoreGMRValue(RSI, X86Config::RSI);
@@ -137,6 +139,8 @@ void X86Translator::translate_cmpsw(GuestInst *Inst) {
         } else if (InstHdl.hasRepne()) {
             Value *ResIsZ = Builder.CreateICmpEQ(Res, ConstInt(Int16Ty, 0));
             ExitCond = Builder.CreateOr(ExitCond, ResIsZ);
+        } else {
+            assert(0 && "rep prefix is unsupported.");
         }
         SyncAllGMRValue();
         Builder.CreateCondBr(ExitCond, FlagBB, LoopBodyBB);
@@ -153,8 +157,8 @@ void X86Translator::translate_cmpsw(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         Value *Src1 = Builder.CreateIntToPtr(RSI, Int16PtrTy);
         Value *Src0 = Builder.CreateIntToPtr(RDI, Int16PtrTy);
-        Src1 = Builder.CreateLoad(Int64Ty, Src1);
-        Src0 = Builder.CreateLoad(Int64Ty, Src0);
+        Src1 = Builder.CreateLoad(Int16Ty, Src1);
+        Src0 = Builder.CreateLoad(Int16Ty, Src0);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RSI and RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -195,6 +199,10 @@ void X86Translator::translate_cmpsd(GuestInst *Inst) {
         Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
         Value *isZero = Builder.CreateICmpEQ(RCX, ConstInt(Int64Ty, 0));
         SyncAllGMRValue();
+        Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
+        Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 7));
+        Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 4));
         Builder.CreateCondBr(isZero, EndBB, LoopBodyBB);
 
         Builder.SetInsertPoint(LoopBodyBB);
@@ -203,14 +211,10 @@ void X86Translator::translate_cmpsd(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         RSI = Builder.CreateIntToPtr(RSI, Int32PtrTy);
         RDI = Builder.CreateIntToPtr(RDI, Int32PtrTy);
-        Value *Src1 = Builder.CreateLoad(Int64Ty, RSI);
-        Value *Src0 = Builder.CreateLoad(Int64Ty, RDI);
+        Value *Src1 = Builder.CreateLoad(Int32Ty, RSI);
+        Value *Src0 = Builder.CreateLoad(Int32Ty, RDI);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RSI and RDI
-        Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
-        Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 7));
-        Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 4));
         RSI = LoadGMRValue(Int64Ty, X86Config::RSI);
         RSI = Builder.CreateSub(RSI, Step);
         StoreGMRValue(RSI, X86Config::RSI);
@@ -229,6 +233,8 @@ void X86Translator::translate_cmpsd(GuestInst *Inst) {
         } else if (InstHdl.hasRepne()) {
             Value *ResIsZ = Builder.CreateICmpEQ(Res, ConstInt(Int32Ty, 0));
             ExitCond = Builder.CreateOr(ExitCond, ResIsZ);
+        } else {
+            assert(0 && "rep prefix is unsupported.");
         }
         SyncAllGMRValue();
         Builder.CreateCondBr(ExitCond, FlagBB, LoopBodyBB);
@@ -245,8 +251,8 @@ void X86Translator::translate_cmpsd(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         Value *Src1 = Builder.CreateIntToPtr(RSI, Int32PtrTy);
         Value *Src0 = Builder.CreateIntToPtr(RDI, Int32PtrTy);
-        Src1 = Builder.CreateLoad(Int64Ty, Src1);
-        Src0 = Builder.CreateLoad(Int64Ty, Src0);
+        Src1 = Builder.CreateLoad(Int32Ty, Src1);
+        Src0 = Builder.CreateLoad(Int32Ty, Src0);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RSI and RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -280,6 +286,10 @@ void X86Translator::translate_cmpsq(GuestInst *Inst) {
         Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
         Value *isZero = Builder.CreateICmpEQ(RCX, ConstInt(Int64Ty, 0));
         SyncAllGMRValue();
+        Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
+        Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 6));
+        Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 8));
         Builder.CreateCondBr(isZero, EndBB, LoopBodyBB);
 
         Builder.SetInsertPoint(LoopBodyBB);
@@ -292,10 +302,6 @@ void X86Translator::translate_cmpsq(GuestInst *Inst) {
         Value *Src0 = Builder.CreateLoad(Int64Ty, RDI);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RSI and RDI
-        Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
-        Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 6));
-        Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 8));
         RSI = LoadGMRValue(Int64Ty, X86Config::RSI);
         RSI = Builder.CreateSub(RSI, Step);
         StoreGMRValue(RSI, X86Config::RSI);
@@ -314,6 +320,8 @@ void X86Translator::translate_cmpsq(GuestInst *Inst) {
         } else if (InstHdl.hasRepne()) {
             Value *ResIsZ = Builder.CreateICmpEQ(Res, ConstInt(Int64Ty, 0));
             ExitCond = Builder.CreateOr(ExitCond, ResIsZ);
+        } else {
+            assert(0 && "rep prefix is unsupported.");
         }
         SyncAllGMRValue();
         Builder.CreateCondBr(ExitCond, FlagBB, LoopBodyBB);
@@ -358,6 +366,10 @@ void X86Translator::translate_scasb(GuestInst *Inst) {
         FlagBB = BasicBlock::Create(Context, "FlagBB", TransFunc, ExitBB);
         EndBB = BasicBlock::Create(Context, "EndBB", TransFunc, ExitBB);
         SyncAllGMRValue();
+        Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
+        Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 9));
+        Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 1));
         Builder.CreateBr(ECBB);
 
         Builder.SetInsertPoint(ECBB);
@@ -373,13 +385,9 @@ void X86Translator::translate_scasb(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         RDI = Builder.CreateIntToPtr(RDI, Int8PtrTy);
         Value *Src1 = AL;
-        Value *Src0 = Builder.CreateLoad(Int64Ty, RDI);
+        Value *Src0 = Builder.CreateLoad(Int8Ty, RDI);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RDI
-        Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
-        Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 9));
-        Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 1));
         RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         RDI = Builder.CreateSub(RDI, Step);
         StoreGMRValue(RDI, X86Config::RDI);
@@ -395,6 +403,8 @@ void X86Translator::translate_scasb(GuestInst *Inst) {
         } else if (InstHdl.hasRepne()) {
             Value *ResIsZ = Builder.CreateICmpEQ(Res, ConstInt(Int8Ty, 0));
             ExitCond = Builder.CreateOr(ExitCond, ResIsZ);
+        } else {
+            assert(0 && "rep prefix is unsupported.");
         }
         SyncAllGMRValue();
         Builder.CreateCondBr(ExitCond, FlagBB, LoopBodyBB);
@@ -411,7 +421,7 @@ void X86Translator::translate_scasb(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         Value *Src1 = AL;
         Value *Src0 = Builder.CreateIntToPtr(RDI, Int8PtrTy);
-        Src0 = Builder.CreateLoad(Int64Ty, Src0);
+        Src0 = Builder.CreateLoad(Int8Ty, Src0);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -443,6 +453,10 @@ void X86Translator::translate_scasw(GuestInst *Inst) {
         Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
         Value *isZero = Builder.CreateICmpEQ(RCX, ConstInt(Int64Ty, 0));
         SyncAllGMRValue();
+        Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
+        Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 8));
+        Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 2));
         Builder.CreateCondBr(isZero, EndBB, LoopBodyBB);
 
         Builder.SetInsertPoint(LoopBodyBB);
@@ -451,13 +465,9 @@ void X86Translator::translate_scasw(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         RDI = Builder.CreateIntToPtr(RDI, Int16PtrTy);
         Value *Src1 = AX;
-        Value *Src0 = Builder.CreateLoad(Int64Ty, RDI);
+        Value *Src0 = Builder.CreateLoad(Int16Ty, RDI);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RDI
-        Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
-        Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 8));
-        Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 2));
         RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         RDI = Builder.CreateSub(RDI, Step);
         StoreGMRValue(RDI, X86Config::RDI);
@@ -473,6 +483,8 @@ void X86Translator::translate_scasw(GuestInst *Inst) {
         } else if (InstHdl.hasRepne()) {
             Value *ResIsZ = Builder.CreateICmpEQ(Res, ConstInt(Int16Ty, 0));
             ExitCond = Builder.CreateOr(ExitCond, ResIsZ);
+        } else {
+            assert(0 && "rep prefix is unsupported.");
         }
         SyncAllGMRValue();
         Builder.CreateCondBr(ExitCond, FlagBB, LoopBodyBB);
@@ -489,7 +501,7 @@ void X86Translator::translate_scasw(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         Value *Src1 = AX;
         Value *Src0 = Builder.CreateIntToPtr(RDI, Int16PtrTy);
-        Src0 = Builder.CreateLoad(Int64Ty, Src0);
+        Src0 = Builder.CreateLoad(Int16Ty, Src0);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RDI
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
@@ -521,6 +533,10 @@ void X86Translator::translate_scasd(GuestInst *Inst) {
         Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
         Value *isZero = Builder.CreateICmpEQ(RCX, ConstInt(Int64Ty, 0));
         SyncAllGMRValue();
+        Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
+        Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 7));
+        Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 4));
         Builder.CreateCondBr(isZero, EndBB, LoopBodyBB);
 
         Builder.SetInsertPoint(LoopBodyBB);
@@ -529,13 +545,9 @@ void X86Translator::translate_scasd(GuestInst *Inst) {
         Value *RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         RDI = Builder.CreateIntToPtr(RDI, Int32PtrTy);
         Value *Src1 = EAX;
-        Value *Src0 = Builder.CreateLoad(Int64Ty, RDI);
+        Value *Src0 = Builder.CreateLoad(Int32Ty, RDI);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RDI
-        Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
-        Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 7));
-        Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 4));
         RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         RDI = Builder.CreateSub(RDI, Step);
         StoreGMRValue(RDI, X86Config::RDI);
@@ -551,6 +563,8 @@ void X86Translator::translate_scasd(GuestInst *Inst) {
         } else if (InstHdl.hasRepne()) {
             Value *ResIsZ = Builder.CreateICmpEQ(Res, ConstInt(Int32Ty, 0));
             ExitCond = Builder.CreateOr(ExitCond, ResIsZ);
+        } else {
+            assert(0 && "rep prefix is unsupported.");
         }
         SyncAllGMRValue();
         Builder.CreateCondBr(ExitCond, FlagBB, LoopBodyBB);
@@ -573,7 +587,7 @@ void X86Translator::translate_scasd(GuestInst *Inst) {
         Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
         DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
         Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 7));
-        Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 4));
+        Step = Builder.CreateSub(Step, ConstInt(Int32Ty, 4));
         RDI = Builder.CreateSub(RDI, Step);
         StoreGMRValue(RDI, X86Config::RDI);
         // 3. Calculate Eflag
@@ -599,6 +613,10 @@ void X86Translator::translate_scasq(GuestInst *Inst) {
         Value *RCX = LoadGMRValue(Int64Ty, X86Config::RCX);
         Value *isZero = Builder.CreateICmpEQ(RCX, ConstInt(Int64Ty, 0));
         SyncAllGMRValue();
+        Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
+        DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
+        Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 6));
+        Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 8));
         Builder.CreateCondBr(isZero, EndBB, LoopBodyBB);
 
         Builder.SetInsertPoint(LoopBodyBB);
@@ -610,10 +628,6 @@ void X86Translator::translate_scasq(GuestInst *Inst) {
         Value *Src0 = Builder.CreateLoad(Int64Ty, RDI);
         Value *Res = Builder.CreateSub(Src1, Src0);
         // 2. Update RDI
-        Value *DF = LoadGMRValue(Int64Ty, X86Config::EFLAG);
-        DF = Builder.CreateAnd(DF, ConstInt(Int64Ty, DF_BIT));
-        Value *Step = Builder.CreateLShr(DF, ConstInt(Int64Ty, 6));
-        Step = Builder.CreateSub(Step, ConstInt(Int64Ty, 8));
         RDI = LoadGMRValue(Int64Ty, X86Config::RDI);
         RDI = Builder.CreateSub(RDI, Step);
         StoreGMRValue(RDI, X86Config::RDI);
@@ -629,6 +643,8 @@ void X86Translator::translate_scasq(GuestInst *Inst) {
         } else if (InstHdl.hasRepne()) {
             Value *ResIsZ = Builder.CreateICmpEQ(Res, ConstInt(Int64Ty, 0));
             ExitCond = Builder.CreateOr(ExitCond, ResIsZ);
+        } else {
+            assert(0 && "rep prefix is unsupported.");
         }
         SyncAllGMRValue();
         Builder.CreateCondBr(ExitCond, FlagBB, LoopBodyBB);
