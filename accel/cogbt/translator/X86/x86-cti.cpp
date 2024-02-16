@@ -369,22 +369,22 @@ void X86Translator::translate_jmp(GuestInst *Inst) {
 
 void X86Translator::translate_call(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
-
-    // adjust esp
-    Value *OldESP = LoadGMRValue(Int64Ty, X86Config::RSP);
-    Value *NewESP = Builder.CreateSub(OldESP, ConstInt(Int64Ty, 8));
-    StoreGMRValue(NewESP, X86Config::RSP);
-
-    // store return address into stack
-    Value *NewESPPtr = Builder.CreateIntToPtr(NewESP, Int64PtrTy);
-    Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getNextPC()), NewESPPtr);
-
-    // sync GMRVals into stack.
-    SyncAllGMRValue();
-
-    // store call target into env.
     X86OperandHandler OpndHdl(InstHdl.getOpnd(0));
+
+    // direct call
     if (OpndHdl.isImm()) {
+        // adjust esp
+        Value *OldESP = LoadGMRValue(Int64Ty, X86Config::RSP);
+        Value *NewESP = Builder.CreateSub(OldESP, ConstInt(Int64Ty, 8));
+        StoreGMRValue(NewESP, X86Config::RSP);
+
+        // store return address into stack
+        Value *NewESPPtr = Builder.CreateIntToPtr(NewESP, Int64PtrTy);
+        Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getNextPC()), NewESPPtr);
+
+        // sync GMRVals into stack.
+        SyncAllGMRValue();
+
         // do direct basic block link
         Value *Off = ConstInt(Int64Ty, GuestEIPOffset());
         Value *TargetPC = ConstInt(Int64Ty, InstHdl.getTargetPC());

@@ -954,15 +954,19 @@ void X86Translator::translate_andps(GuestInst *Inst) {
     CallFunc(FuncTy, "helper_andps", {CPUEnv, DestXMMID, SrcXMMID});
 }
 
-#define SSE_HELPER_CMP(name)                                                   \
-X86InstHandler InstHdl(Inst);                                                  \
-X86OperandHandler Opnd0(InstHdl.getOpnd(0));                                   \
-X86OperandHandler Opnd1(InstHdl.getOpnd(1));                                   \
-Value *SrcXMMID = ConstInt(Int64Ty, Opnd0.GetXMMID());                         \
-Value *DestXMMID = ConstInt(Int64Ty, Opnd1.GetXMMID());                        \
-FunctionType *FTy =                                                            \
-    FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty, Int64Ty}, false);           \
-CallFunc(FTy, "helper_" #name, {CPUEnv, DestXMMID, SrcXMMID});
+#define SSE_HELPER_CMP(name)                                                \
+X86InstHandler InstHdl(Inst);                                               \
+X86OperandHandler Opnd0(InstHdl.getOpnd(0));                                \
+X86OperandHandler Opnd1(InstHdl.getOpnd(1));                                \
+Value *SrcOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd0.GetXMMID()));        \
+Value *SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcOff);                 \
+SrcAddr = Builder.CreateBitCast(SrcAddr, Int64PtrTy);                       \
+Value *DestOff = ConstInt(Int64Ty, GuestXMMOffset(Opnd1.GetXMMID()));       \
+Value *DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestOff);               \
+DestAddr = Builder.CreateBitCast(DestAddr, Int64PtrTy);                     \
+FunctionType *FTy =                                                         \
+    FunctionType::get(VoidTy, {Int8PtrTy, Int64PtrTy, Int64PtrTy}, false);  \
+CallFunc(FTy, "helper_" #name, {CPUEnv, DestAddr, SrcAddr});
 
 void X86Translator::translate_cmpeqsd(GuestInst *Inst) {
     SSE_HELPER_CMP(cmpeqsd)
@@ -995,6 +999,7 @@ void X86Translator::translate_cmpnlesd(GuestInst *Inst) {
 void X86Translator::translate_cmpordsd(GuestInst *Inst) {
     SSE_HELPER_CMP(cmpordsd)
 }
+#undef SSE_HELPER_CMP
 
 void X86Translator::translate_movlpd(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
