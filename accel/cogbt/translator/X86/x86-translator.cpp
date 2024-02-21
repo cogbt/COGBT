@@ -685,14 +685,24 @@ Value *X86Translator::LoadGMRValue(Type *Ty, X86MappedRegsId GMRId,
         V = Builder.CreateExtractElement(V, ConstantInt::get(Int32Ty, 0));
         return V;
     } else if (type == X86RegFPRType) {
-        std::string typeStr;
-        llvm::raw_string_ostream rso(typeStr);
+        // std::string typeStr;
+        // llvm::raw_string_ostream rso(typeStr);
         // V->getType()->print(rso);
         // dbgs() << rso.str() << "\n";
-        Ty->print(rso);
-        dbgs() << rso.str() << "\n";
-        assert(Ty->isDoubleTy() || Ty->isFloatTy());
-        V = Builder.CreateFPTrunc(V, FP64Ty);
+        // Ty->print(rso);
+        // dbgs() << rso.str() << "\n";
+        // assert(Ty->isDoubleTy() || Ty->isFloatTy());
+        if (Ty == FP32Ty) {
+            V = Builder.CreateFPTrunc(V, FP32Ty);
+        }
+        // else if (Ty == FP64Ty) {
+        //     // do nothing
+        // } else if (Ty == FP80Ty) {
+        //     V = Builder.CreateFPExt(V, FP80Ty);
+        // }
+        else {
+            assert(0 && "it is developing...");
+        }
         return V;
     } else {
         fprintf(stderr, "unsupported type.\n");
@@ -714,13 +724,15 @@ void X86Translator::StoreGMRValue(Value *V, X86MappedRegsId GMRId,
     }
 
     if (type == X86RegFPRType && V->getType() == Int64Ty) {
-        // assert(0 && "it is developing...");
         V = Builder.CreateBitCast(V, FP64Ty);
     } else if (type == X86RegFPRType && V->getType() == Int32Ty) {
-        // assert(0 && "it is developing...");
         V = Builder.CreateBitCast(V, FP32Ty);
         V = Builder.CreateFPExt(V, FP64Ty);
     }
+    // else if (type == X86RegFPRType && V->getType() == Int80Ty) {
+    //     V = Builder.CreateBitCast(V, FP80Ty);
+    //     V = Builder.CreateFPTrunc(V, FP64Ty);
+    // }
 
     if (V->getType() == X86RegTyToLLVMTy(type)) {
         SetGMRVals(type, gid, V, true);
@@ -781,16 +793,15 @@ void X86Translator::StoreGMRValue(Value *V, X86MappedRegsId GMRId,
             }
         }
     } else if (type == X86RegFPRType) {
-        // std::string typeStr;
-        // llvm::raw_string_ostream rso(typeStr);
-        // V->getType()->print(rso);
-        // dbgs() << rso.str() << "\n";
         assert(0 && "it is developing...");
-        if (V->getType() == FP32Ty) {
-            V = Builder.CreateFPExt(V, FP64Ty);
-        } else {
-            assert(0 && "it is developing...");
-        }
+        // if (V->getType() == FP32Ty) {
+        //     V = Builder.CreateFPExt(V, FP64Ty);
+        // } else if (V->getType() == FP80Ty) {
+        //     V = Builder.CreateFPTrunc(V, FP64Ty);
+        // } else {
+        //     assert(0 && "it is developing...");
+        // }
+        // TODO: SetGMRVals
     } else {
         fprintf(stderr, "unsupported type.\n");
         exit(-1);
