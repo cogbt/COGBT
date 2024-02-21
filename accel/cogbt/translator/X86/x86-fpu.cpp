@@ -710,16 +710,14 @@ void X86Translator::translate_fstp(GuestInst *Inst) {
             assert(0 && "it is developing");
             Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
             CallFunc(FSTTTy, "helper_fstt_ST0", {CPUEnv, Addr});
+        } else if (SrcOpnd.getOpndSize() == 4) {
+            Value *ST0 = LoadGMRValue(FP32Ty, X87GetCurrST0());
+            StoreOperand(ST0, InstHdl.getOpnd(0));
+        } else if (SrcOpnd.getOpndSize() == 8) {
+            Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+            StoreOperand(ST0, InstHdl.getOpnd(0));
         } else {
-            int len = SrcOpnd.getOpndSize();
-            if (len == 32) {
-                Value *MemVal = LoadGMRValue(FP32Ty, X87GetCurrST0());
-            } else if (len == 64) {
-                Value *MemVal = LoadGMRValue(FP64Ty, X87GetCurrST0());
-            } else {
-                llvm_unreachable("fistp: unknown opnd size\n");
-            }
-            StoreOperand(MemVal, InstHdl.getOpnd(0));
+            llvm_unreachable("fistp: unknown opnd size\n");
         }
     } else {
         StoreGMRValue(LoadGMRValue(FP64Ty, X87GetCurrST0()),
