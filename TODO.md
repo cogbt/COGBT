@@ -1,0 +1,68 @@
+## 已翻译指令
+
+- fld
+- fstp
+- fucomi
+- fucomip
+
+## 测例
+
+- [ ] fldst
+  - [ ] fild
+  - [ ] fist
+  - [ ] fistp
+  - [ ] fld
+  - [ ] fld1
+  - [ ] fldcw-fnstcw
+  - [ ] fldcw-fstcw
+  - [ ] fnstsw
+  - [ ] fst
+  - [ ] fstp
+  - [ ] fstsw
+  - [ ] fsub
+  - [ ] fxch
+- [ ] farith
+  - [ ] f2xm1
+  - [ ] fabs
+  - [ ] fadd
+  - [ ] fchs
+  - [ ] fcmovb
+  - [ ] fcmovbe
+  - [ ] fcmove
+  - [ ] fcmovnb
+  - [ ] fcmovnbe
+  - [ ] fcmovne
+  - [ ] fcmovnu
+  - [ ] fcmovu
+  - [ ] fcom
+  - [ ] fcomi
+  - [ ] fcos
+  - [ ] fdiv
+  - [ ] fdivr
+  - [ ] ficom
+  - [ ] fincstp
+  - [ ] fmul
+  - [ ] fpatan
+  - [ ] fprem
+  - [ ] fprem1
+  - [ ] fptan
+  - [ ] frndint
+  - [ ] fscale
+  - [ ] fsin
+  - [ ] fsincos
+  - [ ] fsqrt
+  - [ ] fsub
+  - [ ] fsubp
+  - [ ] fsubr
+  - [ ] ftst
+  - [ ] fxtract
+  - [ ] fyl2xp1
+- [ ] fctrl
+  - [ ] ffree
+  - [ ] fincstp-fdecstp
+  - [ ] finit
+  - [ ] fldenv-fnstenv
+  - [ ] fldlx
+  - [ ] fnclex
+  - [ ] fninit
+  - [ ] fnsave

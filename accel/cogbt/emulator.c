@@ -71,36 +71,24 @@ int GetEBXOffset(void) { return GuestStateOffset(R_EBX); }
 int GetECXOffset(void) { return GuestStateOffset(R_ECX); }
 int GetEDXOffset(void) { return GuestStateOffset(R_EDX); }
 
-int GuestStateOffset(int idx) {
-    return offsetof(CPUX86State, regs[idx]);
-}
+int GuestStateOffset(int idx) { return offsetof(CPUX86State, regs[idx]); }
 
-int GuestEflagOffset(void) {
-    return offsetof(CPUX86State, eflags);
-}
+int GuestEflagOffset(void) { return offsetof(CPUX86State, eflags); }
 
-int GuestXMMT0Offset(void) {
-    return offsetof(CPUX86State, xmm_t0);
-}
+int GuestXMMT0Offset(void) { return offsetof(CPUX86State, xmm_t0); }
 
-int GuestMMXT0Offset(void) {
-    return offsetof(CPUX86State, mmx_t0);
-}
+int GuestMMXT0Offset(void) { return offsetof(CPUX86State, mmx_t0); }
 
-int GuestXMMOffset(int idx) {
-    return offsetof(CPUX86State, xmm_regs[idx]);
-}
+int GuestXMMOffset(int idx) { return offsetof(CPUX86State, xmm_regs[idx]); }
 
-int GuestMMXOffset(int idx) {
-    return offsetof(CPUX86State, fpregs[idx].mmx);
-}
+int GuestMMXOffset(int idx) { return offsetof(CPUX86State, fpregs[idx].mmx); }
 
-int GuestFPROffset(int idx) {
-    return offsetof(CPUX86State, fpregs[idx].d);
-}
+int GuestFPROffset(int idx) { return offsetof(CPUX86State, fpregs[idx].d); }
+
+// int GuestFpsttOffset(void) { return offsetof(CPUX86State, fpstt); }
 
 int GuestST0Offset(void *p) {
-    CPUX86State *env = (CPUX86State *) p;
+    CPUX86State *env = (CPUX86State *)p;
     return GuestFPROffset(env->fpstt);
 }
 
@@ -124,13 +112,9 @@ int GuestSegOffset(int seg_idx) {
     }
 }
 
-int GuestEIPOffset(void) {
-    return offsetof(CPUX86State, eip);
-}
+int GuestEIPOffset(void) { return offsetof(CPUX86State, eip); }
 
-int GuestLoadbiasOffset(void) {
-    return offsetof(CPUX86State, elf_loadbias);
-}
+int GuestLoadbiasOffset(void) { return offsetof(CPUX86State, elf_loadbias); }
 
 int GuestZMMRegOffset(int reg_idx, int reg_start_byte) {
     return offsetof(CPUX86State, xmm_regs[reg_idx].ZMM_B(reg_start_byte));
@@ -140,9 +124,7 @@ int GuestMMXRegOffset(int reg_idx, int reg_start_byte) {
     return offsetof(CPUX86State, fpregs[reg_idx].mmx.MMX_B(reg_start_byte));
 }
 
-int GuestMXCSROffset(void) {
-    return offsetof(CPUX86State, mxcsr);
-}
+int GuestMXCSROffset(void) { return offsetof(CPUX86State, mxcsr); }
 
 void helper_raise_syscall(void *p, uint64_t next_eip) {
     CPUX86State *env = (CPUX86State *)p;
@@ -568,30 +550,30 @@ void helper_cvtsq2ss_wrapper(void *p, int dest, int64_t src) {
 }
 #if 0
 #define SSE_HELPER_CMP_WRAPPER(name)                                           \
-void helper_ ## name ## ps_wrapper(void *p, int dest, int src) {               \
-    CPUX86State *env = (CPUX86State *)p;                                       \
-    ZMMReg *d = &env->xmm_regs[dest];                                          \
-    ZMMReg *s = &env->xmm_regs[src];                                           \
-    helper_ ## name ## ps(env, d, s);                                        \
-}                                                                              \
-void helper_ ## name ## ss_wrapper(void *p, int dest, int src) {               \
-    CPUX86State *env = (CPUX86State *)p;                                       \
-    ZMMReg *d = &env->xmm_regs[dest];                                          \
-    ZMMReg *s = &env->xmm_regs[src];                                           \
-    helper_ ## name ## ss(env, d, s);                                        \
-}                                                                              \
-void helper_ ## name ## pd_wrapper(void *p, int dest, int src) {               \
-    CPUX86State *env = (CPUX86State *)p;                                       \
-    ZMMReg *d = &env->xmm_regs[dest];                                          \
-    ZMMReg *s = &env->xmm_regs[src];                                           \
-    helper_ ## name ## pd(env, d, s);                                        \
-}                                                                              \
-void helper_ ## name ## sd_wrapper(void *p, int dest, int src) {               \
-    CPUX86State *env = (CPUX86State *)p;                                       \
-    ZMMReg *d = &env->xmm_regs[dest];                                          \
-    ZMMReg *s = &env->xmm_regs[src];                                           \
-    helper_ ## name ## sd(env, d, s);                                        \
-}
+    void helper_##name##ps_wrapper(void *p, int dest, int src) {               \
+        CPUX86State *env = (CPUX86State *)p;                                   \
+        ZMMReg *d = &env->xmm_regs[dest];                                      \
+        ZMMReg *s = &env->xmm_regs[src];                                       \
+        helper_##name##ps(env, d, s);                                          \
+    }                                                                          \
+    void helper_##name##ss_wrapper(void *p, int dest, int src) {               \
+        CPUX86State *env = (CPUX86State *)p;                                   \
+        ZMMReg *d = &env->xmm_regs[dest];                                      \
+        ZMMReg *s = &env->xmm_regs[src];                                       \
+        helper_##name##ss(env, d, s);                                          \
+    }                                                                          \
+    void helper_##name##pd_wrapper(void *p, int dest, int src) {               \
+        CPUX86State *env = (CPUX86State *)p;                                   \
+        ZMMReg *d = &env->xmm_regs[dest];                                      \
+        ZMMReg *s = &env->xmm_regs[src];                                       \
+        helper_##name##pd(env, d, s);                                          \
+    }                                                                          \
+    void helper_##name##sd_wrapper(void *p, int dest, int src) {               \
+        CPUX86State *env = (CPUX86State *)p;                                   \
+        ZMMReg *d = &env->xmm_regs[dest];                                      \
+        ZMMReg *s = &env->xmm_regs[src];                                       \
+        helper_##name##sd(env, d, s);                                          \
+    }
 
 SSE_HELPER_CMP_WRAPPER(cmpeq)
 SSE_HELPER_CMP_WRAPPER(cmplt)
