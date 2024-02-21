@@ -9,6 +9,12 @@
 - fsubp
 - fild
 - fdecstp
+- fld1
+- fldpi
+- fldln2
+- fldlg2
+- fldl2t
+- fincstp
 
 ## 测例
 
@@ -16,8 +22,8 @@
   - [ ] fild
   - [ ] fist
   - [ ] fistp
-  - [ ] fld
-  - [ ] fld1
+  - [x] fld
+  - [x] fld1
   - [ ] fldcw-fnstcw
   - [ ] fldcw-fstcw
   - [ ] fnstsw

@@ -339,13 +339,7 @@ void X86Translator::translate_ficomp(GuestInst *Inst) {
     GenFPUHelper(Inst, "fcom", DEST_IS_ST0 | MEM_VAL_IS_INT | SHOULD_POP_ONCE);
 }
 
-void X86Translator::translate_fincstp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fincstp\n";
-    exit(-1);
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fincstp", CPUEnv);
-    // X87FPR_Pop();
-}
+void X86Translator::translate_fincstp(GuestInst *Inst) { X87FPR_Pop(); }
 
 void X86Translator::translate_fldcw(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fldcw\n";
@@ -377,43 +371,31 @@ void X86Translator::translate_fldl2e(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fldl2t(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fldl2t\n";
-    exit(-1);
-
     X86InstHandler InstHdl(Inst);
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fpush", {CPUEnv});
-    CallFunc(FTy, "helper_fldl2t_ST0", {CPUEnv});
+    X87FPR_Push();
+    StoreGMRValue(ConstantFP::get(Context, APFloat(3.3219280948873621817)),
+                  X87GetCurrST0());
 }
 
 void X86Translator::translate_fldlg2(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fldlg2\n";
-    exit(-1);
-
     X86InstHandler InstHdl(Inst);
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fpush", {CPUEnv});
-    CallFunc(FTy, "helper_fldlg2_ST0", {CPUEnv});
+    X87FPR_Push();
+    StoreGMRValue(ConstantFP::get(Context, APFloat(0.3010299956639811980)),
+                  X87GetCurrST0());
 }
 
 void X86Translator::translate_fldln2(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fldln2\n";
-    exit(-1);
-
     X86InstHandler InstHdl(Inst);
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fpush", {CPUEnv});
-    CallFunc(FTy, "helper_fldln2_ST0", {CPUEnv});
+    X87FPR_Push();
+    StoreGMRValue(ConstantFP::get(Context, APFloat(0.6931471805599452862)),
+                  X87GetCurrST0());
 }
 
 void X86Translator::translate_fldpi(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fldpi\n";
-    exit(-1);
-
     X86InstHandler InstHdl(Inst);
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fpush", {CPUEnv});
-    CallFunc(FTy, "helper_fldpi_ST0", {CPUEnv});
+    X87FPR_Push();
+    StoreGMRValue(ConstantFP::get(Context, APFloat(3.14159265358979323)),
+                  X87GetCurrST0());
 }
 
 void X86Translator::translate_fnclex(GuestInst *Inst) {
@@ -694,11 +676,9 @@ void X86Translator::translate_fldz(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fld1(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fld1\n");
     X86InstHandler InstHdl(Inst);
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fpush", {CPUEnv});
-    CallFunc(FTy, "helper_fld1_ST0", {CPUEnv});
+    X87FPR_Push();
+    StoreGMRValue(ConstantFP::get(Context, APFloat(1.0)), X87GetCurrST0());
 }
 
 void X86Translator::translate_fld(GuestInst *Inst) {
