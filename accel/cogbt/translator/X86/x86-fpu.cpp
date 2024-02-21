@@ -125,10 +125,14 @@ void X86Translator::GenFPUHelper(GuestInst *Inst, std::string Name, int Flags) {
 }
 
 void X86Translator::translate_fabs(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fabs\n";
+    exit(-1);
     FunctionType *FuncTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FuncTy, "helper_fabs_ST0", CPUEnv);
 }
 void X86Translator::translate_fadd(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fadd\n";
+    exit(-1);
     GenFPUHelper(Inst, "fadd", DEST_IS_ST0);
 }
 // void X86Translator::translate_fadd(GuestInst *Inst) {
@@ -162,6 +166,9 @@ void X86Translator::translate_fadd(GuestInst *Inst) {
 // }
 
 void X86Translator::translate_fiadd(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fiadd\n";
+    exit(-1);
+
     X86InstHandler InstHdl(Inst);
     assert(InstHdl.getOpndNum() == 1 &&
            "fiadd does not support opnd number!\n");
@@ -171,21 +178,33 @@ void X86Translator::translate_fiadd(GuestInst *Inst) {
 }
 
 void X86Translator::translate_faddp(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction faddp\n";
+    exit(-1);
+
     X86InstHandler InstHdl(Inst);
     assert(InstHdl.getOpndNum() == 1 && "faddp does not support opnd number\n");
     GenFPUHelper(Inst, "fadd", SHOULD_POP_ONCE);
 }
 
 void X86Translator::translate_fchs(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fchs\n";
+    exit(-1);
+
     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(UnaryFunTy, "helper_fchs_ST0", {CPUEnv});
 }
 
 void X86Translator::translate_fcomp(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fcomp\n";
+    exit(-1);
+
     GenFPUHelper(Inst, "fcom", DEST_IS_ST0 | SHOULD_POP_ONCE);
 }
 
 void X86Translator::translate_fcompp(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fcompp\n";
+    exit(-1);
+
     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     FunctionType *Binary32FunTy =
         FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
@@ -197,6 +216,9 @@ void X86Translator::translate_fcompp(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fcomip(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fcomip\n";
+    exit(-1);
+
     X86InstHandler InstHdl(Inst);
     assert(InstHdl.getOpndNum() == 1);
 
@@ -216,6 +238,8 @@ void X86Translator::translate_fcomip(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fcomi(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fcomi\n";
+    exit(-1);
     X86InstHandler InstHdl(Inst);
     assert(InstHdl.getOpndNum() == 1);
 
@@ -233,20 +257,30 @@ void X86Translator::translate_fcomi(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fcom(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fcom\n";
+    exit(-1);
     GenFPUHelper(Inst, "fcom", DEST_IS_ST0);
 }
 
 void X86Translator::translate_fcos(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fcos\n";
+    exit(-1);
+
     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(UnaryFunTy, "helper_fcos", CPUEnv);
 }
 
 void X86Translator::translate_f2xm1(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction f2xm1\n";
+    exit(-1);
     FunctionType *FuncTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FuncTy, "helper_f2xm1", {CPUEnv});
 }
 
 void X86Translator::translate_fbld(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fbld\n";
+    exit(-1);
+
     X86InstHandler InstHdl(Inst);
     assert(InstHdl.getOpndNum() == 1);
 
@@ -259,6 +293,8 @@ void X86Translator::translate_fbld(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fbstp(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fbstp\n";
+    exit(-1);
     X86InstHandler InstHdl(Inst);
     assert(InstHdl.getOpndNum() == 1);
 
@@ -274,6 +310,8 @@ void X86Translator::translate_fbstp(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fdecstp(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fdecstp\n";
+    exit(-1);
     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(UnaryFunTy, "helper_fdecstp", CPUEnv);
 }
@@ -281,9 +319,14 @@ void X86Translator::translate_fdecstp(GuestInst *Inst) {
 void X86Translator::translate_femms(GuestInst *Inst) {
     dbgs() << "Untranslated instruction femms\n";
     exit(-1);
+    dbgs() << "Untranslated instruction femms\n";
+    exit(-1);
 }
 
 void X86Translator::translate_ffree(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction ffree\n";
+    exit(-1);
+
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     FunctionType *FTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
@@ -292,20 +335,28 @@ void X86Translator::translate_ffree(GuestInst *Inst) {
 }
 
 void X86Translator::translate_ficom(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction ficom\n";
+    exit(-1);
     GenFPUHelper(Inst, "fcom", DEST_IS_ST0 | MEM_VAL_IS_INT);
 }
 
 void X86Translator::translate_ficomp(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction ficomp\n";
+    exit(-1);
     GenFPUHelper(Inst, "fcom", DEST_IS_ST0 | MEM_VAL_IS_INT | SHOULD_POP_ONCE);
 }
 
 void X86Translator::translate_fincstp(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fincstp\n";
+    exit(-1);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fincstp", CPUEnv);
     // X87FPR_Pop();
 }
 
 void X86Translator::translate_fldcw(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fldcw\n";
+    exit(-1);
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     FunctionType *FTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
@@ -316,6 +367,8 @@ void X86Translator::translate_fldcw(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fldenv(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fldenv\n";
+    exit(-1);
     X86InstHandler InstHdl(Inst);
     Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
     FunctionType *Ty =
@@ -324,6 +377,8 @@ void X86Translator::translate_fldenv(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fldl2e(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fldl2e\n";
+    exit(-1);
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fpush", {CPUEnv});
@@ -338,6 +393,9 @@ void X86Translator::translate_fldl2e(GuestInst *Inst) {
 // }
 
 void X86Translator::translate_fldl2t(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fldl2t\n";
+    exit(-1);
+
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fpush", {CPUEnv});
@@ -345,6 +403,9 @@ void X86Translator::translate_fldl2t(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fldlg2(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fldlg2\n";
+    exit(-1);
+
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fpush", {CPUEnv});
@@ -352,6 +413,9 @@ void X86Translator::translate_fldlg2(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fldln2(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fldln2\n";
+    exit(-1);
+
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fpush", {CPUEnv});
@@ -359,6 +423,9 @@ void X86Translator::translate_fldln2(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fldpi(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fldpi\n";
+    exit(-1);
+
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fpush", {CPUEnv});
@@ -366,22 +433,34 @@ void X86Translator::translate_fldpi(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fnclex(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fnclex\n";
+    exit(-1);
+
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fclex", CPUEnv);
 }
 
 void X86Translator::translate_fninit(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fninit\n";
+    exit(-1);
+
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fninit", CPUEnv);
 }
 
 void X86Translator::translate_fnop(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fnop\n";
+    exit(-1);
+
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fwait", {CPUEnv});
 }
 
 void X86Translator::translate_fnstcw(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fnstcw\n";
+    exit(-1);
+
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     FunctionType *Ty = FunctionType::get(Int32Ty, Int8PtrTy, false);
@@ -392,6 +471,9 @@ void X86Translator::translate_fnstcw(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fnstsw(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fnstsw\n";
+    exit(-1);
+
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     FunctionType *Ret32Ty = FunctionType::get(Int32Ty, Int8PtrTy, false);
@@ -415,21 +497,30 @@ void X86Translator::translate_fnstsw(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fpatan(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fpatan\n";
+    exit(-1);
+
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fpatan", CPUEnv);
 }
 
 void X86Translator::translate_fprem(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fprem\n";
+    exit(-1);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fprem", CPUEnv);
 }
 
 void X86Translator::translate_fprem1(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fprem1\n";
+    exit(-1);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fprem1", CPUEnv);
 }
 
 void X86Translator::translate_fptan(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fptan\n";
+    exit(-1);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fptan", CPUEnv);
 }
@@ -440,11 +531,15 @@ void X86Translator::translate_ffreep(GuestInst *Inst) {
 }
 
 void X86Translator::translate_frndint(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction frndint\n";
+    exit(-1);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_frndint", CPUEnv);
 }
 
 void X86Translator::translate_frstor(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction frstor\n";
+    exit(-1);
     X86InstHandler InstHdl(Inst);
     Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
     FunctionType *Ty =
@@ -453,6 +548,9 @@ void X86Translator::translate_frstor(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fnsave(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fnsave\n";
+    exit(-1);
+
     X86InstHandler InstHdl(Inst);
     Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
     FunctionType *Ty =
@@ -461,6 +559,8 @@ void X86Translator::translate_fnsave(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fscale(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fscale\n";
+    exit(-1);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fscale", CPUEnv);
 }
@@ -471,11 +571,15 @@ void X86Translator::translate_fsetpm(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fsincos(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fsincos\n";
+    exit(-1);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fsincos", CPUEnv);
 }
 
 void X86Translator::translate_fnstenv(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fnstenv\n";
+    exit(-1);
     X86InstHandler InstHdl(Inst);
     Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
     FunctionType *Ty =
@@ -484,26 +588,36 @@ void X86Translator::translate_fnstenv(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fxam(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fxam\n";
+    exit(-1);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fxam_ST0", CPUEnv);
 }
 
 void X86Translator::translate_fxtract(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fxtract\n";
+    exit(-1);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fxtract", CPUEnv);
 }
 
 void X86Translator::translate_fyl2x(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fyl2x\n";
+    exit(-1);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fyl2x", CPUEnv);
 }
 
 void X86Translator::translate_fyl2xp1(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fyl2xp1\n";
+    exit(-1);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fyl2xp1", CPUEnv);
 }
 
 void X86Translator::translate_fild(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fild\n";
+    exit(-1);
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     assert(InstHdl.getOpndNum() == 1 && SrcOpnd.isMem());
@@ -522,6 +636,8 @@ void X86Translator::translate_fild(GuestInst *Inst) {
 // }
 
 void X86Translator::translate_fisttp(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fisttp\n";
+    exit(-1);
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
@@ -548,6 +664,8 @@ void X86Translator::translate_fisttp(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fist(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fist\n";
+    exit(-1);
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     FunctionType *Ty = FunctionType::get(Int32Ty, Int8PtrTy, false);
@@ -568,6 +686,8 @@ void X86Translator::translate_fist(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fistp(GuestInst *Inst) {
+    dbgs() << "Untranslated instruction fistp\n";
+    exit(-1);
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
@@ -600,6 +720,7 @@ void X86Translator::translate_fistp(GuestInst *Inst) {
 // }
 
 void X86Translator::translate_fldz(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fldz\n");
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fpush", {CPUEnv});
@@ -607,6 +728,7 @@ void X86Translator::translate_fldz(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fld1(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fld1\n");
     X86InstHandler InstHdl(Inst);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fpush", {CPUEnv});
@@ -648,11 +770,13 @@ void X86Translator::translate_fld(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fsin(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fsin\n");
     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(UnaryFunTy, "helper_fsin", CPUEnv);
 }
 
 void X86Translator::translate_fsqrt(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fsqrt\n");
     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(UnaryFunTy, "helper_fsqrt", CPUEnv);
 }
@@ -732,6 +856,7 @@ void X86Translator::translate_fstpnce(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fxch(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fxch\n");
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     FunctionType *FTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
@@ -741,27 +866,33 @@ void X86Translator::translate_fxch(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fsubr(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fsubr\n");
     X86InstHandler InstHdl(Inst);
     GenFPUHelper(Inst, "fsubr", DEST_IS_ST0);
 }
 
 void X86Translator::translate_fisubr(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fisubr\n");
     GenFPUHelper(Inst, "fsubr", DEST_IS_ST0 | MEM_VAL_IS_INT);
 }
 
 void X86Translator::translate_fsubrp(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fsubrp\n");
     GenFPUHelper(Inst, "fsubr", SHOULD_POP_ONCE);
 }
 
 void X86Translator::translate_fsub(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fsub\n");
     GenFPUHelper(Inst, "fsub", DEST_IS_ST0);
 }
 
 void X86Translator::translate_fisub(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fisub\n");
     GenFPUHelper(Inst, "fsub", DEST_IS_ST0 | MEM_VAL_IS_INT);
 }
 
 void X86Translator::translate_fsubp(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fsubp\n");
     GenFPUHelper(Inst, "fsub", SHOULD_POP_ONCE);
 }
 
@@ -785,6 +916,7 @@ void X86Translator::translate_fsubp(GuestInst *Inst) {
 // }
 
 void X86Translator::translate_ftst(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction ftst\n");
     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(UnaryFunTy, "helper_fldz_FT0", CPUEnv);
     CallFunc(UnaryFunTy, "helper_fcom_ST0_FT0", CPUEnv);
@@ -817,6 +949,7 @@ void X86Translator::translate_fucomip(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fucompp(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fucompp\n");
     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     FunctionType *Binary32FunTy =
         FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
@@ -828,28 +961,34 @@ void X86Translator::translate_fucompp(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fucomp(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fucomp\n");
     GenFPUHelper(Inst, "fucom", DEST_IS_ST0 | SHOULD_POP_ONCE);
 }
 
 void X86Translator::translate_fucom(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fucom\n");
     GenFPUHelper(Inst, "fucom", DEST_IS_ST0);
 }
 
 void X86Translator::translate_wait(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction wait\n");
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fwait", CPUEnv);
 }
 
 void X86Translator::translate_fdiv(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fdiv\n");
     X86InstHandler InstHdl(Inst);
     GenFPUHelper(Inst, "fdiv", DEST_IS_ST0);
 }
 
 void X86Translator::translate_fidiv(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fidiv\n");
     GenFPUHelper(Inst, "fdiv", DEST_IS_ST0 | MEM_VAL_IS_INT);
 }
 
 void X86Translator::translate_fdivp(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fdivp\n");
     GenFPUHelper(Inst, "fdiv", SHOULD_POP_ONCE);
 }
 
@@ -878,57 +1017,71 @@ void X86Translator::GenFCMOVHelper(GuestInst *Inst, std::string LBTIntrinic) {
 }
 
 void X86Translator::translate_fcmovbe(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fcmovbe\n");
     GenFCMOVHelper(Inst, "llvm.loongarch.x86setjbe");
 }
 
 void X86Translator::translate_fcmovb(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fcmovb\n");
     GenFCMOVHelper(Inst, "llvm.loongarch.x86setjb");
 }
 
 void X86Translator::translate_fcmove(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fcmove\n");
     GenFCMOVHelper(Inst, "llvm.loongarch.x86setje");
 }
 
 void X86Translator::translate_fcmovnbe(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fcmovnbe\n");
     GenFCMOVHelper(Inst, "llvm.loongarch.x86setja");
 }
 
 void X86Translator::translate_fcmovnb(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fcmovnb\n");
     GenFCMOVHelper(Inst, "llvm.loongarch.x86setjae");
 }
 
 void X86Translator::translate_fcmovne(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fcmovne\n");
     GenFCMOVHelper(Inst, "llvm.loongarch.x86setjne");
 }
 
 void X86Translator::translate_fcmovnu(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fcmovnu\n");
     GenFCMOVHelper(Inst, "llvm.loongarch.x86setjnp");
 }
 
 void X86Translator::translate_fcmovu(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fcmovu\n");
     GenFCMOVHelper(Inst, "llvm.loongarch.x86setjp");
 }
 
 void X86Translator::translate_fmul(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fmul\n");
     GenFPUHelper(Inst, "fmul", DEST_IS_ST0);
 }
 
 void X86Translator::translate_fimul(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fimul\n");
     GenFPUHelper(Inst, "fmul", DEST_IS_ST0 | MEM_VAL_IS_INT);
 }
 
 void X86Translator::translate_fmulp(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fmulp\n");
     GenFPUHelper(Inst, "fmul", SHOULD_POP_ONCE);
 }
 
 void X86Translator::translate_fdivr(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fdivr\n");
     GenFPUHelper(Inst, "fdivr", DEST_IS_ST0);
 }
 
 void X86Translator::translate_fidivr(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fidivr\n");
     GenFPUHelper(Inst, "fdivr", DEST_IS_ST0 | MEM_VAL_IS_INT);
 }
 
 void X86Translator::translate_fdivrp(GuestInst *Inst) {
+    assert(0 && "Untranslated instruction fdivrp\n");
     GenFPUHelper(Inst, "fdivr", SHOULD_POP_ONCE);
 }
