@@ -731,56 +731,9 @@ void X86Translator::translate_fsqrt(GuestInst *Inst) {
 void X86Translator::translate_fst(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-    // FunctionType *FTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty},
-    // false);
-
-    if (SrcOpnd.isMem()) {
-        // Value *MemVal = ReloadFPRValue("ST0", SrcOpnd.getOpndSize(), false);
-        StoreOperand(LoadGMRValue(FP64Ty, X87GetCurrSTI(0)),
-                     InstHdl.getOpnd(0));
-    } else {
-        assert(0 && "it is developing");
-        // Value *DestFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
-        // CallFunc(FTy, "helper_fmov_STN_ST0", {CPUEnv, DestFPRID});
-    }
-}
-
-// void X86Translator::translate_fstp(GuestInst *Inst) {
-//     X86InstHandler InstHdl(Inst);
-//     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-//     FunctionType *FSTTTy =
-//         FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false);
-
-//     if (SrcOpnd.isMem()) {
-//         if (SrcOpnd.getOpndSize() == 10) {
-//             assert(0 && "it is developing");
-//             Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
-//             CallFunc(FSTTTy, "helper_fstt_ST0", {CPUEnv, Addr});
-//         } else if (SrcOpnd.getOpndSize() == 32) {
-//             Value *ST0 = LoadGMRValue(FP32Ty, X87GetCurrST0());
-//             StoreOperand(ST0, InstHdl.getOpnd(0));
-//         } else if (SrcOpnd.getOpndSize() == 64) {
-//             Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
-//             StoreOperand(ST0, InstHdl.getOpnd(0));
-//         }
-//     } else {
-//         Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
-//         StoreOperand(ST0, InstHdl.getOpnd(0));
-//     }
-//     X87FPR_Pop();
-// }
-
-void X86Translator::translate_fstp(GuestInst *Inst) {
-    X86InstHandler InstHdl(Inst);
-    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-    // FunctionType *FSTTTy =
-    //     FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false);
-
     if (SrcOpnd.isMem()) {
         if (SrcOpnd.getOpndSize() == 10) {
             assert(0 && "it is developing");
-            // Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
-            // StoreOperand(ST0, InstHdl.getOpnd(0));
         } else if (SrcOpnd.getOpndSize() == 4) {
             Value *ST0 = LoadGMRValue(FP32Ty, X87GetCurrST0());
             StoreOperand(ST0, InstHdl.getOpnd(0));
@@ -794,6 +747,10 @@ void X86Translator::translate_fstp(GuestInst *Inst) {
         StoreGMRValue(LoadGMRValue(FP64Ty, X87GetCurrST0()),
                       X87GetCurrSTI(SrcOpnd.GetFPRID()));
     }
+}
+
+void X86Translator::translate_fstp(GuestInst *Inst) {
+    translate_fst(Inst);
     X87FPR_Pop();
 }
 

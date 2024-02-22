@@ -15,8 +15,11 @@
 - fldlg2
 - fldl2t
 - fincstp
+- fst
 
 ## 测例
+
+去掉了对 80 位的测试，因为 la 硬件不支持，会导致 llvm 报错。
 
 - [ ] fldst
   - [ ] fild
@@ -27,8 +30,8 @@
   - [ ] fldcw-fnstcw
   - [ ] fldcw-fstcw
   - [ ] fnstsw
-  - [ ] fst
-  - [x] fstp，去掉了对 80 位的测试，因为 la 硬件不支持，会导致 llvm 报错
+  - [x] fst
+  - [x] fstp
   - [ ] fstsw
   - [ ] fsub
   - [ ] fxch
