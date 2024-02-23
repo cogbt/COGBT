@@ -680,15 +680,17 @@ void X86Translator::translate_fld(GuestInst *Inst) {
     // FunctionType *FPUSHTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     // FunctionType *FMOVTy =
     //     FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
-    // FunctionType *FLDTTy =
-    //     FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false);
+    FunctionType *FLDTTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false);
 
     if (SrcOpnd.isMem()) {
         if (SrcOpnd.getOpndSize() == 10) {
             assert(0 && "it is developing");
-            // X87FPR_Push();
-            // Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
-            // StoreGMRValue(MemVal, X87GetCurrST0());
+            // dbgs() << "[warning]: fld use fp80\n";
+            // Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
+            // CallFunc(FLDTTy, "helper_fldt_ST0", {CPUEnv, Addr});
+            // Value *Val = ReloadFPRValue("ST0", 8, false);
+            // StoreGMRValue(Val, X87GetCurrST0());
         } else {
             X87FPR_Push();
             // Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
@@ -697,11 +699,6 @@ void X86Translator::translate_fld(GuestInst *Inst) {
             StoreGMRValue(MemVal, X87GetCurrST0());
         }
     } else {
-        // assert(0 && "it is developing");
-        // Value *DestFPRID = ConstInt(Int32Ty, (SrcOpnd.GetFPRID() + 1) & 7);
-        // CallFunc(FPUSHTy, "helper_fpush", {CPUEnv});
-        // CallFunc(FMOVTy, "helper_fmov_ST0_STN", {CPUEnv, DestFPRID});
-
         Value *STI = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
         X87FPR_Push();
         StoreGMRValue(STI, X87GetCurrST0());
@@ -726,6 +723,11 @@ void X86Translator::translate_fst(GuestInst *Inst) {
     if (SrcOpnd.isMem()) {
         if (SrcOpnd.getOpndSize() == 10) {
             assert(0 && "it is developing");
+            // dbgs() << "[warning]: fst use fp80\n";
+            // Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+            // FlushFPRValue("ST0", ST0, false);
+            // Value *MemVal = ReloadFPRValue("ST0", SrcOpnd.getOpndSize(),
+            // false); StoreOperand(MemVal, InstHdl.getOpnd(0));
         } else if (SrcOpnd.getOpndSize() == 4) {
             Value *ST0 = LoadGMRValue(FP32Ty, X87GetCurrST0());
             StoreOperand(ST0, InstHdl.getOpnd(0));
