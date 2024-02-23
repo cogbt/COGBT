@@ -2,8 +2,8 @@
 
 - fld
 - fstp
-- fucomi
-- fucomip
+- fucomi，部分暂用 helper
+- fucomi，部分暂用 helper
 - fldz
 - fldl2e
 - fsubp
@@ -16,15 +16,17 @@
 - fldl2t
 - fincstp
 - fst
+- fist
+- fistp
 
 ## 测例
 
 去掉了对 80 位的测试，因为 la 硬件不支持，会导致 llvm 报错。
 
 - [ ] fldst
-  - [ ] fild
-  - [ ] fist
-  - [ ] fistp
+  - [x] fild
+  - [x] fist
+  - [x] fistp
   - [x] fld
   - [x] fld1
   - [ ] fldcw-fnstcw

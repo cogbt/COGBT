@@ -620,53 +620,45 @@ void X86Translator::translate_fisttp(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fist(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fist\n";
-    exit(-1);
     X86InstHandler InstHdl(Inst);
+    assert(InstHdl.getOpndNum() == 1 && "fist: need one Opnd");
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-    FunctionType *Ty = FunctionType::get(Int32Ty, Int8PtrTy, false);
-
-    Value *MemVal = nullptr;
-    switch (SrcOpnd.getOpndSize()) {
-    case 2:
-        MemVal = CallFunc(Ty, "helper_fist_ST0", CPUEnv);
-        MemVal = Builder.CreateTrunc(MemVal, Int16Ty);
-        break;
-    case 4:
-        MemVal = CallFunc(Ty, "helper_fistl_ST0", CPUEnv);
-        break;
-    default:
-        llvm_unreachable("instruction fist opnd size should (2,4) bytes.");
+    Value *MemValFP64 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    MemValFP64 = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(),
+            Intrinsic::round, MemValFP64->getType()),
+        MemValFP64);
+    Value *MemVal32 = Builder.CreateFPToSI(MemValFP64, Int32Ty);
+    if (SrcOpnd.getOpndSize() == 2) {
+        Value *MemVal16 = Builder.CreateTrunc(MemVal32, Int16Ty);
+        Value *flag = Builder.CreateICmpEQ(
+            MemVal32, Builder.CreateSExt(MemVal16, Int32Ty));
+        MemVal32 = Builder.CreateSelect(flag, MemVal32,
+                                        ConstantInt::get(Int32Ty, -32768));
+        MemVal32 = Builder.CreateTrunc(MemVal32, Int16Ty);
+    } else if (SrcOpnd.getOpndSize() == 4) {
+        Value *flag =
+            Builder.CreateICmpEQ(Builder.CreateFPToSI(MemValFP64, Int64Ty),
+                                 Builder.CreateSExt(MemVal32, Int64Ty));
+        MemVal32 = Builder.CreateSelect(flag, MemVal32,
+                                        ConstantInt::get(Int32Ty, 0x80000000));
+    } else if (SrcOpnd.getOpndSize() == 8) {
+        Value *MemVal64 = Builder.CreateFPToSI(MemValFP64, Int64Ty);
+        Value *flag = Builder.CreateFCmpOEQ(
+            MemValFP64, Builder.CreateSIToFP(MemVal64, FP64Ty));
+        MemVal32 = Builder.CreateSelect(
+            flag, MemVal64, ConstantInt::get(Int64Ty, 0x8000000000000000ULL));
+    } else {
+        llvm_unreachable(
+            "fist: instruction fist opnd size should (2,4) bytes.");
     }
-    StoreOperand(MemVal, InstHdl.getOpnd(0));
+    StoreOperand(MemVal32, InstHdl.getOpnd(0));
 }
 
 void X86Translator::translate_fistp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fistp\n";
-    exit(-1);
-    X86InstHandler InstHdl(Inst);
-    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-    FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    FunctionType *Ret32Ty = FunctionType::get(Int32Ty, Int8PtrTy, false);
-    FunctionType *Ret64Ty = FunctionType::get(Int64Ty, Int8PtrTy, false);
-
-    Value *MemVal = nullptr;
-    switch (SrcOpnd.getOpndSize()) {
-    case 2:
-        MemVal = CallFunc(Ret32Ty, "helper_fist_ST0", CPUEnv);
-        MemVal = Builder.CreateTrunc(MemVal, Int16Ty);
-        break;
-    case 4:
-        MemVal = CallFunc(Ret32Ty, "helper_fistl_ST0", CPUEnv);
-        break;
-    case 8:
-        MemVal = CallFunc(Ret64Ty, "helper_fistll_ST0", CPUEnv);
-        break;
-    default:
-        llvm_unreachable("instruction fist opnd size should (2,4,8) bytes.");
-    }
-    StoreOperand(MemVal, InstHdl.getOpnd(0));
-    CallFunc(UnaryFunTy, "helper_fpop", CPUEnv);
+    translate_fist(Inst);
+    X87FPR_Pop();
 }
 
 void X86Translator::translate_fldz(GuestInst *Inst) {
