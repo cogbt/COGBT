@@ -36,12 +36,12 @@
   - [x] fstp
   - [ ] fstsw
   - [x] fsub
-  - [ ] fxch
+  - [x] fxch
 - [ ] farith
-  - [ ] f2xm1
-  - [ ] fabs
+  - [x] f2xm1
+  - [x] fabs
   - [ ] fadd
-  - [ ] fchs
+  - [x] fchs
   - [ ] fcmovb
   - [ ] fcmovbe
   - [ ] fcmove

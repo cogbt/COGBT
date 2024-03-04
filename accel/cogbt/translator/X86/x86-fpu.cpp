@@ -168,11 +168,15 @@ void X86Translator::GenFPUHelper(GuestInst *Inst, std::string Name, int Flags) {
 }
 
 void X86Translator::translate_fabs(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fabs\n";
-    exit(-1);
-    FunctionType *FuncTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FuncTy, "helper_fabs_ST0", CPUEnv);
+    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    ST0 = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::fabs,
+            ST0->getType()),
+        ST0);
+    StoreGMRValue(ST0, X87GetCurrST0());
 }
+
 void X86Translator::translate_fadd(GuestInst *Inst) {
     dbgs() << "Untranslated instruction fadd\n";
     exit(-1);
@@ -230,11 +234,9 @@ void X86Translator::translate_faddp(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fchs(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fchs\n";
-    exit(-1);
-
-    FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(UnaryFunTy, "helper_fchs_ST0", {CPUEnv});
+    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    ST0 = Builder.CreateFNeg(ST0);
+    StoreGMRValue(ST0, X87GetCurrST0());
 }
 
 void X86Translator::translate_fcomp(GuestInst *Inst) {
@@ -314,10 +316,14 @@ void X86Translator::translate_fcos(GuestInst *Inst) {
 }
 
 void X86Translator::translate_f2xm1(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction f2xm1\n";
-    exit(-1);
-    FunctionType *FuncTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FuncTy, "helper_f2xm1", {CPUEnv});
+    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    ST0 = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::exp2,
+            ST0->getType()),
+        ST0);
+    ST0 = Builder.CreateFSub(ST0, ConstantFP::get(FP64Ty, APFloat(1.0)));
+    StoreGMRValue(ST0, X87GetCurrST0());
 }
 
 void X86Translator::translate_fbld(GuestInst *Inst) {
