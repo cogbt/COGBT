@@ -81,6 +81,7 @@ enum FPUFlag : int {
 
 // OneOpndModifySTN IsInt WithFPop
 void X86Translator::GenFPUHelper(GuestInst *Inst, std::string Name, int Flags) {
+    assert(0 && "don't use");
     X86InstHandler InstHdl(Inst);
     bool MemValisInteger = Flags & MEM_VAL_IS_INT;
     bool DestOrFirstSrcIsST0 = Flags & DEST_IS_ST0;
@@ -810,60 +811,42 @@ void X86Translator::translate_fxch(GuestInst *Inst) {
 
 void X86Translator::translate_fsubr(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
-    GenFPUHelper(Inst, "fsubr", DEST_IS_ST0);
-    // X86InstHandler InstHdl(Inst);
-    // if (InstHdl.getOpndNum() == 1) {
-    //     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-    //     // Value *St0 = GetFPUTop();
-    //     Value *RHS = nullptr;
-    //     // Value *DestSTRID = nullptr;
-    //     if (SrcOpnd.isMem()) {
-    //         // Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
-    //         // switch (SrcOpnd.getOpndSize()) {
-    //         // case 10:
-    //         //     llvm_unreachable("fsubr: unhandled Mem Bitwidth 10\n");
-    //         //     break;
-    //         // case 8:
-    //         //     RHS = Builder.CreateBitCast(MemVal, FP64Ty);
-    //         //     break;
-    //         // case 4:
-    //         //     RHS = Builder.CreateBitCast(MemVal, FP32Ty);
-    //         //     RHS = Builder.CreateFPExt(RHS, FP64Ty);
-    //         //     break;
-    //         // default:
-    //         //     llvm_unreachable("fsubr: unhandled Mem Bytes\n");
-    //         // }
-    //         FlushFPRValue("ST0", LoadGMRValue(FP64Ty, X87GetCurrST0()),
-    //         false); GenFPUHelper(Inst, "fsubr", DEST_IS_ST0);
-    //         StoreGMRValue(ReloadFPRValue("ST0", 8, false), X87GetCurrST0());
-    //         return;
-    //     } else if (SrcOpnd.isFPR()) {
-    //         assert(0 && "fsubr: not use?\n");
-    //         // DestSTRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
-    //         // Value *DestFPRID = Builder.CreateAdd(St0, DestSTRID);
-    //         // DestFPRID = Builder.CreateAnd(DestFPRID, ConstInt(Int32Ty,
-    //         7));
-    //         // RHS = LoadFromFPR(DestFPRID, FP64Ty);
-    //         RHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
-    //     } else {
-    //         llvm_unreachable("fsubr: unhandled SrcOpnd\n");
-    //     }
-    //     // Value *LHS = LoadFromFPR(St0, FP64Ty);
-    //     Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
-    //     Value *res = Builder.CreateFSub(RHS, LHS);
-    //     // Value *res = Builder.CreateFSub(LHS, RHS);
-    //     // StoreToFPR(res, St0);
-    //     StoreGMRValue(res, X87GetCurrST0());
-    // } else if (InstHdl.getOpndNum() == 2) {
-    //     X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
-    //     Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
-    //     Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
-    //     Value *res = Builder.CreateFSub(RHS, LHS);
-    //     // Value *res = Builder.CreateFSub(LHS, RHS);
-    //     StoreGMRValue(res, X87GetCurrSTI(SrcOpnd.GetFPRID()));
-    // } else {
-    //     llvm_unreachable("fsubr: unhandled Opnds\n");
-    // }
+    if (InstHdl.getOpndNum() == 1) {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        Value *RHS = nullptr;
+        if (SrcOpnd.isMem()) {
+            Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+            switch (SrcOpnd.getOpndSize()) {
+            case 10:
+                llvm_unreachable("fsubr: unhandled Mem Bitwidth 10\n");
+                break;
+            case 8:
+                RHS = Builder.CreateBitCast(MemVal, FP64Ty);
+                break;
+            case 4:
+                RHS = Builder.CreateBitCast(MemVal, FP32Ty);
+                RHS = Builder.CreateFPExt(RHS, FP64Ty);
+                break;
+            default:
+                llvm_unreachable("fsubr: unhandled Mem Bytes\n");
+            }
+        } else if (SrcOpnd.isFPR()) {
+            RHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
+        } else {
+            llvm_unreachable("fsubr: unhandled SrcOpnd\n");
+        }
+        Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
+        Value *res = Builder.CreateFSub(RHS, LHS);
+        StoreGMRValue(res, X87GetCurrST0());
+    } else if (InstHdl.getOpndNum() == 2) {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
+        Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
+        Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
+        Value *res = Builder.CreateFSub(RHS, LHS);
+        StoreGMRValue(res, X87GetCurrSTI(SrcOpnd.GetFPRID()));
+    } else {
+        llvm_unreachable("fsubr: unhandled Opnds\n");
+    }
 }
 
 void X86Translator::translate_fisubr(GuestInst *Inst) {
@@ -877,84 +860,75 @@ void X86Translator::translate_fsubrp(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fsub(GuestInst *Inst) {
-    GenFPUHelper(Inst, "fsub", DEST_IS_ST0);
-
-    // X86InstHandler InstHdl(Inst);
-    // if (InstHdl.getOpndNum() == 1) {
-    //     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-    //     Value *RHS = nullptr;
-    //     if (SrcOpnd.isMem()) {
-    //         Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
-    //         switch (SrcOpnd.getOpndSize()) {
-    //         case 10:
-    //             llvm_unreachable("fsub: unhandled Mem Bitwidth 10\n");
-    //             break;
-    //         case 8:
-    //             RHS = Builder.CreateBitCast(MemVal, FP64Ty);
-    //             break;
-    //         case 4:
-    //             RHS = Builder.CreateBitCast(MemVal, FP32Ty);
-    //             RHS = Builder.CreateFPExt(RHS, FP64Ty);
-    //             break;
-    //         default:
-    //             llvm_unreachable("fsub: unhandled Mem Bytes\n");
-    //         }
-    //     } else if (SrcOpnd.isFPR()) {
-    //         RHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
-    //     } else {
-    //         llvm_unreachable("fsub: unhandled Opnd\n");
-    //     }
-    //     Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
-    //     Value *res = Builder.CreateFSub(LHS, RHS);
-    //     StoreGMRValue(res, X87GetCurrST0());
-    // } else if (InstHdl.getOpndNum() == 2) {
-    //     assert(0 && "fsub: not use?\n");
-    //     X86OperandHandler SrcOpnd0(InstHdl.getOpnd(0));
-    //     X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
-    //     assert(SrcOpnd0.isFPR());
-    //     assert(SrcOpnd1.isFPR());
-    //     Value *RHS = LoadGMRValue(FP64Ty,
-    //     X87GetCurrSTI(SrcOpnd0.GetFPRID())); Value *LHS =
-    //     LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd1.GetFPRID())); Value *res
-    //     = Builder.CreateFSub(LHS, RHS); StoreGMRValue(res,
-    //     X87GetCurrSTI(SrcOpnd0.GetFPRID()));
-    // } else {
-    //     llvm_unreachable("fsub: unhandled Opnds\n");
-    // }
+    X86InstHandler InstHdl(Inst);
+    if (InstHdl.getOpndNum() == 1) {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        Value *RHS = nullptr;
+        if (SrcOpnd.isMem()) {
+            Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+            switch (SrcOpnd.getOpndSize()) {
+            case 10:
+                llvm_unreachable("fsub: unhandled Mem Bitwidth 10\n");
+                break;
+            case 8:
+                RHS = Builder.CreateBitCast(MemVal, FP64Ty);
+                break;
+            case 4:
+                RHS = Builder.CreateBitCast(MemVal, FP32Ty);
+                RHS = Builder.CreateFPExt(RHS, FP64Ty);
+                break;
+            default:
+                llvm_unreachable("fsub: unhandled Mem Bytes\n");
+            }
+        } else if (SrcOpnd.isFPR()) {
+            RHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
+        } else {
+            llvm_unreachable("fsub: unhandled Opnd\n");
+        }
+        Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
+        Value *res = Builder.CreateFSub(LHS, RHS);
+        StoreGMRValue(res, X87GetCurrST0());
+    } else if (InstHdl.getOpndNum() == 2) {
+        X86OperandHandler SrcOpnd0(InstHdl.getOpnd(0));
+        X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+        Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd0.GetFPRID()));
+        Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd1.GetFPRID()));
+        Value *res = Builder.CreateFSub(LHS, RHS);
+        StoreGMRValue(res, X87GetCurrSTI(SrcOpnd0.GetFPRID()));
+    } else {
+        llvm_unreachable("fsub: unhandled Opnds\n");
+    }
 }
 
 void X86Translator::translate_fisub(GuestInst *Inst) {
-    // assert(0 && "Untranslated instruction fisub\n");
-    // X86InstHandler InstHdl(Inst);
-    // X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-    // Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
-    // Value *RHS = Builder.CreateSIToFP(MemVal, FP64Ty);
-    // Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
-    // Value *res = Builder.CreateFSub(LHS, RHS);
-    // StoreGMRValue(res, X87GetCurrST0());
-    GenFPUHelper(Inst, "fsub", DEST_IS_ST0 | MEM_VAL_IS_INT);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+    Value *RHS = Builder.CreateSIToFP(MemVal, FP64Ty);
+    Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    Value *res = Builder.CreateFSub(LHS, RHS);
+    StoreGMRValue(res, X87GetCurrST0());
 }
 
 void X86Translator::translate_fsubp(GuestInst *Inst) {
-    GenFPUHelper(Inst, "fsub", SHOULD_POP_ONCE);
-    // X86InstHandler InstHdl(Inst);
-    // X86Config::X86MappedRegsId fpi = X87GetCurrST0();
-    // Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
-    // if (InstHdl.getOpndNum() == 0) {
-    //     fpi = X87GetCurrSTI(1);
-    // } else if (InstHdl.getOpndNum() == 1) {
-    //     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-    //     if (!SrcOpnd.isFPR()) {
-    //         llvm_unreachable("fsubp:Opnd err\n");
-    //     }
-    //     fpi = X87GetCurrSTI(SrcOpnd.GetFPRID());
-    // } else {
-    //     assert(0 && "fsubp: too many operands\n");
-    // }
-    // Value *LHS = LoadGMRValue(FP64Ty, fpi);
-    // Value *res = Builder.CreateFSub(LHS, RHS);
-    // StoreGMRValue(res, fpi);
-    // X87FPR_Pop();
+    X86InstHandler InstHdl(Inst);
+    X86Config::X86MappedRegsId fpi = X87GetCurrST0();
+    Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    if (InstHdl.getOpndNum() == 0) {
+        fpi = X87GetCurrSTI(1);
+    } else if (InstHdl.getOpndNum() == 1) {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        if (!SrcOpnd.isFPR()) {
+            llvm_unreachable("fsubp:Opnd err\n");
+        }
+        fpi = X87GetCurrSTI(SrcOpnd.GetFPRID());
+    } else {
+        assert(0 && "fsubp: too many operands\n");
+    }
+    Value *LHS = LoadGMRValue(FP64Ty, fpi);
+    Value *res = Builder.CreateFSub(LHS, RHS);
+    StoreGMRValue(res, fpi);
+    X87FPR_Pop();
 }
 
 void X86Translator::translate_ftst(GuestInst *Inst) {

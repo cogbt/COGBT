@@ -35,7 +35,7 @@
   - [x] fst
   - [x] fstp
   - [ ] fstsw
-  - [ ] fsub
+  - [x] fsub
   - [ ] fxch
 - [ ] farith
   - [ ] f2xm1
