@@ -40,7 +40,7 @@
 - [ ] farith
   - [x] f2xm1
   - [x] fabs
-  - [ ] fadd
+  - [x] fadd
   - [x] fchs
   - [ ] fcmovb
   - [ ] fcmovbe
@@ -67,9 +67,9 @@
   - [ ] fsin
   - [ ] fsincos
   - [ ] fsqrt
-  - [ ] fsub
-  - [ ] fsubp
-  - [ ] fsubr
+  - [x] fsub
+  - [x] fsubp
+  - [x] fsubr
   - [ ] ftst
   - [ ] fxtract
   - [ ] fyl2xp1

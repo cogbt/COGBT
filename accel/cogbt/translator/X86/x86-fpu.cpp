@@ -87,11 +87,6 @@ void X86Translator::GenFPUHelper(GuestInst *Inst, std::string Name, int Flags) {
     bool DestOrFirstSrcIsST0 = Flags & DEST_IS_ST0;
     bool ShouldPopOnce = Flags & SHOULD_POP_ONCE;
     bool ShouldPopTwice = Flags & SHOULD_POP_TWICE;
-    if (Name == "fsub") {
-        dbgs() << MemValisInteger << " " << DestOrFirstSrcIsST0 << " "
-               << ShouldPopOnce << " " << ShouldPopTwice << " "
-               << InstHdl.getOpndNum() << "\n";
-    }
     assert(InstHdl.getOpndNum() == 1 || InstHdl.getOpndNum() == 2);
     if (InstHdl.getOpndNum() == 1) {
         FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
@@ -178,59 +173,75 @@ void X86Translator::translate_fabs(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fadd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fadd\n";
-    exit(-1);
-    GenFPUHelper(Inst, "fadd", DEST_IS_ST0);
+    X86InstHandler InstHdl(Inst);
+    if (InstHdl.getOpndNum() == 1) {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        Value *RHS = nullptr;
+        if (SrcOpnd.isMem()) {
+            Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+            switch (SrcOpnd.getOpndSize()) {
+            case 10:
+                llvm_unreachable("fadd: unhandled Mem Bitwidth 10\n");
+                break;
+            case 8:
+                RHS = Builder.CreateBitCast(MemVal, FP64Ty);
+                break;
+            case 4:
+                RHS = Builder.CreateBitCast(MemVal, FP32Ty);
+                RHS = Builder.CreateFPExt(RHS, FP64Ty);
+                break;
+            default:
+                llvm_unreachable("fadd: unhandled Mem Bytes\n");
+            }
+        } else if (SrcOpnd.isFPR()) {
+            RHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
+        } else {
+            llvm_unreachable("fadd: unhandled Opnd\n");
+        }
+        Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
+        Value *res = Builder.CreateFAdd(LHS, RHS);
+        StoreGMRValue(res, X87GetCurrST0());
+    } else if (InstHdl.getOpndNum() == 2) {
+        X86OperandHandler SrcOpnd0(InstHdl.getOpnd(0));
+        X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+        Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd0.GetFPRID()));
+        Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd1.GetFPRID()));
+        Value *res = Builder.CreateFAdd(LHS, RHS);
+        StoreGMRValue(res, X87GetCurrSTI(SrcOpnd1.GetFPRID()));
+    } else {
+        llvm_unreachable("fadd: unhandled Opnds\n");
+    }
 }
-// void X86Translator::translate_fadd(GuestInst *Inst) {
-//     /* GenFPUHelper(Inst, "fadd", DEST_IS_ST0); */
-//     X86InstHandler InstHdl(Inst);
-//     assert(InstHdl.getOpndNum() == 1 || InstHdl.getOpndNum() == 2);
-
-//     if (InstHdl.getOpndNum() == 1) {
-//         X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-
-//         if (SrcOpnd.isMem()) { // e.g fadd m32fp / m64fp
-//             int op_size = SrcOpnd.getOpndSize();
-//             assert(op_size == 4 || op_size == 8);
-//             Value *MemVal = LoadOperand(InstHdl.getOpnd(0),
-//                                         (op_size == 4) ? FP32Ty : FP64Ty);
-//             StoreGMRValue(MemVal, X87GetCurrST0());
-//         } else {
-//             assert(SrcOpnd.isReg());
-//             // DestOpnd is st(0) e.g fsub st(1) means st(0) - st(1) -> st(0)
-//             Value *STI = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
-//             Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
-//             ST0 = Builder.CreateFAdd(STI, ST0);
-//             StoreGMRValue(ST0, X87GetCurrST0());
-//         }
-//     } else { // e.g fsub st0, sti means st(i) - st(0) -> st(i)
-//         Value *STI = LoadOperand(InstHdl.getOpnd(0), FP64Ty);
-//         Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
-//         STI = Builder.CreateFAdd(STI, ST0);
-//         StoreOperand(STI, InstHdl.getOpnd(0));
-//     }
-// }
 
 void X86Translator::translate_fiadd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fiadd\n";
-    exit(-1);
-
     X86InstHandler InstHdl(Inst);
-    assert(InstHdl.getOpndNum() == 1 &&
-           "fiadd does not support opnd number!\n");
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-    assert(SrcOpnd.isMem() && "fiadd opnd must mem!\n");
-    GenFPUHelper(Inst, "fadd", DEST_IS_ST0 | MEM_VAL_IS_INT);
+    Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+    Value *RHS = Builder.CreateSIToFP(MemVal, FP64Ty);
+    Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    Value *res = Builder.CreateFAdd(LHS, RHS);
+    StoreGMRValue(res, X87GetCurrST0());
 }
 
 void X86Translator::translate_faddp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction faddp\n";
-    exit(-1);
-
     X86InstHandler InstHdl(Inst);
-    assert(InstHdl.getOpndNum() == 1 && "faddp does not support opnd number\n");
-    GenFPUHelper(Inst, "fadd", SHOULD_POP_ONCE);
+    X86Config::X86MappedRegsId fpi = X87GetCurrST0();
+    Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    if (InstHdl.getOpndNum() == 0) {
+        fpi = X87GetCurrSTI(1);
+    } else if (InstHdl.getOpndNum() == 1) {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        if (!SrcOpnd.isFPR()) {
+            llvm_unreachable("faddp: Opnd err\n");
+        }
+        fpi = X87GetCurrSTI(SrcOpnd.GetFPRID());
+    } else {
+        assert(0 && "faddp: too many operands\n");
+    }
+    Value *LHS = LoadGMRValue(FP64Ty, fpi);
+    Value *res = Builder.CreateFAdd(LHS, RHS);
+    StoreGMRValue(res, fpi);
+    X87FPR_Pop();
 }
 
 void X86Translator::translate_fchs(GuestInst *Inst) {
@@ -853,24 +864,43 @@ void X86Translator::translate_fsubr(GuestInst *Inst) {
         Value *res = Builder.CreateFSub(RHS, LHS);
         StoreGMRValue(res, X87GetCurrST0());
     } else if (InstHdl.getOpndNum() == 2) {
-        X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
-        Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
-        Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
+        X86OperandHandler SrcOpnd0(InstHdl.getOpnd(0));
+        X86OperandHandler SrcOpnd1(InstHdl.getOpnd(1));
+        Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd0.GetFPRID()));
+        Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd1.GetFPRID()));
         Value *res = Builder.CreateFSub(RHS, LHS);
-        StoreGMRValue(res, X87GetCurrSTI(SrcOpnd.GetFPRID()));
+        StoreGMRValue(res, X87GetCurrSTI(SrcOpnd1.GetFPRID()));
     } else {
         llvm_unreachable("fsubr: unhandled Opnds\n");
     }
 }
 
 void X86Translator::translate_fisubr(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fisubr\n");
-    GenFPUHelper(Inst, "fsubr", DEST_IS_ST0 | MEM_VAL_IS_INT);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+    Value *RHS = Builder.CreateSIToFP(MemVal, FP64Ty);
+    Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    Value *res = Builder.CreateFSub(RHS, LHS);
+    StoreGMRValue(res, X87GetCurrST0());
 }
 
 void X86Translator::translate_fsubrp(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fsubrp\n");
-    GenFPUHelper(Inst, "fsubr", SHOULD_POP_ONCE);
+    X86InstHandler InstHdl(Inst);
+    int STID = -1;
+    Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    if (InstHdl.getOpndNum() == 0) {
+        STID = 1;
+    } else {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        assert(InstHdl.getOpndNum() == 1);
+        assert(SrcOpnd.isFPR());
+        STID = SrcOpnd.GetFPRID();
+    }
+    Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(STID));
+    Value *res = Builder.CreateFSub(LHS, RHS);
+    StoreGMRValue(res, X87GetCurrSTI(STID));
+    X87FPR_Pop();
 }
 
 void X86Translator::translate_fsub(GuestInst *Inst) {
@@ -908,7 +938,7 @@ void X86Translator::translate_fsub(GuestInst *Inst) {
         Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd0.GetFPRID()));
         Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd1.GetFPRID()));
         Value *res = Builder.CreateFSub(LHS, RHS);
-        StoreGMRValue(res, X87GetCurrSTI(SrcOpnd0.GetFPRID()));
+        StoreGMRValue(res, X87GetCurrSTI(SrcOpnd1.GetFPRID()));
     } else {
         llvm_unreachable("fsub: unhandled Opnds\n");
     }
