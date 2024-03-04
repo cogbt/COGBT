@@ -800,13 +800,21 @@ void X86Translator::translate_fstpnce(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fxch(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fxch\n");
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-    FunctionType *FTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
-
-    Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
-    CallFunc(FTy, "helper_fxchg_ST0_STN", {CPUEnv, SrcFPRID});
+    int STID = -1;
+    if (InstHdl.getOpndNum() == 0) {
+        STID = 1;
+    } else if (InstHdl.getOpndNum() == 1) {
+        assert(SrcOpnd.isFPR() && "fxch: SrcOpnd should be FPR");
+        STID = SrcOpnd.GetFPRID();
+    } else {
+        llvm_unreachable("fxch: unhandled OpndNum");
+    }
+    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    Value *STN = LoadGMRValue(FP64Ty, X87GetCurrSTI(STID));
+    StoreGMRValue(ST0, X87GetCurrSTI(STID));
+    StoreGMRValue(STN, X87GetCurrST0());
 }
 
 void X86Translator::translate_fsubr(GuestInst *Inst) {
