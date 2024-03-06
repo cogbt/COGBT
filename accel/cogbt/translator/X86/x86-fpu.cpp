@@ -1068,8 +1068,10 @@ void X86Translator::GenFCMOVHelper(GuestInst *Inst, std::string LBTIntrinic) {
     Builder.SetInsertPoint(MovBB);
     FTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
     X86OperandHandler STIOpnd(InstHdl.getOpnd(0));
-    Value *SrcFPRID = ConstInt(Int32Ty, STIOpnd.GetFPRID());
-    CallFunc(FTy, "helper_fmov_ST0_STN", {CPUEnv, SrcFPRID});
+    // Value *SrcFPRID = ConstInt(Int32Ty, STIOpnd.GetFPRID());
+    // CallFunc(FTy, "helper_fmov_ST0_STN", {CPUEnv, SrcFPRID});
+    StoreGMRValue(LoadGMRValue(FP64Ty, X87GetCurrSTI(STIOpnd.GetFPRID())),
+                  X87GetCurrST0());
     SyncAllGMRValue();
     Builder.CreateBr(NotMovBB);
 
@@ -1077,42 +1079,34 @@ void X86Translator::GenFCMOVHelper(GuestInst *Inst, std::string LBTIntrinic) {
 }
 
 void X86Translator::translate_fcmovbe(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fcmovbe\n");
     GenFCMOVHelper(Inst, "llvm.loongarch.x86setjbe");
 }
 
 void X86Translator::translate_fcmovb(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fcmovb\n");
     GenFCMOVHelper(Inst, "llvm.loongarch.x86setjb");
 }
 
 void X86Translator::translate_fcmove(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fcmove\n");
     GenFCMOVHelper(Inst, "llvm.loongarch.x86setje");
 }
 
 void X86Translator::translate_fcmovnbe(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fcmovnbe\n");
     GenFCMOVHelper(Inst, "llvm.loongarch.x86setja");
 }
 
 void X86Translator::translate_fcmovnb(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fcmovnb\n");
     GenFCMOVHelper(Inst, "llvm.loongarch.x86setjae");
 }
 
 void X86Translator::translate_fcmovne(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fcmovne\n");
     GenFCMOVHelper(Inst, "llvm.loongarch.x86setjne");
 }
 
 void X86Translator::translate_fcmovnu(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fcmovnu\n");
     GenFCMOVHelper(Inst, "llvm.loongarch.x86setjnp");
 }
 
 void X86Translator::translate_fcmovu(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fcmovu\n");
     GenFCMOVHelper(Inst, "llvm.loongarch.x86setjp");
 }
 

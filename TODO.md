@@ -42,14 +42,14 @@
   - [x] fabs
   - [x] fadd
   - [x] fchs
-  - [ ] fcmovb
-  - [ ] fcmovbe
-  - [ ] fcmove
-  - [ ] fcmovnb
-  - [ ] fcmovnbe
-  - [ ] fcmovne
-  - [ ] fcmovnu
-  - [ ] fcmovu
+  - [x] fcmovb
+  - [x] fcmovbe
+  - [x] fcmove
+  - [x] fcmovnb
+  - [x] fcmovnbe
+  - [x] fcmovne
+  - [x] fcmovnu
+  - [x] fcmovu
   - [ ] fcom
   - [ ] fcomi
   - [ ] fcos
