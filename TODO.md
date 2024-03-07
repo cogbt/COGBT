@@ -52,7 +52,7 @@
   - [x] fcmovu
   - [ ] fcom
   - [ ] fcomi
-  - [ ] fcos
+  - [x] fcos
   - [ ] fdiv
   - [ ] fdivr
   - [ ] ficom
@@ -64,9 +64,9 @@
   - [ ] fptan
   - [ ] frndint
   - [ ] fscale
-  - [ ] fsin
+  - [x] fsin
   - [ ] fsincos
-  - [ ] fsqrt
+  - [x] fsqrt
   - [x] fsub
   - [x] fsubp
   - [x] fsubr

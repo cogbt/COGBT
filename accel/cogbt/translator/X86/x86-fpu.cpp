@@ -319,11 +319,25 @@ void X86Translator::translate_fcom(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fcos(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcos\n";
-    exit(-1);
+    Value *st0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
 
-    FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(UnaryFunTy, "helper_fcos", CPUEnv);
+    Value *st0abs = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::fabs,
+            st0->getType()),
+        st0);
+
+    Value *cond = Builder.CreateFCmpOLT(
+        st0abs, ConstantFP::get(FP64Ty, APFloat(9223372036854775808.0)));
+    Value *res = Builder.CreateSelect(
+        cond,
+        Builder.CreateCall(
+            Intrinsic::getDeclaration(
+                Builder.GetInsertBlock()->getParent()->getParent(),
+                Intrinsic::cos, st0->getType()),
+            st0),
+        st0);
+    StoreGMRValue(res, X87GetCurrST0());
 }
 
 void X86Translator::translate_f2xm1(GuestInst *Inst) {
@@ -599,10 +613,38 @@ void X86Translator::translate_fsetpm(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fsincos(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fsincos\n";
-    exit(-1);
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fsincos", CPUEnv);
+    assert(0 && "fsincos not implemented");
+    // can pass dbt_ut5 farith/fsincos, but has err, is different from qemu
+    // heler if value is invalid, should not push stack, but current implement
+    // will always push stack
+    Value *st0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    Value *st0abs = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::fabs,
+            st0->getType()),
+        st0);
+    Value *cond = Builder.CreateFCmpOLT(
+        st0abs, ConstantFP::get(FP64Ty, APFloat(9223372036854775808.0)));
+    Value *res = Builder.CreateSelect(
+        cond,
+        Builder.CreateCall(
+            Intrinsic::getDeclaration(
+                Builder.GetInsertBlock()->getParent()->getParent(),
+                Intrinsic::sin, st0->getType()),
+            st0),
+        st0);
+    StoreGMRValue(res, X87GetCurrST0());
+    // here is the err
+    X87FPR_Push();
+    res = Builder.CreateSelect(
+        cond,
+        Builder.CreateCall(
+            Intrinsic::getDeclaration(
+                Builder.GetInsertBlock()->getParent()->getParent(),
+                Intrinsic::cos, st0->getType()),
+            st0),
+        st0);
+    StoreGMRValue(res, X87GetCurrST0());
 }
 
 void X86Translator::translate_fnstenv(GuestInst *Inst) {
@@ -769,15 +811,38 @@ void X86Translator::translate_fld(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fsin(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fsin\n");
-    FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(UnaryFunTy, "helper_fsin", CPUEnv);
+    Value *st0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    Value *st0abs = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::fabs,
+            st0->getType()),
+        st0);
+    Value *cond = Builder.CreateFCmpOLT(
+        st0abs, ConstantFP::get(FP64Ty, APFloat(9223372036854775808.0)));
+    Value *res = Builder.CreateSelect(
+        cond,
+        Builder.CreateCall(
+            Intrinsic::getDeclaration(
+                Builder.GetInsertBlock()->getParent()->getParent(),
+                Intrinsic::sin, st0->getType()),
+            st0),
+        st0);
+    StoreGMRValue(res, X87GetCurrST0());
 }
 
 void X86Translator::translate_fsqrt(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fsqrt\n");
-    FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(UnaryFunTy, "helper_fsqrt", CPUEnv);
+    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    Value *cond =
+        Builder.CreateFCmpOGE(ST0, ConstantFP::get(FP64Ty, APFloat(0.0)));
+    Value *res = Builder.CreateSelect(
+        cond,
+        Builder.CreateCall(
+            Intrinsic::getDeclaration(
+                Builder.GetInsertBlock()->getParent()->getParent(),
+                Intrinsic::sqrt, ST0->getType()),
+            ST0),
+        ST0);
+    StoreGMRValue(res, X87GetCurrST0());
 }
 
 void X86Translator::translate_fst(GuestInst *Inst) {
