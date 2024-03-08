@@ -30,6 +30,7 @@
 #define FT0    (env->ft0)
 #define ST0    (env->fpregs[env->fpstt].d)
 #define ST(n)  (env->fpregs[(env->fpstt + (n)) & 7].d)
+#define ST_TAG(n)  (env->fptags[(env->fpstt + (n)) & 7])
 #define ST1    ST(1)
 
 #define FPU_RC_MASK         0xc00
@@ -74,6 +75,17 @@ static inline void fpush(CPUX86State *env)
     env->fpstt = (env->fpstt - 1) & 7;
     env->fptags[env->fpstt] = 0; /* validate stack entry */
 }
+
+#ifdef CONFIG_COGBT
+static inline void fpush_cogbt(CPUX86State *env)
+{
+    for (int i = 1; i < 8; ++i) {
+        ST(i) = ST(i-1);
+        ST_TAG(i) = ST_TAG(i-1);
+    }
+    ST_TAG(0) = 0;
+}
+#endif
 
 static inline void fpop(CPUX86State *env)
 {
@@ -1265,6 +1277,23 @@ void helper_fptan(CPUX86State *env)
         /* the above code is for |arg| < 2**52 only */
     }
 }
+
+#ifdef CONFIG_COGBT
+void helper_fptan_cogbt(CPUX86State *env)
+{
+    double fptemp = floatx80_to_double(env, ST0);
+    if ((fptemp > MAXTAN) || (fptemp < -MAXTAN)) {
+        env->fpus |= 0x400;
+    } else {
+        fptemp = tan(fptemp);
+        ST0 = double_to_floatx80(env, fptemp);
+        fpush_cogbt(env);
+        ST0 = floatx80_one;
+        env->fpus &= ~0x400; /* C2 <-- 0 */
+        /* the above code is for |arg| < 2**52 only */
+    }
+}
+#endif
 
 /* Values of pi/4, pi/2, 3pi/4 and pi, with 128-bit precision.  */
 #define pi_4_exp 0x3ffe

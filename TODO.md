@@ -18,6 +18,35 @@
 - fst
 - fist
 - fistp
+- fsubp
+- fisub
+- fsub
+- fsubr
+- fxch
+- fabs
+- fchs
+- f2xm1
+- fadd
+- fiadd
+- faddp
+- fadd
+- fiadd
+- faddp
+- fisubr
+- fsubrp
+- fcmovbe
+- fcmovb
+- fcmove
+- fcmovnbe
+- fcmovnb
+- fcmovne
+- fcmovnu
+- fcmovu
+- fcos
+- fsin
+- fsqrt
+- fatan
+- fptan
 
 ## 测例
 
@@ -58,10 +87,10 @@
   - [ ] ficom
   - [ ] fincstp
   - [ ] fmul
-  - [ ] fpatan
+  - [x] fpatan
   - [ ] fprem
   - [ ] fprem1
-  - [ ] fptan
+  - [x] fptan
   - [ ] frndint
   - [ ] fscale
   - [x] fsin

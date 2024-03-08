@@ -131,6 +131,9 @@ private: /// Currently translated instruction.
     /// LoadSize bytes.
     Value *ReloadFPRValue(std::string FPR, int LoadSize, bool isInt);
 
+    void FlushAllFPRValue();
+    void ReloadAllFPRValue();
+
     /// CallFunc - Generate llvm IRs to call a llvm function, maybe a helper.
     CallInst *CallFunc(FunctionType *FuncTy, StringRef Name,
                     ArrayRef<Value *> Args = None);

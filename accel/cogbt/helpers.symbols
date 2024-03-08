@@ -364,6 +364,7 @@
     helper_fprem1;
     helper_fprem_common;
     helper_fptan;
+    helper_fptan_cogbt;
     helper_fpush;
     helper_frndint;
     helper_frstor;

@@ -72,6 +72,20 @@ Value *X86Translator::ReloadFPRValue(std::string FPR, int LoadSize,
     return MemVal;
 }
 
+void X86Translator::FlushAllFPRValue() {
+    for (int i = 7; i >= 0; --i) {
+        FlushFPRValue("ST0", LoadGMRValue(FP64Ty, X87GetCurrSTI(i)), false);
+    }
+}
+
+void X86Translator::ReloadAllFPRValue() {
+    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+    for (int i = 0; i < 8; ++i) {
+        StoreGMRValue(ReloadFPRValue("ST0", 8, false), X87GetCurrSTI(i));
+        CallFunc(FTy, "helper_fpop", CPUEnv);
+    }
+}
+
 enum FPUFlag : int {
     DEST_IS_ST0 = 1,
     MEM_VAL_IS_INT = 1 << 1,
@@ -539,11 +553,12 @@ void X86Translator::translate_fnstsw(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fpatan(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fpatan\n";
-    exit(-1);
-
+    FlushFPRValue("ST0", LoadGMRValue(FP64Ty, X87GetCurrSTI(1)), false);
+    FlushFPRValue("ST0", LoadGMRValue(FP64Ty, X87GetCurrST0()), false);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fpatan", CPUEnv);
+    X87FPR_Pop();
+    StoreGMRValue(ReloadFPRValue("ST0", 8, false), X87GetCurrST0());
 }
 
 void X86Translator::translate_fprem(GuestInst *Inst) {
@@ -561,10 +576,10 @@ void X86Translator::translate_fprem1(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fptan(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fptan\n";
-    exit(-1);
+    FlushAllFPRValue();
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fptan", CPUEnv);
+    CallFunc(FTy, "helper_fptan_cogbt", CPUEnv);
+    ReloadAllFPRValue();
 }
 
 void X86Translator::translate_ffreep(GuestInst *Inst) {
