@@ -1055,19 +1055,59 @@ void X86Translator::translate_wait(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fdiv(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fdiv\n");
     X86InstHandler InstHdl(Inst);
-    GenFPUHelper(Inst, "fdiv", DEST_IS_ST0);
+    Value *RHS = nullptr;
+    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    if (InstHdl.getOpndNum() == 1) {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        if (SrcOpnd.isMem()) {
+            Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+            if (SrcOpnd.getOpndSize() == 4) {
+                MemVal = Builder.CreateBitCast(MemVal, FP32Ty);
+                MemVal = Builder.CreateFPExt(MemVal, FP64Ty);
+            } else {
+                MemVal = Builder.CreateBitCast(MemVal, FP64Ty);
+            }
+            RHS = MemVal;
+        } else if (SrcOpnd.isFPR()) {
+            RHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
+        }
+        ST0 = Builder.CreateFDiv(ST0, RHS);
+        StoreGMRValue(ST0, X87GetCurrST0());
+    } else if (InstHdl.getOpndNum() == 2) {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
+        RHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
+        RHS = Builder.CreateFDiv(RHS, ST0);
+        StoreGMRValue(RHS, X87GetCurrSTI(SrcOpnd.GetFPRID()));
+    } else {
+        llvm_unreachable("fdiv: unhandled OpndNum\n");
+    }
 }
 
 void X86Translator::translate_fidiv(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fidiv\n");
-    GenFPUHelper(Inst, "fdiv", DEST_IS_ST0 | MEM_VAL_IS_INT);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+    MemVal = Builder.CreateSIToFP(MemVal, FP64Ty);
+    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    ST0 = Builder.CreateFDiv(ST0, MemVal);
+    StoreGMRValue(ST0, X87GetCurrST0());
 }
 
 void X86Translator::translate_fdivp(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fdivp\n");
-    GenFPUHelper(Inst, "fdiv", SHOULD_POP_ONCE);
+    X86InstHandler InstHdl(Inst);
+    int stri = -1;
+    if (InstHdl.getOpndNum() == 0) {
+        stri = 1;
+    } else {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        stri = SrcOpnd.GetFPRID();
+    }
+    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(stri));
+    RHS = Builder.CreateFDiv(RHS, ST0);
+    StoreGMRValue(RHS, X87GetCurrSTI(stri));
+    X87FPR_Pop();
 }
 
 void X86Translator::GenFCMOVHelper(GuestInst *Inst, std::string LBTIntrinic) {
@@ -1144,16 +1184,57 @@ void X86Translator::translate_fmulp(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fdivr(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fdivr\n");
-    GenFPUHelper(Inst, "fdivr", DEST_IS_ST0);
+    X86InstHandler InstHdl(Inst);
+    Value *RHS = nullptr;
+    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    if (InstHdl.getOpndNum() == 1) {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        if (SrcOpnd.isMem()) {
+            Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+            if (SrcOpnd.getOpndSize() == 4) {
+                MemVal = Builder.CreateBitCast(MemVal, FP32Ty);
+                MemVal = Builder.CreateFPExt(MemVal, FP64Ty);
+            } else {
+                MemVal = Builder.CreateBitCast(MemVal, FP64Ty);
+            }
+            RHS = MemVal;
+        } else if (SrcOpnd.isFPR()) {
+            RHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
+        }
+        ST0 = Builder.CreateFDiv(RHS, ST0);
+        StoreGMRValue(ST0, X87GetCurrST0());
+    } else if (InstHdl.getOpndNum() == 2) {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(1));
+        RHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
+        RHS = Builder.CreateFDiv(ST0, RHS);
+        StoreGMRValue(RHS, X87GetCurrSTI(SrcOpnd.GetFPRID()));
+    } else {
+        llvm_unreachable("fdiv: unhandled OpndNum\n");
+    }
 }
 
 void X86Translator::translate_fidivr(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fidivr\n");
-    GenFPUHelper(Inst, "fdivr", DEST_IS_ST0 | MEM_VAL_IS_INT);
+    X86InstHandler InstHdl(Inst);
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+    MemVal = Builder.CreateSIToFP(MemVal, FP64Ty);
+    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    ST0 = Builder.CreateFDiv(MemVal, ST0);
+    StoreGMRValue(ST0, X87GetCurrST0());
 }
 
 void X86Translator::translate_fdivrp(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fdivrp\n");
-    GenFPUHelper(Inst, "fdivr", SHOULD_POP_ONCE);
+    X86InstHandler InstHdl(Inst);
+    int stri = -1;
+    if (InstHdl.getOpndNum() == 0) {
+        stri = 1;
+    } else {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        stri = SrcOpnd.GetFPRID();
+    }
+    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(stri));
+    RHS = Builder.CreateFDiv(ST0, RHS);
+    StoreGMRValue(RHS, X87GetCurrSTI(stri));
+    X87FPR_Pop();
 }
