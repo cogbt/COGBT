@@ -64,6 +64,9 @@
 - ficom
 - ficomp
 - wait
+- fmul
+- fmulp
+- fimul
 
 ## 测例
 
@@ -102,8 +105,8 @@
   - [x] fdiv
   - [x] fdivr
   - [x] ficom，x86 可通过 1 个，helper 版本和本版本均只可通过 7 个
-  - [ ] fincstp
-  - [ ] fmul
+  - [x] fincstp
+  - [x] fmul
   - [x] fpatan
   - [x] fprem
   - [x] fprem1
