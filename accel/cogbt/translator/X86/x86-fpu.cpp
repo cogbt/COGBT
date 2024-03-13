@@ -95,7 +95,7 @@ enum FPUFlag : int {
 
 // OneOpndModifySTN IsInt WithFPop
 void X86Translator::GenFPUHelper(GuestInst *Inst, std::string Name, int Flags) {
-    assert(0 && "don't use");
+    // assert(0 && "don't use");
     X86InstHandler InstHdl(Inst);
     bool MemValisInteger = Flags & MEM_VAL_IS_INT;
     bool DestOrFirstSrcIsST0 = Flags & DEST_IS_ST0;
@@ -104,8 +104,6 @@ void X86Translator::GenFPUHelper(GuestInst *Inst, std::string Name, int Flags) {
     assert(InstHdl.getOpndNum() == 1 || InstHdl.getOpndNum() == 2);
     if (InstHdl.getOpndNum() == 1) {
         FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-        // FunctionType *FTy2 =
-        //     FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
         X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
 
         if (SrcOpnd.isMem()) { // e.g fadd m32fp
@@ -116,24 +114,16 @@ void X86Translator::GenFPUHelper(GuestInst *Inst, std::string Name, int Flags) {
             StoreGMRValue(ReloadFPRValue("ST0", 8, false), X87GetCurrST0());
         } else {
             if (DestOrFirstSrcIsST0) {
-                // DestOpnd is st(0) e.g fsub st(1) means st(0) - st(1) -> st(0)
-                // Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
                 FlushFPRValue(
                     "FT0",
                     LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID())),
                     false);
                 FlushFPRValue("ST0", LoadGMRValue(FP64Ty, X87GetCurrST0()),
                               false);
-                // CallFunc(FTy2, "helper_fmov_FT0_STN", {CPUEnv, SrcFPRID});
                 CallFunc(FTy, "helper_" + Name + "_ST0_FT0", CPUEnv);
                 StoreGMRValue(ReloadFPRValue("ST0", 8, false), X87GetCurrST0());
             } else {
-                // DestOpnd is SrcOpnd and another SrcOpnd is st(0) like faddp
-                // Value *DestFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
-                // CallFunc(FTy2, "helper_" + Name + "_STN_ST0",
-                //          {CPUEnv, DestFPRID});
                 assert(SrcOpnd.isFPR());
-                // dbgs() << "aaa " << SrcOpnd.GetFPRID() << "\n";
                 FlushFPRValue("FT0", LoadGMRValue(FP64Ty, X87GetCurrST0()),
                               false);
                 FlushFPRValue(
@@ -147,23 +137,13 @@ void X86Translator::GenFPUHelper(GuestInst *Inst, std::string Name, int Flags) {
         }
 
         if (ShouldPopOnce) {
-            // assert(0 && "Not implemented");
-            // CallFunc(FTy, "helper_fpop", CPUEnv);
             X87FPR_Pop();
         }
         if (ShouldPopTwice) {
-            assert(0 && "Not implemented");
-            CallFunc(FTy, "helper_fpop", CPUEnv);
-            CallFunc(FTy, "helper_fpop", CPUEnv);
+            X87FPR_Pop();
+            X87FPR_Pop();
         }
     } else { // e.g fsub st0, sti means st(i) - st(0) -> st(i)
-        // FunctionType *FTy2 =
-        //     FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
-        // X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
-        // Value *DestFPRID = ConstInt(Int32Ty, DestOpnd.GetFPRID());
-        // assert(DestFPRID);
-        // CallFunc(FTy2, "helper_" + Name + "_STN_ST0", {CPUEnv, DestFPRID});
-
         FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
         X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
         FlushFPRValue("FT0", LoadGMRValue(FP64Ty, X87GetCurrST0()), false);
@@ -265,70 +245,56 @@ void X86Translator::translate_fchs(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fcomp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcomp\n";
-    exit(-1);
-
-    GenFPUHelper(Inst, "fcom", DEST_IS_ST0 | SHOULD_POP_ONCE);
+    FlushFPRValue("FT0", LoadGMRValue(FP64Ty, X87GetCurrSTI(1)), false);
+    FlushFPRValue("ST0", LoadGMRValue(FP64Ty, X87GetCurrST0()), false);
+    FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+    CallFunc(UnaryFunTy, "helper_fcom_ST0_FT0", CPUEnv);
+    X87FPR_Pop();
 }
 
 void X86Translator::translate_fcompp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcompp\n";
-    exit(-1);
-
+    FlushFPRValue("FT0", LoadGMRValue(FP64Ty, X87GetCurrSTI(1)), false);
+    FlushFPRValue("ST0", LoadGMRValue(FP64Ty, X87GetCurrST0()), false);
     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    FunctionType *Binary32FunTy =
-        FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
-    Value *SrcFPRID = ConstInt(Int32Ty, 1);
-    CallFunc(Binary32FunTy, "helper_fmov_FT0_STN", {CPUEnv, SrcFPRID});
     CallFunc(UnaryFunTy, "helper_fcom_ST0_FT0", CPUEnv);
-    CallFunc(UnaryFunTy, "helper_fpop", CPUEnv);
-    CallFunc(UnaryFunTy, "helper_fpop", CPUEnv);
+    X87FPR_Pop();
+    X87FPR_Pop();
 }
 
 void X86Translator::translate_fcomip(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcomip\n";
-    exit(-1);
-
     X86InstHandler InstHdl(Inst);
     assert(InstHdl.getOpndNum() == 1);
 
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-    assert(SrcOpnd.isReg() && "operand of fcomip must be fpr");
-    FunctionType *FMOVTy =
-        FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
-    FunctionType *FCOMITy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    FunctionType *FPOPTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-
+    assert(SrcOpnd.isReg());
+    FunctionType *FUCOMITy = FunctionType::get(VoidTy, Int8PtrTy, false);
+    Value *STI = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
+    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrSTI(0));
+    FlushFPRValue("FT0", STI, false);
+    FlushFPRValue("ST0", ST0, false);
     FlushGMRValue(X86Config::EFLAG);
-    Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
-    CallFunc(FMOVTy, "helper_fmov_FT0_STN", {CPUEnv, SrcFPRID});
-    CallFunc(FCOMITy, "helper_fcomi_ST0_FT0_cogbt", CPUEnv);
-    CallFunc(FPOPTy, "helper_fpop", CPUEnv);
+    CallFunc(FUCOMITy, "helper_fcomi_ST0_FT0_cogbt", CPUEnv);
     ReloadGMRValue(X86Config::EFLAG);
+    X87FPR_Pop();
 }
 
 void X86Translator::translate_fcomi(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcomi\n";
-    exit(-1);
     X86InstHandler InstHdl(Inst);
     assert(InstHdl.getOpndNum() == 1);
 
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-    assert(SrcOpnd.isReg() && "operand of fcomi must be fpr");
-    FunctionType *FMOVTy =
-        FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
-    FunctionType *FCOMITy = FunctionType::get(VoidTy, Int8PtrTy, false);
-
+    assert(SrcOpnd.isReg());
+    FunctionType *FUCOMITy = FunctionType::get(VoidTy, Int8PtrTy, false);
+    Value *STI = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
+    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrSTI(0));
+    FlushFPRValue("FT0", STI, false);
+    FlushFPRValue("ST0", ST0, false);
     FlushGMRValue(X86Config::EFLAG);
-    Value *SrcFPRID = ConstInt(Int32Ty, SrcOpnd.GetFPRID());
-    CallFunc(FMOVTy, "helper_fmov_FT0_STN", {CPUEnv, SrcFPRID});
-    CallFunc(FCOMITy, "helper_fcomi_ST0_FT0_cogbt", CPUEnv);
+    CallFunc(FUCOMITy, "helper_fcomi_ST0_FT0_cogbt", CPUEnv);
     ReloadGMRValue(X86Config::EFLAG);
 }
 
 void X86Translator::translate_fcom(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fcom\n";
-    exit(-1);
     GenFPUHelper(Inst, "fcom", DEST_IS_ST0);
 }
 

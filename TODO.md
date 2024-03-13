@@ -2,8 +2,8 @@
 
 - fld
 - fstp
-- fucomi，部分暂用 helper
-- fucomi，部分暂用 helper
+- fucomi，部分暂用 helper，涉及 fpus
+- fucomip，部分暂用 helper，涉及 fpus
 - fldz
 - fldl2e
 - fsubp
@@ -50,6 +50,11 @@
 - fsincos，部分暂用 helper
 - fprem，部分暂用 helper
 - fprem1，部分暂用 helper
+- fcomp，部分暂用 helper，涉及 fpus
+- fcompp，部分暂用 helper，涉及 fpus
+- fcom，部分暂用 helper，涉及 fpus
+- fcomi，部分暂用 helper，涉及 fpus
+- fcomip，部分暂用 helper，涉及 fpus
 
 ## 测例
 
@@ -82,8 +87,8 @@
   - [x] fcmovne
   - [x] fcmovnu
   - [x] fcmovu
-  - [ ] fcom
-  - [ ] fcomi
+  - [x] fcom
+  - [x] fcomi，x86 可完全通过，helper 版本和本版本均只可通过一半
   - [x] fcos
   - [ ] fdiv
   - [ ] fdivr
