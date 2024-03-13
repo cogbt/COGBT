@@ -701,6 +701,11 @@ Value *X86Translator::LoadGMRValue(Type *Ty, X86MappedRegsId GMRId,
         //     V = Builder.CreateFPExt(V, FP80Ty);
         // }
         else {
+            std::string typeStr;
+            llvm::raw_string_ostream rso(typeStr);
+            V->getType()->print(rso);
+            Ty->print(rso);
+            dbgs() << rso.str() << "\n";
             assert(0 && "it is developing...");
         }
         return V;
@@ -916,6 +921,8 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd, Type *LoadTy) {
                 LLVMTy = FP32Ty;
             else if (LLVMTy == Int64Ty)
                 LLVMTy = FP64Ty;
+            else
+                llvm_unreachable("Unhandled FPR operand type!");
 
             Res = LoadGMRValue(
                 LLVMTy,

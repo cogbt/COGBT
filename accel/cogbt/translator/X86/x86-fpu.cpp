@@ -546,10 +546,14 @@ void X86Translator::translate_ffreep(GuestInst *Inst) {
 }
 
 void X86Translator::translate_frndint(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction frndint\n";
-    exit(-1);
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_frndint", CPUEnv);
+    Value *st0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    st0 = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(),
+            Intrinsic::round, st0->getType()),
+        st0);
+    st0 = Builder.CreateFPToSI(st0, Int64Ty);
+    StoreGMRValue(st0, X87GetCurrST0());
 }
 
 void X86Translator::translate_frstor(GuestInst *Inst) {
@@ -574,10 +578,16 @@ void X86Translator::translate_fnsave(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fscale(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fscale\n";
-    exit(-1);
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fscale", CPUEnv);
+    Value *ST1 = LoadGMRValue(FP64Ty, X87GetCurrSTI(1));
+    ST1 = Builder.CreateFPToSI(ST1, Int64Ty);
+    ST1 = Builder.CreateSIToFP(ST1, FP64Ty);
+    ST1 = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::exp2,
+            ST1->getType()),
+        ST1);
+    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    StoreGMRValue(Builder.CreateFMul(ST1, ST0), X87GetCurrST0());
 }
 
 void X86Translator::translate_fsetpm(GuestInst *Inst) {
@@ -610,24 +620,37 @@ void X86Translator::translate_fxam(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fxtract(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fxtract\n";
-    exit(-1);
+    FlushAllFPRValue();
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fxtract", CPUEnv);
+    ReloadAllFPRValue();
 }
 
 void X86Translator::translate_fyl2x(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fyl2x\n";
-    exit(-1);
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fyl2x", CPUEnv);
+    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    ST0 = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::log2,
+            ST0->getType()),
+        ST0);
+    Value *ST1 = LoadGMRValue(FP64Ty, X87GetCurrSTI(1));
+    ST0 = Builder.CreateFMul(ST1, ST0);
+    StoreGMRValue(ST0, X87GetCurrSTI(1));
+    X87FPR_Pop();
 }
 
 void X86Translator::translate_fyl2xp1(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fyl2xp1\n";
-    exit(-1);
-    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(FTy, "helper_fyl2xp1", CPUEnv);
+    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    ST0 = Builder.CreateFAdd(ST0, ConstantFP::get(Context, APFloat(1.0)));
+    ST0 = Builder.CreateCall(
+        Intrinsic::getDeclaration(
+            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::log2,
+            ST0->getType()),
+        ST0);
+    Value *ST1 = LoadGMRValue(FP64Ty, X87GetCurrSTI(1));
+    ST0 = Builder.CreateFMul(ST1, ST0);
+    StoreGMRValue(ST0, X87GetCurrSTI(1));
+    X87FPR_Pop();
 }
 
 void X86Translator::translate_fild(GuestInst *Inst) {
@@ -987,6 +1010,7 @@ void X86Translator::translate_fsubp(GuestInst *Inst) {
 
 void X86Translator::translate_ftst(GuestInst *Inst) {
     assert(0 && "Untranslated instruction ftst\n");
+    FlushFPRValue("ST0", LoadGMRValue(FP64Ty, X87GetCurrST0()), false);
     FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(UnaryFunTy, "helper_fldz_FT0", CPUEnv);
     CallFunc(UnaryFunTy, "helper_fcom_ST0_FT0", CPUEnv);

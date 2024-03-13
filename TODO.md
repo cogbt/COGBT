@@ -45,11 +45,11 @@
 - fcos
 - fsin
 - fsqrt
-- fatan
-- fptan，部分暂用 helper
-- fsincos，部分暂用 helper
-- fprem，部分暂用 helper
-- fprem1，部分暂用 helper
+- fatan，部分暂用 helper，太过复杂
+- fptan，部分暂用 helper，涉及 fpush/pop
+- fsincos，部分暂用 helper，涉及 fpush/pop
+- fprem，部分暂用 helper，太过复杂，涉及 fpus
+- fprem1，部分暂用 helper，太过复杂，涉及 fpus
 - fcomp，部分暂用 helper，涉及 fpus
 - fcompp，部分暂用 helper，涉及 fpus
 - fcom，部分暂用 helper，涉及 fpus
@@ -61,12 +61,18 @@
 - fdivr
 - fidivr
 - fidivrp
-- ficom
-- ficomp
-- wait
+- ficom，部分暂用 helper，涉及 fpus
+- ficomp，部分暂用 helper，涉及 fpus
+- wait，暂用 helper
 - fmul
 - fmulp
 - fimul
+- fscale，测例有问题，空函数也可以通过；未判断输入合法性
+- frndint
+- ftst，已实现但存在问题，未启用
+- fxtract，部分暂用 helper，太过复杂，涉及 fpush/pop
+- fyl2x，未判断输入合法性
+- fyl2xp1，未判断输入合法性
 
 ## 测例
 
@@ -111,17 +117,17 @@
   - [x] fprem
   - [x] fprem1
   - [x] fptan
-  - [ ] frndint
-  - [ ] fscale
+  - [x] frndint
+  - [x] fscale
   - [x] fsin
   - [x] fsincos
   - [x] fsqrt
   - [x] fsub
   - [x] fsubp
   - [x] fsubr
-  - [ ] ftst
-  - [ ] fxtract
-  - [ ] fyl2xp1
+  - [x] ftst，x86 可通过 1 个，helper 版本可通过全部 152 个，本版本可通过 19 个
+  - [x] fxtract
+  - [x] fyl2xp1
 - [ ] fctrl
   - [ ] ffree
   - [ ] fincstp-fdecstp
