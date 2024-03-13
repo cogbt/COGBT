@@ -2303,6 +2303,23 @@ void helper_fsincos(CPUX86State *env)
     }
 }
 
+#ifdef CONFIG_COGBT
+void helper_fsincos_cogbt(CPUX86State *env)
+{
+    double fptemp = floatx80_to_double(env, ST0);
+
+    if ((fptemp > MAXTAN) || (fptemp < -MAXTAN)) {
+        env->fpus |= 0x400;
+    } else {
+        ST0 = double_to_floatx80(env, sin(fptemp));
+        fpush_cogbt(env);
+        ST0 = double_to_floatx80(env, cos(fptemp));
+        env->fpus &= ~0x400;  /* C2 <-- 0 */
+        /* the above code is for |arg| < 2**63 only */
+    }
+}
+#endif
+
 void helper_frndint(CPUX86State *env)
 {
     uint8_t old_flags = save_exception_flags(env);

@@ -562,17 +562,17 @@ void X86Translator::translate_fpatan(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fprem(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fprem\n";
-    exit(-1);
+    FlushAllFPRValue();
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fprem", CPUEnv);
+    ReloadAllFPRValue();
 }
 
 void X86Translator::translate_fprem1(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fprem1\n";
-    exit(-1);
+    FlushAllFPRValue();
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fprem1", CPUEnv);
+    ReloadAllFPRValue();
 }
 
 void X86Translator::translate_fptan(GuestInst *Inst) {
@@ -628,38 +628,10 @@ void X86Translator::translate_fsetpm(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fsincos(GuestInst *Inst) {
-    assert(0 && "fsincos not implemented");
-    // can pass dbt_ut5 farith/fsincos, but has err, is different from qemu
-    // heler if value is invalid, should not push stack, but current implement
-    // will always push stack
-    Value *st0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
-    Value *st0abs = Builder.CreateCall(
-        Intrinsic::getDeclaration(
-            Builder.GetInsertBlock()->getParent()->getParent(), Intrinsic::fabs,
-            st0->getType()),
-        st0);
-    Value *cond = Builder.CreateFCmpOLT(
-        st0abs, ConstantFP::get(FP64Ty, APFloat(9223372036854775808.0)));
-    Value *res = Builder.CreateSelect(
-        cond,
-        Builder.CreateCall(
-            Intrinsic::getDeclaration(
-                Builder.GetInsertBlock()->getParent()->getParent(),
-                Intrinsic::sin, st0->getType()),
-            st0),
-        st0);
-    StoreGMRValue(res, X87GetCurrST0());
-    // here is the err
-    X87FPR_Push();
-    res = Builder.CreateSelect(
-        cond,
-        Builder.CreateCall(
-            Intrinsic::getDeclaration(
-                Builder.GetInsertBlock()->getParent()->getParent(),
-                Intrinsic::cos, st0->getType()),
-            st0),
-        st0);
-    StoreGMRValue(res, X87GetCurrST0());
+    FlushAllFPRValue();
+    FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
+    CallFunc(FTy, "helper_fsincos_cogbt", CPUEnv);
+    ReloadAllFPRValue();
 }
 
 void X86Translator::translate_fnstenv(GuestInst *Inst) {

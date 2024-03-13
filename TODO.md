@@ -46,7 +46,10 @@
 - fsin
 - fsqrt
 - fatan
-- fptan
+- fptan，部分暂用 helper
+- fsincos，部分暂用 helper
+- fprem，部分暂用 helper
+- fprem1，部分暂用 helper
 
 ## 测例
 
@@ -88,13 +91,13 @@
   - [ ] fincstp
   - [ ] fmul
   - [x] fpatan
-  - [ ] fprem
-  - [ ] fprem1
+  - [x] fprem
+  - [x] fprem1
   - [x] fptan
   - [ ] frndint
   - [ ] fscale
   - [x] fsin
-  - [ ] fsincos
+  - [x] fsincos
   - [x] fsqrt
   - [x] fsub
   - [x] fsubp
