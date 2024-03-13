@@ -61,6 +61,9 @@
 - fdivr
 - fidivr
 - fidivrp
+- ficom
+- ficomp
+- wait
 
 ## 测例
 
@@ -98,7 +101,7 @@
   - [x] fcos
   - [x] fdiv
   - [x] fdivr
-  - [ ] ficom
+  - [x] ficom，x86 可通过 1 个，helper 版本和本版本均只可通过 7 个
   - [ ] fincstp
   - [ ] fmul
   - [x] fpatan

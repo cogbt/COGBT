@@ -384,14 +384,10 @@ void X86Translator::translate_ffree(GuestInst *Inst) {
 }
 
 void X86Translator::translate_ficom(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction ficom\n";
-    exit(-1);
     GenFPUHelper(Inst, "fcom", DEST_IS_ST0 | MEM_VAL_IS_INT);
 }
 
 void X86Translator::translate_ficomp(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction ficomp\n";
-    exit(-1);
     GenFPUHelper(Inst, "fcom", DEST_IS_ST0 | MEM_VAL_IS_INT | SHOULD_POP_ONCE);
 }
 
@@ -493,9 +489,6 @@ void X86Translator::translate_fnstcw(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fnstsw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fnstsw\n";
-    exit(-1);
-
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     FunctionType *Ret32Ty = FunctionType::get(Int32Ty, Int8PtrTy, false);
@@ -513,8 +506,7 @@ void X86Translator::translate_fnstsw(GuestInst *Inst) {
         SrcOpnd.setOpndSize(2);
         StoreOperand(MemVal, InstHdl.getOpnd(0));
     } else {
-        dbgs() << "fnstsw does not support opnd type\n";
-        exit(-1);
+        llvm_unreachable("fnstsw does not support opnd type\n");
     }
 }
 
@@ -1049,7 +1041,6 @@ void X86Translator::translate_fucom(GuestInst *Inst) {
 }
 
 void X86Translator::translate_wait(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction wait\n");
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fwait", CPUEnv);
 }
