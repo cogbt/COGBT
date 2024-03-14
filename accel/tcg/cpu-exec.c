@@ -1141,7 +1141,7 @@ int cpu_exec(CPUState *cpu)
             tb = tb_lookup(cpu, pc, cs_base, flags, cflags);
             if (tb == NULL) {
                 mmap_lock();
-#if defined(CONFIG_COGBT) || defined(CONFIG_COGBT_DEBUG)
+#if defined(CONFIG_COGBT) && defined(CONFIG_COGBT_DEBUG)
                 tb_not_find++;
 #endif
 

@@ -351,7 +351,7 @@ void X86Translator::translate_tzcnt(GuestInst *Inst) {
     Value *Src = LoadOperand(InstHdl.getOpnd(0));
     Value *SrcIsZ = Builder.CreateICmpEQ(Src, ConstInt(Src->getType(), 0));
     Value *Dest = Builder.CreateIntrinsic(
-        Intrinsic::cttz, {Src->getType(), Int1Ty}, {Src, ConstInt(Int1Ty, 0)});
+        Intrinsic::cttz, {Src->getType()}, {Src, ConstInt(Int1Ty, 0)});
     Value *DestIsZ = Builder.CreateICmpEQ(Dest, ConstInt(Dest->getType(), 0));
     StoreOperand(Dest, InstHdl.getOpnd(1));
     /* CalcEflag(Inst, Src, nullptr, nullptr); */
