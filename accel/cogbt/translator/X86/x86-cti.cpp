@@ -401,9 +401,19 @@ void X86Translator::translate_call(GuestInst *Inst) {
             ExitBB->eraseFromParent();
         }
     } else {
-        // do indirect basic block link
-        // store target pc into env.
         Value *Target = LoadOperand(InstHdl.getOpnd(0));
+
+        // adjust esp
+        Value *OldESP = LoadGMRValue(Int64Ty, X86Config::RSP);
+        Value *NewESP = Builder.CreateSub(OldESP, ConstInt(Int64Ty, 8));
+        StoreGMRValue(NewESP, X86Config::RSP);
+
+        // store return address into stack
+        Value *NewESPPtr = Builder.CreateIntToPtr(NewESP, Int64PtrTy);
+        Builder.CreateStore(ConstInt(Int64Ty, InstHdl.getNextPC()), NewESPPtr);
+
+        // sync GMRVals into stack.
+        SyncAllGMRValue();
 
         GenIndirectJmp(Target);
         if (IsExitPC(InstHdl.getPC())) {
