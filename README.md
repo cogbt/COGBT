@@ -16,7 +16,7 @@ LLVM目前测试通过 LLVM release/8.x-loongarch 和 LLVM release/15.x-loongarc
         - `CogbtPass.h`: 可选文件，声明了目前所有实现的自定义优化pass。
     - `$LLVM_HOME/lib/`
         - `libLLVM.so`: 必须包含，其应该是`libLLVM-x.so`的一个软连接。
-        > 建立软链接指令：ln -sf libLLVM.so libLLVM-x.so
+        > 建立软链接指令：ln -sf libLLVM-x.so libLLVM.so
         - `libLLVMCustomReduction.so`: 可选文件，实现了目前所有的自定义优化pass。
 > `CogbtPass.h` 和 `libLLVMCustomReduction.so` 文件可通过`cogbt/accel/cogbt/optimization_passes`目录生成。
 > 当使用`--disable-custom-pass-optimization`选项，关掉自定义优化pass时，以上可选文件是不需要的。
