@@ -726,6 +726,8 @@ void X86Translator::StoreGMRValue(Value *V, X86MappedRegsId GMRId,
 
     if (V->getType() == V4F32Ty) {
         V = Builder.CreateBitCast(V, V2F64Ty);
+    } else if (V->getType() == V4I32Ty || V->getType() == V2I64Ty) {
+        V = Builder.CreateBitCast(V, V2F64Ty);
     }
 
     if (type == X86RegFPRType && V->getType() == Int64Ty) {
@@ -768,7 +770,7 @@ void X86Translator::StoreGMRValue(Value *V, X86MappedRegsId GMRId,
             Builder.CreateStore(V, Addr);
         }
     } else if (type == X86RegXMMType) {
-        assert(V->getType()->isFloatTy() || V->getType()->isDoubleTy());
+        // assert(V->getType()->isFloatTy() || V->getType()->isDoubleTy());
         if (V->getType() == V4F32Ty) {
             V = Builder.CreateBitCast(V, V2F64Ty);
         }
@@ -787,6 +789,29 @@ void X86Translator::StoreGMRValue(Value *V, X86MappedRegsId GMRId,
                 Builder.CreateStore(V, Addr);
             }
         } else if (V->getType()->isDoubleTy()) {
+            if (GMRVals[GMRId].hasValue()) {
+                Value *Res = Builder.CreateInsertElement(
+                    GMRVals[GMRId].getValue(), V, ConstantInt::get(Int32Ty, 0));
+                SetGMRVals(type, gid, Res, true);
+            } else {
+                Value *Addr = Builder.CreateBitCast(
+                    GMRStates[GMRId], V->getType()->getPointerTo());
+                Builder.CreateStore(V, Addr);
+            }
+        } else if (V->getType()->isIntegerTy(32)) {
+            if (GMRVals[GMRId].hasValue()) {
+                Value *OldVal =
+                    Builder.CreateBitCast(GMRVals[GMRId].getValue(), V4I32Ty);
+                Value *Res = Builder.CreateInsertElement(
+                    OldVal, V, ConstantInt::get(Int32Ty, 0));
+                Res = Builder.CreateBitCast(Res, V2I64Ty);
+                SetGMRVals(type, gid, Res, true);
+            } else {
+                Value *Addr = Builder.CreateBitCast(
+                    GMRStates[GMRId], V->getType()->getPointerTo());
+                Builder.CreateStore(V, Addr);
+            }
+        } else if (V->getType()->isIntegerTy(64)) {
             if (GMRVals[GMRId].hasValue()) {
                 Value *Res = Builder.CreateInsertElement(
                     GMRVals[GMRId].getValue(), V, ConstantInt::get(Int32Ty, 0));
