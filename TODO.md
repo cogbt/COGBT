@@ -1,7 +1,7 @@
 ## 已翻译指令
 
-- fld
-- fstp
+- fld，80 位部分暂用 helper
+- fstp，80 位部分暂用 helper
 - fucomi，部分暂用 helper，涉及 fpus
 - fucomip，部分暂用 helper，涉及 fpus
 - fldz
@@ -55,6 +55,8 @@
 - fcom，部分暂用 helper，涉及 fpus
 - fcomi，部分暂用 helper，涉及 fpus
 - fcomip，部分暂用 helper，涉及 fpus
+- fldcw，部分暂用 helper，涉及 fpus
+- fstcw，部分暂用 helper，涉及 fpus
 - fdiv
 - fidiv
 - fdivp
@@ -76,16 +78,14 @@
 
 ## 测例
 
-去掉了对 80 位的测试，因为 la 硬件不支持，会导致 llvm 报错。
-
 - [ ] fldst
   - [x] fild
   - [x] fist
   - [x] fistp
   - [x] fld
   - [x] fld1
-  - [ ] fldcw-fnstcw
-  - [ ] fldcw-fstcw
+  - [x] fldcw-fnstcw
+  - [x] fldcw-fstcw
   - [ ] fnstsw
   - [x] fst
   - [x] fstp
@@ -133,7 +133,7 @@
   - [ ] fincstp-fdecstp
   - [ ] finit
   - [ ] fldenv-fnstenv
-  - [ ] fldlx
+  - [x] fldlx
   - [ ] fnclex
   - [ ] fninit
   - [ ] fnsave

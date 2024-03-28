@@ -394,8 +394,6 @@ void X86Translator::translate_ficomp(GuestInst *Inst) {
 void X86Translator::translate_fincstp(GuestInst *Inst) { X87FPR_Pop(); }
 
 void X86Translator::translate_fldcw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fldcw\n";
-    exit(-1);
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     FunctionType *FTy = FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
@@ -476,9 +474,6 @@ void X86Translator::translate_fnop(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fnstcw(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fnstcw\n";
-    exit(-1);
-
     X86InstHandler InstHdl(Inst);
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     FunctionType *Ty = FunctionType::get(Int32Ty, Int8PtrTy, false);
@@ -752,21 +747,17 @@ void X86Translator::translate_fld(GuestInst *Inst) {
     // FunctionType *FPUSHTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     // FunctionType *FMOVTy =
     //     FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
-    // FunctionType *FLDTTy =
-    //     FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false);
 
     if (SrcOpnd.isMem()) {
+        X87FPR_Push();
         if (SrcOpnd.getOpndSize() == 10) {
-            assert(0 && "it is developing");
-            // dbgs() << "[warning]: fld use fp80\n";
-            // Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
-            // CallFunc(FLDTTy, "helper_fldt_ST0", {CPUEnv, Addr});
-            // Value *Val = ReloadFPRValue("ST0", 8, false);
-            // StoreGMRValue(Val, X87GetCurrST0());
+            FunctionType *FLDTTy =
+                FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false);
+            Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
+            CallFunc(FLDTTy, "helper_fldt_ST0", {CPUEnv, Addr});
+            Value *Val = ReloadFPRValue("ST0", 8, false);
+            StoreGMRValue(Val, X87GetCurrST0());
         } else {
-            X87FPR_Push();
-            // Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
-            // FlushFPRValue("ST0", MemVal, false);
             Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
             StoreGMRValue(MemVal, X87GetCurrST0());
         }
@@ -818,12 +809,12 @@ void X86Translator::translate_fst(GuestInst *Inst) {
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     if (SrcOpnd.isMem()) {
         if (SrcOpnd.getOpndSize() == 10) {
-            assert(0 && "it is developing");
-            // dbgs() << "[warning]: fst use fp80\n";
-            // Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
-            // FlushFPRValue("ST0", ST0, false);
-            // Value *MemVal = ReloadFPRValue("ST0", SrcOpnd.getOpndSize(),
-            // false); StoreOperand(MemVal, InstHdl.getOpnd(0));
+            Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
+            FlushFPRValue("ST0", ST0, false);
+            FunctionType *FSTTTy =
+                FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false);
+            Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
+            CallFunc(FSTTTy, "helper_fstt_ST0", {CPUEnv, Addr});
         } else if (SrcOpnd.getOpndSize() == 4) {
             Value *ST0 = LoadGMRValue(FP32Ty, X87GetCurrST0());
             StoreOperand(ST0, InstHdl.getOpnd(0));
