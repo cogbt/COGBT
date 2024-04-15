@@ -74,6 +74,8 @@ AOTParser::AOTParser(uintptr_t CacheBegin, size_t CacheSize, const char *AOT)
             NameOrErr.get() == "AOTEpilogue")
             continue;
 
+        if (Sym.getSize() == 0)
+            continue;
         FuncInfos.emplace_back(NameOrErr.get().data(), AddrOrErr.get(), Sym.getSize());
     }
 

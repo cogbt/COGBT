@@ -193,7 +193,8 @@ Value *LLVMTranslator::GetPhysicalRegValue(const char *RegName, Type* type) {
 
     // Create corresponding inline asm IR.
     InlineAsm *IA = InlineAsm::get(InlineAsmTy, "", Constraints, true);
-    Value *HostRegValue = Builder.CreateCall(InlineAsmTy, IA);
+    CallInst *HostRegValue = Builder.CreateCall(InlineAsmTy, IA);
+    HostRegValue->setCannotMerge();
     return HostRegValue;
 }
 
@@ -201,7 +202,7 @@ void LLVMTranslator::SetPhysicalRegValue(const char *RegName, Value *RegValue, T
     FunctionType *InlineAsmTy = FunctionType::get(VoidTy, type, false);
     std::string Constraints = std::string("{") + RegName + "}";
     InlineAsm *IA = InlineAsm::get(InlineAsmTy, "", Constraints, true);
-    Builder.CreateCall(InlineAsmTy, IA, {RegValue});
+    Builder.CreateCall(InlineAsmTy, IA, {RegValue})->setCannotMerge();
 }
 
 void LLVMTranslator::CreateIllegalInstruction() {

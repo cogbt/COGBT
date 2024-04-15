@@ -441,8 +441,8 @@ void X86Translator::GenEpilogue() {
                                            X86RegTyToLLVMTy(X86RegGPRType));
         if (i == X86Config::EFLAG) {
             Value *LBTFlag = GetLBTFlag();
-            Value *DF = Builder.CreateAnd(GuestVals[i],
-                                          ConstInt(Int64Ty, DF_BIT | 0x202));
+            Value *DF =
+                Builder.CreateAnd(GuestVals[i], ConstInt(Int64Ty, DF_BIT|0x202));
             /* DF = Builder.CreateOr(DF, ConstInt(Int64Ty, 0x202)); */
             GuestVals[i] = Builder.CreateOr(LBTFlag, DF);
         }
@@ -573,7 +573,7 @@ void X86Translator::FlushGMRValue(X86MappedRegsId GMRId) {
     Value *GMRV = LoadGMRValue(Ty, GMRId);
     if (GMRId == X86Config::EFLAG) {
         Value *Flag = GetLBTFlag();
-        GMRV = Builder.CreateAnd(GMRV, ConstInt(Int64Ty, DF_BIT | 0x202));
+        GMRV = Builder.CreateAnd(GMRV, ConstInt(Int64Ty, DF_BIT|0x202));
         /* GMRV = Builder.CreateOr(GMRV, ConstInt(Int64Ty, 0x202)); */
         GMRV = Builder.CreateOr(GMRV, Flag);
     }
@@ -1057,9 +1057,6 @@ void X86Translator::FlushMMXT0(Value *MMXV, Type *FlushTy) {
 
 CallInst *X86Translator::CallFunc(FunctionType *FuncTy, StringRef Name,
                                   ArrayRef<Value *> Args) {
-    if (Name.startswith("helper_f")) {
-        dbgs() << "Call Float Func: " << Name << "\n";
-    }
 #if (LLVM_VERSION_MAJOR > 8)
     FunctionCallee F = Mod->getOrInsertFunction(Name, FuncTy);
     CallInst *callInst = Builder.CreateCall(FuncTy, F.getCallee(), Args);
@@ -1320,9 +1317,6 @@ void X86Translator::Translate() {
                 assert(0 && "Unknown x86 opcode!");
 #define HANDLE_X86_INST(opcode, name)                                          \
     case opcode:                                                               \
-        if (#name[0] == 'f') {                                                 \
-            dbgs() << "Translate Float Inst: " << #name << "\n";               \
-        }                                                                      \
         translate_##name(&inst);                                               \
         break;
 #include "x86-inst.def"
