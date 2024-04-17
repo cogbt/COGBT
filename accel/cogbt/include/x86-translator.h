@@ -105,6 +105,7 @@ private: /// Currently translated instruction.
     /// ReloadGMRValue - Reload GMR value from CPUX86State.
     void FlushGMRValue(X86MappedRegsId GMRId);
     void ReloadGMRValue(X86MappedRegsId GMRId);
+    void FlushFpsttValue(Value *Fpstt);
 
     /// SyncGMRValue - Sync GMR value into GMRStates.
     /// GMRValue should be invalidated once branch.

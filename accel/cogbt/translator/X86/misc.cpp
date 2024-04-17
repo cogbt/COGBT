@@ -1504,6 +1504,11 @@ void X86Translator::translate_punpcklqdq(GuestInst *Inst) {
     Value *SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcXMMOff);
     Value *DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestXMMOff);
     CallFunc(FTy, "helper_punpcklqdq_xmm", {CPUEnv, DestAddr, SrcAddr});
+    /* FlushAllGMRValue(); */
+    /* SyncAllGMRValue(); */
+    /* FunctionType *DBGFTy = FunctionType::get(VoidTy, Int64Ty, false); */
+    /* Value *BeforeCallPC = ConstInt(Int64Ty, InstHdl.getPC()); */
+    /* CallFunc(DBGFTy, "dbg_cpu_dump_state", BeforeCallPC); */
 }
 void X86Translator::translate_push(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);

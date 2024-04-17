@@ -28,6 +28,8 @@ int GuestMMXRegOffset(int reg_idx, int reg_start_byte);
 
 int GuestFPROffset(int idx);
 int GuestST0Offset(void *p);
+int GuestFT0Offset(void);
+int GuestFpsttOffset(void);
 
 int GuestMXCSROffset(void);
 

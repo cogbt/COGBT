@@ -1,4 +1,5 @@
 #include "emulator.h"
+#include "llvm/IR/InlineAsm.h"
 #include "x86-translator.h"
 
 // void X86Translator::SetQemuSTI(int i, Value *Val) {}
@@ -691,31 +692,57 @@ void X86Translator::translate_fist(GuestInst *Inst) {
     assert(InstHdl.getOpndNum() == 1 && "fist: need one Opnd");
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     Value *MemValFP64 = LoadGMRValue(FP64Ty, X87GetCurrST0());
-    MemValFP64 = Builder.CreateCall(
-        Intrinsic::getDeclaration(
-            Builder.GetInsertBlock()->getParent()->getParent(),
-            Intrinsic::round, MemValFP64->getType()),
-        MemValFP64);
-    Value *MemVal32 = Builder.CreateFPToSI(MemValFP64, Int32Ty);
+    Value *MemVal32 = nullptr;
+    FunctionType *Ret64Ty = FunctionType::get(Int64Ty,
+            {Int8PtrTy, FP64Ty, Int32Ty}, false);
+    /* MemValFP64 = Builder.CreateCall( */
+    /*     Intrinsic::getDeclaration( */
+    /*         Builder.GetInsertBlock()->getParent()->getParent(), */
+    /*         Intrinsic::round, MemValFP64->getType()), */
+    /*     MemValFP64); */
+    /* Value *MemVal32 = Builder.CreateFPToSI(MemValFP64, Int32Ty); */
     if (SrcOpnd.getOpndSize() == 2) {
-        Value *MemVal16 = Builder.CreateTrunc(MemVal32, Int16Ty);
-        Value *flag = Builder.CreateICmpEQ(
-            MemVal32, Builder.CreateSExt(MemVal16, Int32Ty));
-        MemVal32 = Builder.CreateSelect(flag, MemVal32,
-                                        ConstantInt::get(Int32Ty, -32768));
+        /* Value *MemVal16 = Builder.CreateTrunc(MemVal32, Int16Ty); */
+        /* Value *flag = Builder.CreateICmpEQ( */
+        /*     MemVal32, Builder.CreateSExt(MemVal16, Int32Ty)); */
+        /* MemVal32 = Builder.CreateSelect(flag, MemVal32, */
+        /*                                 ConstantInt::get(Int32Ty, -32768)); */
+        MemVal32 = CallFunc(Ret64Ty, "helper_fist_cogbt",
+                {CPUEnv, MemValFP64, ConstantInt::get(Int32Ty, 2)});
         MemVal32 = Builder.CreateTrunc(MemVal32, Int16Ty);
     } else if (SrcOpnd.getOpndSize() == 4) {
-        Value *flag =
-            Builder.CreateICmpEQ(Builder.CreateFPToSI(MemValFP64, Int64Ty),
-                                 Builder.CreateSExt(MemVal32, Int64Ty));
-        MemVal32 = Builder.CreateSelect(flag, MemVal32,
-                                        ConstantInt::get(Int32Ty, 0x80000000));
+        /* Value *flag = */
+        /*     Builder.CreateICmpEQ(Builder.CreateFPToSI(MemValFP64, Int64Ty), */
+        /*                          Builder.CreateSExt(MemVal32, Int64Ty)); */
+        MemVal32 = CallFunc(Ret64Ty, "helper_fist_cogbt",
+                {CPUEnv, MemValFP64, ConstantInt::get(Int32Ty, 4)});
+        MemVal32 = Builder.CreateTrunc(MemVal32, Int32Ty);
+        /* MemVal32 = Builder.CreateSelect(flag, MemVal32, */
+        /*                                 ConstantInt::get(Int32Ty, 0x80000000)); */
     } else if (SrcOpnd.getOpndSize() == 8) {
-        Value *MemVal64 = Builder.CreateFPToSI(MemValFP64, Int64Ty);
-        Value *flag = Builder.CreateFCmpOEQ(
-            MemValFP64, Builder.CreateSIToFP(MemVal64, FP64Ty));
-        MemVal32 = Builder.CreateSelect(
-            flag, MemVal64, ConstantInt::get(Int64Ty, 0x8000000000000000ULL));
+        /* if (InstHdl.getPC() == 0x401979) { */
+        /* FlushFpsttValue(ConstantInt::get(Int32Ty, 0)); */
+        /* MemValFP64 = LoadGMRValue(FP64Ty, X87GetCurrST0()); */
+        MemVal32 = CallFunc(Ret64Ty, "helper_fist_cogbt",
+                {CPUEnv, MemValFP64, ConstantInt::get(Int32Ty, 8)});
+        /* int off = GuestFPROffset(0); */
+        /* Value *FPST0Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstantInt::get(Int64Ty, off)); */
+        /* FPST0Addr = Builder.CreateBitCast(FPST0Addr, FP64PtrTy); */
+        /* Builder.CreateStore(MemValFP64, FPST0Addr); */
+
+        /* FunctionType *Ret64Ty = FunctionType::get(Int64Ty, Int8PtrTy, false); */
+        /* MemVal32 = CallFunc(Ret64Ty, "helper_fistll_ST0", CPUEnv); */
+        /* } else { */
+
+
+
+
+        /* Value *MemVal64 = Builder.CreateFPToSI(MemValFP64, Int64Ty); */
+        /* Value *flag = Builder.CreateFCmpOEQ( */
+        /*     MemValFP64, Builder.CreateSIToFP(MemVal64, FP64Ty)); */
+        /* MemVal32 = Builder.CreateSelect( */
+        /*     flag, MemVal64, ConstantInt::get(Int64Ty, 0x8000000000000000ULL)); */
+        /* } */
     } else {
         llvm_unreachable(
             "fist: instruction fist opnd size should (2,4) bytes.");
@@ -751,11 +778,30 @@ void X86Translator::translate_fld(GuestInst *Inst) {
     if (SrcOpnd.isMem()) {
         X87FPR_Push();
         if (SrcOpnd.getOpndSize() == 10) {
-            FunctionType *FLDTTy =
-                FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false);
+            /* FlushFpsttValue(ConstantInt::get(Int32Ty, X87GetCurrST0())); */
             Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
-            CallFunc(FLDTTy, "helper_fldt_ST0", {CPUEnv, Addr});
-            Value *Val = ReloadFPRValue("ST0", 8, false);
+            /* Value *LowerAddr = CalcMemAddr(InstHdl.getOpnd(0)); */
+            /* Value *LowerAddrPtr = Builder.CreateIntToPtr(LowerAddr, Int64PtrTy); */
+            /* Value *Fraction = Builder.CreateLoad(Int64Ty, LowerAddrPtr); */
+            /* Fraction = Builder.CreateBitCast(Fraction, FP64Ty); */
+
+            /* Value *HighAddr = Builder.CreateAdd(LowerAddr, ConstantInt::get(Int64Ty, 8)); */
+            /* HighAddr = Builder.CreateBitCast(HighAddr, Int16PtrTy); */
+            /* Value *SignExp = Builder.CreateLoad(Int16Ty, HighAddr); */
+            /* SignExp = Builder.CreateZExt(SignExp, Int64Ty); */
+            /* SignExp = Builder.CreateBitCast(SignExp, FP64Ty); */
+
+            /* FunctionType *InlineAsmTy = FunctionType::get(Int64Ty, {Int64Ty, Int64Ty}, false); */
+            /* InlineAsm *IA = InlineAsm::get(InlineAsmTy, "fcvt.d.ld $0, $1, $2", "=f,f,f", true); */
+            /* Value *Val = Builder.CreateCall(InlineAsmTy, IA, {Fraction, SignExp}); */
+            /* StoreGMRValue(Val, X87GetCurrST0()); */
+
+            FunctionType *FTy = FunctionType::get(FP64Ty, {Int8PtrTy, Int64Ty}, false);
+            Value *Val = CallFunc(FTy, "helper_fld_mem80", {CPUEnv, Addr});
+            /* FunctionType *FLDTTy = */
+            /*     FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false); */
+            /* CallFunc(FLDTTy, "helper_fldt_ST0", {CPUEnv, Addr}); */
+            /* Value *Val = ReloadFPRValue("ST0", 8, false); */
             StoreGMRValue(Val, X87GetCurrST0());
         } else {
             Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
@@ -810,11 +856,40 @@ void X86Translator::translate_fst(GuestInst *Inst) {
     if (SrcOpnd.isMem()) {
         if (SrcOpnd.getOpndSize() == 10) {
             Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrST0());
-            FlushFPRValue("ST0", ST0, false);
-            FunctionType *FSTTTy =
-                FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false);
+            /* FlushFpsttValue(ConstantInt::get(Int32Ty, X87GetCurrST0())); */
+            /* FunctionType *FuncTy = FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false); */
+            /* FlushFPRValue("FT0", ST0, false); */
+            /* Value *FV = Builder.CreateBitCast(ST0, Int64Ty); */
+            /* CallFunc(FuncTy, "helper_fldl_FT0_cogbt", {CPUEnv, FV}); */
+            /* FunctionType *FMOVTy = FunctionType::get(VoidTy, {Int8PtrTy}, false); */
+            /* CallFunc(FMOVTy, "helper_fmov_ST0_FT0", {CPUEnv}); */
+            /* FunctionType *InlineAsmTy = FunctionType::get(FP64Ty, FP64Ty, false); */
+            /* InlineAsm *IA = InlineAsm::get(InlineAsmTy, "fcvt.ld.d $0, $1", "=f,f", true); */
+            /* Value* Fraction = Builder.CreateCall(InlineAsmTy, IA, {ST0}); */
+            /* Fraction = Builder.CreateBitCast(Fraction, Int64Ty); */
+            /* Value *LowerAddr = CalcMemAddr(InstHdl.getOpnd(0)); */
+            /* Value *LowerAddrPtr = Builder.CreateIntToPtr(LowerAddr, Int64PtrTy); */
+            /* Builder.CreateStore(Fraction, LowerAddrPtr); */
+
+            /* IA = InlineAsm::get(InlineAsmTy, "fcvt.ud.d $0, $1", "=f,f", true); */
+            /* Value* SignExp = Builder.CreateCall(InlineAsmTy, IA, {ST0}); */
+            /* SignExp = Builder.CreateBitCast(SignExp, Int64Ty); */
+            /* SignExp = Builder.CreateTrunc(SignExp, Int16Ty); */
+            /* Value* HighAddr = Builder.CreateAdd(LowerAddr, ConstantInt::get(Int64Ty, 8)); */
+            /* HighAddr = Builder.CreateIntToPtr(HighAddr, Int16PtrTy); */
+            /* Builder.CreateStore(SignExp, HighAddr); */
+
+            /* FunctionType *FSTTTy = */
+            /*     FunctionType::get(VoidTy, {Int8PtrTy, Int64Ty}, false); */
             Value *Addr = CalcMemAddr(InstHdl.getOpnd(0));
-            CallFunc(FSTTTy, "helper_fstt_ST0", {CPUEnv, Addr});
+            FunctionType *FTy = FunctionType::get(VoidTy,
+                    {Int8PtrTy, FP64Ty, Int64Ty}, false);
+            CallFunc(FTy, "helper_fst_mem80", {CPUEnv, ST0, Addr});
+
+            /* Value* SignExp = ConstantInt::get(Int16Ty, 0); */
+            /* Value* HighAddr = Builder.CreateAdd(Addr, ConstantInt::get(Int64Ty, 8)); */
+            /* HighAddr = Builder.CreateIntToPtr(HighAddr, Int16PtrTy); */
+            /* Builder.CreateStore(SignExp, HighAddr); */
         } else if (SrcOpnd.getOpndSize() == 4) {
             Value *ST0 = LoadGMRValue(FP32Ty, X87GetCurrST0());
             StoreOperand(ST0, InstHdl.getOpnd(0));
@@ -1019,8 +1094,30 @@ void X86Translator::translate_fucomi(GuestInst *Inst) {
     FunctionType *FUCOMITy = FunctionType::get(VoidTy, Int8PtrTy, false);
     Value *STI = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
     Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrSTI(0));
-    FlushFPRValue("FT0", STI, false);
-    FlushFPRValue("ST0", ST0, false);
+
+    FlushFpsttValue(ConstantInt::get(Int32Ty, 0));
+
+    int off = GuestFT0Offset();
+    Value *FPFT0Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstantInt::get(Int64Ty, off));
+    FPFT0Addr = Builder.CreateBitCast(FPFT0Addr, FP64PtrTy);
+    /* FPFT0Addr = Builder.CreateBitCast(FPFT0Addr, Int64PtrTy); */
+    /* FPFT0Addr = Builder.CreatePtrToInt(FPFT0Addr, Int64Ty); */
+
+    /* FunctionType *FTy = FunctionType::get(VoidTy, */
+    /*         {Int8PtrTy, FP64Ty, Int64Ty}, false); */
+    /* CallFunc(FTy, "helper_fst_mem80", {CPUEnv, STI, FPFT0Addr}); */
+    Builder.CreateStore(STI, FPFT0Addr);
+
+    off = GuestFPROffset(0);
+    Value *FPST0Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstantInt::get(Int64Ty, off));
+    FPST0Addr = Builder.CreateBitCast(FPST0Addr, FP64PtrTy);
+    /* FPST0Addr = Builder.CreateBitCast(FPST0Addr, Int64PtrTy); */
+    /* FPST0Addr = Builder.CreatePtrToInt(FPST0Addr, Int64Ty); */
+    /* CallFunc(FTy, "helper_fst_mem80", {CPUEnv, ST0, FPST0Addr}); */
+    Builder.CreateStore(ST0, FPST0Addr);
+
+    /* FlushFPRValue("FT0", STI, false); */
+    /* FlushFPRValue("ST0", ST0, false); */
     FlushGMRValue(X86Config::EFLAG);
 
     CallFunc(FUCOMITy, "helper_fucomi_ST0_FT0_cogbt", CPUEnv);

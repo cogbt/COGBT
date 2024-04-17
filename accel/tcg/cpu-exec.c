@@ -1146,9 +1146,7 @@ int cpu_exec(CPUState *cpu)
 #endif
 
                 CPUX86State *env = cpu->env_ptr;
-#ifndef CONFIG_COGBT
                 if (dump_pc)
-#endif
                     dump_path(pc - env->elf_loadbias);
 
                 tb = tb_gen_code(cpu, pc, cs_base, flags, cflags);

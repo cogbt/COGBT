@@ -84,6 +84,7 @@ static inline void fpush_cogbt(CPUX86State *env)
         ST_TAG(i) = ST_TAG(i-1);
     }
     ST_TAG(0) = 0;
+    /* env->fpstt = 0; */
 }
 #endif
 
@@ -208,6 +209,71 @@ void helper_fldl_FT0(CPUX86State *env, uint64_t val)
     u.i = val;
     FT0 = float64_to_floatx80(u.f, &env->fp_status);
     merge_exception_flags(env, old_flags);
+}
+
+extern void helper_fldl_FT0_cogbt(CPUX86State *env, uint64_t val);
+void helper_fldl_FT0_cogbt(CPUX86State *env, uint64_t val)
+{
+    uint8_t old_flags = save_exception_flags(env);
+    union {
+        float64 f;
+        uint64_t i;
+    } u;
+
+    u.i = val;
+    FT0 = float64_to_floatx80(u.f, &env->fp_status);
+    uint64_t signexp = 0;
+    asm volatile("fcvt.ud.d %0,%1\n\t"
+            :"=f"(signexp)
+            :"f"(val));
+    FT0.high = (uint16_t) signexp;
+    merge_exception_flags(env, old_flags);
+}
+
+extern void helper_fst_mem80(CPUX86State *env, double value, target_ulong ptr);
+extern double helper_fld_mem80(CPUX86State* env, target_ulong ptr);
+void helper_fst_mem80(CPUX86State *env, double value, target_ulong ptr) {
+    uint64_t fraction = 0;
+    uint64_t signexp = 0;
+
+    asm volatile(
+            /* "movfcsr2gr $r4, $r0\n\t" */
+            /* "bstrpick.d $r5, $r4, 4, 4\n\t" */
+            /* "beq $r5, $r0, no_exep1\n\t" */
+            /* "xori $r4, $r4, 0x10\n\t" */
+            /* "movgr2fcsr $r0, $r4\n\t" */
+
+            /* "no_exep1:\n\t" */
+            "fcvt.ld.d $f8,%2\n\t"
+            "fcvt.ud.d $f9,%2\n\t"
+            /* "movfcsr2gr $r4, $r0\n\t" */
+
+            /* "beq $r5, $r0, no_exep2\n\t" */
+            /* "xori $r4, $r4, 0x10\n\t" */
+            /* "movgr2fcsr $r0, $r4\n\t" */
+
+            /* "no_exep2:\n\t" */
+            /* "bstrpick.d $r4, $r4, 28, 28\n\t" */
+            "movfr2gr.s %1,$f9\n\t"
+            "movfr2gr.d %0,$f8 \n\t"
+            /* "beq $r4, $r0, ok\n\t" */
+            /* "bstrins.d %0, $r0, 62, 62\n\t" */
+            /* "ok:\n\t" */
+            :"=r"(fraction), "=r"(signexp)
+            :"f"(value));
+    *((uint64_t*)ptr) = fraction;
+    *((uint16_t*)(ptr+8)) = (uint16_t) signexp;
+}
+
+double helper_fld_mem80(CPUX86State* env, target_ulong ptr) {
+    double fraction = *((double*)ptr);
+    float signexp = *((float*)(ptr+8));
+    double res = 0;
+
+    asm volatile("fcvt.d.ld %0,%1,%2\n\t"
+            :"=f"(res)
+            :"f"(fraction), "f"(signexp));
+    return res;
 }
 
 void helper_fildl_FT0(CPUX86State *env, int32_t val)
@@ -345,7 +411,70 @@ int64_t helper_fistll_ST0(CPUX86State *env)
         val = 0x8000000000000000ULL;
     }
     merge_exception_flags(env, old_flags);
+    fprintf(stderr, "0x%lx\n", val);
     return val;
+}
+
+extern int64_t helper_fist_cogbt(CPUX86State*, double, int32_t);
+int64_t helper_fist_cogbt(CPUX86State *env, double value, int32_t opndsize) {
+    uint64_t low_bound, high_bound;
+
+    switch (opndsize) {
+        case 2:
+            low_bound = 0xc0dfffe000000000ull;
+            high_bound = 0x40dfffe000000000ull;
+            break;
+        case 4:
+            low_bound = 0xc1dfffffffe00000ull;
+            high_bound = 0x41dfffffffe00000ull;
+            break;
+        case 8:
+            low_bound = 0xc3dfffffffffffffull;
+            high_bound = 0x43dfffffffffffffull;
+            break;
+        default:
+            assert(0 && "unsupported opndsize");
+    }
+
+    double low = *((double *)(&low_bound));
+    double high = *((double *)(&high_bound));
+
+    if (opndsize != 8) {
+        if (high <= value || value <= low) {
+            fprintf(stderr, "dbg: fist flow\n");
+            goto flow;
+        }
+    } else {
+        if (high < value || value < low) {
+            fprintf(stderr, "dbg: fist flow\n");
+            goto flow;
+        }
+    }
+
+    int64_t res = 0;
+    asm volatile(
+        "ftint.l.d $f8,%1\n\t"
+        "movfr2gr.d %0,$f8\n\t"
+        :"=r"(res)
+        :"f"(value));
+    goto end;
+
+flow:
+    switch (opndsize) {
+        case 2:
+            res = 0x8000;
+            break;
+        case 4:
+            res = 0x80000000;
+            break;
+        case 8:
+            res = 0x8000000000000000ull;
+            break;
+        default:
+            assert(0 && "unsupported opndsize");
+    }
+end:
+    return res;
 }
 
 int32_t helper_fistt_ST0(CPUX86State *env)

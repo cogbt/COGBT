@@ -1102,3 +1102,31 @@ int main(int argc, char **argv, char **envp)
     /* never exits */
     return 0;
 }
+
+
+#ifdef CONFIG_COGBT
+void dbg_cpu_dump_state(uint64_t eip);
+void dbg_cpu_dump_state(uint64_t eip) {
+    /* if (qemu_loglevel_mask(COGBT_LOG_CALL_CPU)) { */
+        last_exit_is_llvm = true;
+        CPUState *cpu = thread_cpu;
+        CPUArchState *env = cpu->env_ptr;
+        env->eip = eip;
+
+        FILE *logfile = qemu_log_trylock();
+        if (logfile) {
+            int flags = 0;
+
+            /* if (qemu_loglevel_mask(CPU_LOG_TB_FPU)) { */
+                flags |= CPU_DUMP_FPU;
+            /* } */
+#if defined(TARGET_I386)
+            flags |= CPU_DUMP_CCOP;
+#endif
+            cpu_dump_state(cpu, logfile, flags);
+            qemu_log_unlock(logfile);
+        }
+    /* } */
+
+}
+#endif

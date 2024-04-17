@@ -896,4 +896,9 @@
     helper_xsave;
     helper_xsaveopt;
     helper_xsetbv;
+    dbg_cpu_dump_state;
+    helper_fldl_FT0_cogbt;
+    helper_fst_mem80;
+    helper_fld_mem80;
+    helper_fist_cogbt;
 };

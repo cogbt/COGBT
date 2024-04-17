@@ -382,6 +382,9 @@ void X86Translator::GenPrologue() {
         GuestFPRVals[i] =
             Builder.CreateLoad(X86RegTyToLLVMTy(X86RegFPRType), Ptr);
     }
+    FunctionType *InlineAsmTy = FunctionType::get(VoidTy, {Int32Ty}, false);
+    InlineAsm *IA = InlineAsm::get(InlineAsmTy, "movgr2fcsr $$fcsr0, $0", "r", true);
+    Builder.CreateCall(InlineAsmTy, IA, {ConstantInt::get(Int32Ty, 0x0100)});
 
     // Sync GuestVals, EFLAG, ENV, CodeEntry, HostSp to mapped regs
     for (int i = 0; i < EFLAG; i++) {
@@ -472,13 +475,13 @@ void X86Translator::GenEpilogue() {
         Builder.CreateStore(GuestVals[i], Ptr, true);
     }
 
-    for (int i = 0; i < GetNumGXMMs(); i++) {
-        int off = GuestXMMOffset(i);
-        Value *Addr =
-            Builder.CreateGEP(Int8Ty, CPUEnv, ConstantInt::get(Int64Ty, off));
-        Value *Ptr = Builder.CreateBitCast(Addr, V2F64PtrTy);
-        Builder.CreateStore(GuestXMMVals[i], Ptr, true);
-    }
+    /* for (int i = 0; i < GetNumGXMMs(); i++) { */
+    /*     int off = GuestXMMOffset(i); */
+    /*     Value *Addr = */
+    /*         Builder.CreateGEP(Int8Ty, CPUEnv, ConstantInt::get(Int64Ty, off)); */
+    /*     Value *Ptr = Builder.CreateBitCast(Addr, V2F64PtrTy); */
+    /*     Builder.CreateStore(GuestXMMVals[i], Ptr, true); */
+    /* } */
 
     for (int i = 0; i < GetNumFPRs(); i++) {
         int off = GuestFPROffset(i);
@@ -487,6 +490,9 @@ void X86Translator::GenEpilogue() {
         Value *Ptr = Builder.CreateBitCast(Addr, FP64PtrTy);
         Builder.CreateStore(GuestFPRVals[i], Ptr, true);
     }
+#ifdef CONFIG_COGBT_DEBUG
+    FlushFpsttValue(ConstantInt::get(Int32Ty, 0));
+#endif
 
     // Load CSRs.
     Value *HostRegValues[NumHostRegs] = {nullptr};
@@ -578,6 +584,14 @@ void X86Translator::FlushGMRValue(X86MappedRegsId GMRId) {
         GMRV = Builder.CreateOr(GMRV, Flag);
     }
     Builder.CreateStore(GMRV, Ptr, true);
+}
+
+void X86Translator::FlushFpsttValue(Value *Fpstt) {
+    assert(Fpstt->getType() == Int32Ty);
+    int off = GuestFpsttOffset();
+    Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstantInt::get(Int64Ty, off));
+    Value *FPSTTPtr = Builder.CreateBitCast(Addr, Int32PtrTy);
+    Builder.CreateStore(Fpstt, FPSTTPtr);
 }
 
 void X86Translator::ReloadGMRValue(X86MappedRegsId GMRId) {
@@ -931,7 +945,7 @@ Value *X86Translator::LoadOperand(X86Operand *Opnd, Type *LoadTy) {
         } else if (OpndHdl.isXMM()) {
             // The current implementation is to read xmm reg from CPUX86State
             // directly.
-#if 0
+#if 1
             int off = GuestXMMOffset(OpndHdl.GetXMMID());
             Value *Addr =
                 Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
@@ -1017,7 +1031,7 @@ void X86Translator::StoreOperand(Value *ResVal, X86Operand *DestOpnd) {
             Builder.CreateIntToPtr(MemAddr, ResVal->getType()->getPointerTo());
         Builder.CreateStore(ResVal, MemAddr);
     } else if (OpndHdl.isXMM()) {
-#if 0
+#if 1
         // Current implementation is to store value into CPUX86State directly.
         int off = GuestXMMOffset(OpndHdl.GetXMMID());
         Value *Addr =
