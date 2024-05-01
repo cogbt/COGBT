@@ -770,6 +770,35 @@ void helper_fldcw(CPUX86State *env, uint32_t val)
     cpu_set_fpuc(env, val);
 }
 
+#ifdef CONFIG_COGBT
+void helper_fldcw_cogbt(CPUX86State *env, uint32_t val)
+{
+    int RC = (val >> 10) & 3;
+    int fcsr = -1;
+    asm volatile("movfcsr2gr %0, $r0\n\t" : "=r"(fcsr) :);
+    // printf("old fcsr %d\n", fcsr);
+    // int rm = -1;
+    // if (RC == 0) {
+    //     rm = 0;
+    // } else if (RC == 1) {
+    //     rm = 3;
+    // } else if (RC == 2) {
+    //     rm = 2;
+    // } else if (RC == 3) {
+    //     rm = 1;
+    // } else {
+    //     fprintf(stderr, "unknown RC %d\n", RC);
+    // }
+    int rm = (RC + ((RC & 1) << 1)) & 3;  // is equivalent to the above if-else block
+    fcsr = fcsr & ~((unsigned int)(768));
+    fcsr = fcsr | (rm << 8);
+    asm volatile("movgr2fcsr $r0, %0\n\t" : : "r"(fcsr));
+    // asm volatile("movfcsr2gr %0, $r0\n\t" : "=r"(fcsr) :);
+    // printf("new fcsr %d\n", fcsr);
+    cpu_set_fpuc(env, val);
+}
+#endif
+
 void helper_fclex(CPUX86State *env)
 {
     env->fpus &= 0x7f00;

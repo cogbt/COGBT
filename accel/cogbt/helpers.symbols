@@ -336,6 +336,7 @@
     helper_fistt_ST0;
     helper_fld1_ST0;
     helper_fldcw;
+    helper_fldcw_cogbt;
     helper_fldenv;
     helper_fldl2e_ST0;
     helper_fldl2t_ST0;

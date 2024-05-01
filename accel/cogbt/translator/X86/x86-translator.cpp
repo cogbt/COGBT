@@ -489,6 +489,10 @@ void X86Translator::GenEpilogue() {
         Builder.CreateStore(GuestFPRVals[i], Ptr, true);
     }
 
+#ifdef CONFIG_COGBT_DEBUG
+    FlushFpsttValue(ConstantInt::get(Int32Ty, 0));
+#endif
+
     // Load CSRs.
     Value *HostRegValues[NumHostRegs] = {nullptr};
     Value *NewSP = Builder.CreateAdd(OldSP, ConstInt(Int64Ty, 256));
@@ -603,6 +607,15 @@ void X86Translator::ReloadGMRValue(X86MappedRegsId GMRId) {
         // sync to inner lbt flag register
         SetLBTFlag(V);
     }
+}
+
+void X86Translator::FlushFpsttValue(Value *Fpstt) {
+    assert(Fpstt->getType() == Int32Ty);
+    int off = GuestFpsttOffset();
+    Value *Addr =
+        Builder.CreateGEP(Int8Ty, CPUEnv, ConstantInt::get(Int64Ty, off));
+    Value *FPSTTPtr = Builder.CreateBitCast(Addr, Int32PtrTy);
+    Builder.CreateStore(Fpstt, FPSTTPtr);
 }
 
 Type *X86Translator::GetOpndLLVMType(X86Operand *Opnd) {

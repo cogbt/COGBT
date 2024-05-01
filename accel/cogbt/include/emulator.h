@@ -28,6 +28,8 @@ int GuestMMXRegOffset(int reg_idx, int reg_start_byte);
 
 int GuestFPROffset(int idx);
 int GuestST0Offset(void *p);
+int GuestFT0Offset(void);
+int GuestFpsttOffset(void);
 
 int GuestMXCSROffset(void);
 
@@ -81,11 +83,11 @@ void helper_andps_wrapper(void *p, int dest, int src);
 void helper_pslldq_xmm_wrapper(void *p, int dest, int src);
 void helper_psrldq_xmm_wrapper(void *p, int dest, int src);
 #if 0
-#define SSE_HELPER_CMP_WRAPPER_PROT(name)                       \
-void helper_ ## name ## ps_wrapper(void *p, int dest, int src); \
-void helper_ ## name ## ss_wrapper(void *p, int dest, int src); \
-void helper_ ## name ## pd_wrapper(void *p, int dest, int src); \
-void helper_ ## name ## sd_wrapper(void *p, int dest, int src);
+#define SSE_HELPER_CMP_WRAPPER_PROT(name)                                      \
+    void helper_##name##ps_wrapper(void *p, int dest, int src);                \
+    void helper_##name##ss_wrapper(void *p, int dest, int src);                \
+    void helper_##name##pd_wrapper(void *p, int dest, int src);                \
+    void helper_##name##sd_wrapper(void *p, int dest, int src);
 SSE_HELPER_CMP_WRAPPER_PROT(cmpeq)
 SSE_HELPER_CMP_WRAPPER_PROT(cmplt)
 SSE_HELPER_CMP_WRAPPER_PROT(cmple)

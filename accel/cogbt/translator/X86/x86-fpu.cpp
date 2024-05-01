@@ -1,5 +1,6 @@
 #include "emulator.h"
 #include "x86-translator.h"
+#include "llvm/IR/InlineAsm.h"
 
 // void X86Translator::SetQemuSTI(int i, Value *Val) {}
 
@@ -400,7 +401,7 @@ void X86Translator::translate_fldcw(GuestInst *Inst) {
 
     Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
     MemVal = Builder.CreateZExt(MemVal, Int32Ty);
-    CallFunc(FTy, "helper_fldcw", {CPUEnv, MemVal});
+    CallFunc(FTy, "helper_fldcw_cogbt", {CPUEnv, MemVal});
 }
 
 void X86Translator::translate_fldenv(GuestInst *Inst) {
@@ -608,8 +609,7 @@ void X86Translator::translate_fnstenv(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fxam(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction fxam\n";
-    exit(-1);
+    FlushFPRValue("ST0", LoadGMRValue(FP64Ty, X87GetCurrST0()), false);
     FunctionType *FTy = FunctionType::get(VoidTy, Int8PtrTy, false);
     CallFunc(FTy, "helper_fxam_ST0", CPUEnv);
 }
@@ -687,40 +687,46 @@ void X86Translator::translate_fisttp(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fist(GuestInst *Inst) {
-    X86InstHandler InstHdl(Inst);
+        X86InstHandler InstHdl(Inst);
     assert(InstHdl.getOpndNum() == 1 && "fist: need one Opnd");
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     Value *MemValFP64 = LoadGMRValue(FP64Ty, X87GetCurrST0());
-    MemValFP64 = Builder.CreateCall(
-        Intrinsic::getDeclaration(
-            Builder.GetInsertBlock()->getParent()->getParent(),
-            Intrinsic::round, MemValFP64->getType()),
-        MemValFP64);
-    Value *MemVal32 = Builder.CreateFPToSI(MemValFP64, Int32Ty);
     if (SrcOpnd.getOpndSize() == 2) {
-        Value *MemVal16 = Builder.CreateTrunc(MemVal32, Int16Ty);
+        FunctionType *InlineAsmTy = FunctionType::get(FP32Ty, {FP64Ty}, false);
+        InlineAsm *IA =
+            InlineAsm::get(InlineAsmTy, "ftint.w.d $0, $1", "=f,f", true);
+        Value *MemValTmp32 = Builder.CreateCall(InlineAsmTy, IA, {MemValFP64});
+        Value *MemIntVal32 = Builder.CreateBitCast(MemValTmp32, Int32Ty);
+        Value *MemIntVal16 = Builder.CreateTrunc(MemIntVal32, Int16Ty);
         Value *flag = Builder.CreateICmpEQ(
-            MemVal32, Builder.CreateSExt(MemVal16, Int32Ty));
-        MemVal32 = Builder.CreateSelect(flag, MemVal32,
-                                        ConstantInt::get(Int32Ty, -32768));
-        MemVal32 = Builder.CreateTrunc(MemVal32, Int16Ty);
+            MemIntVal32, Builder.CreateSExt(MemIntVal16, Int32Ty));
+        MemIntVal16 = Builder.CreateSelect(flag, MemIntVal16,
+                                        ConstantInt::get(Int16Ty, -32768));
+        StoreOperand(MemIntVal16, InstHdl.getOpnd(0));
     } else if (SrcOpnd.getOpndSize() == 4) {
+        FunctionType *InlineAsmTy = FunctionType::get(FP64Ty, {FP64Ty}, false);
+        InlineAsm *IA =
+            InlineAsm::get(InlineAsmTy, "ftint.l.d $0, $1", "=f,f", true);
+        Value *MemValTmp64 = Builder.CreateCall(InlineAsmTy, IA, {MemValFP64});
+        Value *MemValInt64 = Builder.CreateBitCast(MemValTmp64, Int64Ty);
+        Value *MemValInt32 = Builder.CreateTrunc(MemValInt64, Int32Ty);
         Value *flag =
-            Builder.CreateICmpEQ(Builder.CreateFPToSI(MemValFP64, Int64Ty),
-                                 Builder.CreateSExt(MemVal32, Int64Ty));
-        MemVal32 = Builder.CreateSelect(flag, MemVal32,
+            Builder.CreateICmpEQ(MemValInt64,
+                                 Builder.CreateSExt(MemValInt32, Int64Ty));
+        MemValInt32 = Builder.CreateSelect(flag, MemValInt32,
                                         ConstantInt::get(Int32Ty, 0x80000000));
+        StoreOperand(MemValInt32, InstHdl.getOpnd(0));
     } else if (SrcOpnd.getOpndSize() == 8) {
-        Value *MemVal64 = Builder.CreateFPToSI(MemValFP64, Int64Ty);
-        Value *flag = Builder.CreateFCmpOEQ(
-            MemValFP64, Builder.CreateSIToFP(MemVal64, FP64Ty));
-        MemVal32 = Builder.CreateSelect(
-            flag, MemVal64, ConstantInt::get(Int64Ty, 0x8000000000000000ULL));
+        FunctionType *InlineAsmTy = FunctionType::get(FP64Ty, {FP64Ty}, false);
+        InlineAsm *IA =
+            InlineAsm::get(InlineAsmTy, "ftint.l.d $0, $1", "=f,f", true);
+        Value *MemValTmp64 = Builder.CreateCall(InlineAsmTy, IA, {MemValFP64});
+        Value *MemValInt64 = Builder.CreateBitCast(MemValTmp64, Int64Ty);
+        StoreOperand(MemValInt64, InstHdl.getOpnd(0));
     } else {
         llvm_unreachable(
-            "fist: instruction fist opnd size should (2,4) bytes.");
+            "fist: instruction fist opnd size should (2,4,8) bytes.");
     }
-    StoreOperand(MemVal32, InstHdl.getOpnd(0));
 }
 
 void X86Translator::translate_fistp(GuestInst *Inst) {

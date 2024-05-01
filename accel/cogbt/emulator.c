@@ -85,12 +85,14 @@ int GuestMMXOffset(int idx) { return offsetof(CPUX86State, fpregs[idx].mmx); }
 
 int GuestFPROffset(int idx) { return offsetof(CPUX86State, fpregs[idx].d); }
 
-// int GuestFpsttOffset(void) { return offsetof(CPUX86State, fpstt); }
+int GuestFpsttOffset(void) { return offsetof(CPUX86State, fpstt); }
 
 int GuestST0Offset(void *p) {
     CPUX86State *env = (CPUX86State *)p;
     return GuestFPROffset(env->fpstt);
 }
+
+int GuestFT0Offset(void) { return offsetof(CPUX86State, ft0); }
 
 int GuestSegOffset(int seg_idx) {
     switch (seg_idx) {

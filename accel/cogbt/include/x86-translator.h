@@ -9,15 +9,13 @@
 using std::pair;
 
 class X86Translator final : public LLVMTranslator, public X86Config {
-public:
+  public:
     X86Translator(uintptr_t CacheBegin, size_t CacheSize)
-        : LLVMTranslator(
-              CacheBegin, CacheSize,
-              "loongarch64-pc-linux-gnu",
-              "loongarch64-pc-linux-gnu"), CurrInst(nullptr) {
-        }
+        : LLVMTranslator(CacheBegin, CacheSize, "loongarch64-pc-linux-gnu",
+                         "loongarch64-pc-linux-gnu"),
+          CurrInst(nullptr) {}
 
-private: /// Currently translated instruction.
+  private: /// Currently translated instruction.
     GuestInst *CurrInst;
     Value *JMPCacheAddr;
     unsigned int CurrTBTop;
@@ -48,10 +46,11 @@ private: /// Currently translated instruction.
 #undef HANDLE_X86_INST
 
     virtual void GMRStatesResize(vector<pair<int, int>> arr) override;
-    virtual Value* GetGMRStates(int type, int gid) override;
-    virtual void SetGMRStates(int type, int gid, Value* value) override;
+    virtual Value *GetGMRStates(int type, int gid) override;
+    virtual void SetGMRStates(int type, int gid, Value *value) override;
     virtual GMRValue GetGMRVals(int type, int gid) override;
-    virtual void SetGMRVals(int type, int gid, Value* value, bool dirty) override;
+    virtual void SetGMRVals(int type, int gid, Value *value,
+                            bool dirty) override;
 
     // X87 Fpu
     void X87FPR_Push();
@@ -71,7 +70,8 @@ private: /// Currently translated instruction.
     /// LoadGMRValue - Load the GMR value from GMRStates. If GMRVals have cached
     /// this value, return it directly. Otherwise load it from GMRStates first.
     /// NOTE! \p Ty should be integer type.
-    Value *LoadGMRValue(Type *Ty, X86MappedRegsId GMRId, bool isHSubReg = false);
+    Value *LoadGMRValue(Type *Ty, X86MappedRegsId GMRId,
+                        bool isHSubReg = false);
 
     /// StoreGMRValue - Store value V to GMRVals, Assuming that V won't touch
     /// other part of GMR[GMRId]
@@ -103,8 +103,10 @@ private: /// Currently translated instruction.
 
     /// FlushGMRValue - Flush GMR value into CPUX86State.
     /// ReloadGMRValue - Reload GMR value from CPUX86State.
+    /// FlushFpsttValue - Flush Fpstt value into CPUX86State.
     void FlushGMRValue(X86MappedRegsId GMRId);
     void ReloadGMRValue(X86MappedRegsId GMRId);
+    void FlushFpsttValue(Value *Fpstt);
 
     /// SyncGMRValue - Sync GMR value into GMRStates.
     /// GMRValue should be invalidated once branch.
@@ -136,7 +138,7 @@ private: /// Currently translated instruction.
 
     /// CallFunc - Generate llvm IRs to call a llvm function, maybe a helper.
     CallInst *CallFunc(FunctionType *FuncTy, StringRef Name,
-                    ArrayRef<Value *> Args = None);
+                       ArrayRef<Value *> Args = None);
 
     /// SetLBTFlag - Move value \p FV into inner LBT Flag register.
     void SetLBTFlag(Value *FV, int mask = 0x3f);
@@ -166,7 +168,7 @@ private: /// Currently translated instruction.
     void GenFCMOVHelper(GuestInst *Inst, std::string LBTIntrinic);
 
     /// Convert X86RegType to LLVM Type
-    Type* X86RegTyToLLVMTy(X86RegType type);
+    Type *X86RegTyToLLVMTy(X86RegType type);
 };
 
 #endif
