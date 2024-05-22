@@ -79,11 +79,13 @@ static inline void fpush(CPUX86State *env)
 #ifdef CONFIG_COGBT
 static inline void fpush_cogbt(CPUX86State *env)
 {
-    for (int i = 1; i < 8; ++i) {
+    floatx80 tmp = ST(7);
+    for (int i = 7; i > 0; --i) {
         ST(i) = ST(i-1);
         ST_TAG(i) = ST_TAG(i-1);
     }
     ST_TAG(0) = 0;
+    ST(0) = tmp;
 }
 #endif
 
