@@ -30,6 +30,7 @@ int GuestFPROffset(int idx);
 int GuestST0Offset(void *p);
 int GuestFT0Offset(void);
 int GuestFpsttOffset(void);
+int GuestFpusOffset(void);
 
 int GuestMXCSROffset(void);
 

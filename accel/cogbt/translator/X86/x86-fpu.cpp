@@ -8,6 +8,47 @@ void X86Translator::X87FPR_Push() { CurrTBTop = (CurrTBTop - 1) & 7; }
 
 void X86Translator::X87FPR_Pop() { CurrTBTop = (CurrTBTop + 1) & 7; }
 
+Value *X86Translator::GetFpusPtr(void) {
+    Value *FpusPtr =
+        Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int32Ty, GuestFpusOffset()));
+    FpusPtr = Builder.CreateBitCast(FpusPtr, Int16PtrTy);
+    return FpusPtr;
+}
+
+void X86Translator::FP64CompareSW(Value *LHS, Value *RHS) {
+    Value *FpusPtr = GetFpusPtr();
+    Value *old_flag = Builder.CreateLoad(Int16Ty, FpusPtr);
+    Value *C_0 = nullptr;
+    Value *C_3 = nullptr;
+    C_3 = Builder.CreateFCmpOEQ(LHS, RHS);
+    C_0 = Builder.CreateFCmpOGT(LHS, RHS); // SRC>ST0
+    C_0 = Builder.CreateZExt(C_0, Int16Ty);
+    C_3 = Builder.CreateZExt(C_3, Int16Ty);
+    C_0 = Builder.CreateShl(C_0, ConstInt(Int16Ty, 8));
+    C_3 = Builder.CreateShl(C_3, ConstInt(Int16Ty, 14));
+    old_flag = Builder.CreateAnd(old_flag, ConstInt(Int16Ty, 0xbaff));
+    old_flag = Builder.CreateOr(old_flag, C_0);
+    old_flag = Builder.CreateOr(old_flag, C_3);
+    Builder.CreateStore(old_flag, FpusPtr);
+}
+
+void X86Translator::FP64CompareEFLAG(Value *LHS, Value *RHS) {
+    Value *old_flag = GetLBTFlag();
+    Value *CF = nullptr;
+    Value *ZF = nullptr;
+    old_flag = Builder.CreateTrunc(old_flag, Int32Ty);
+    ZF = Builder.CreateFCmpOEQ(LHS, RHS);
+    CF = Builder.CreateFCmpOGT(LHS, RHS); // SRC>ST0
+    CF = Builder.CreateZExt(CF, Int32Ty);
+    ZF = Builder.CreateZExt(ZF, Int32Ty);
+    ZF = Builder.CreateShl(ZF, ConstInt(Int32Ty, 6));
+    old_flag = Builder.CreateAnd(old_flag, ConstInt(Int32Ty, 0xffffffba));
+    old_flag = Builder.CreateOr(old_flag, CF);
+    old_flag = Builder.CreateOr(old_flag, ZF);
+    old_flag = Builder.CreateZExt(old_flag, Int64Ty);
+    SetLBTFlag(old_flag);
+}
+
 X86Config::X86MappedRegsId X86Translator::X87GetCurrST0() {
     // assert(0 && "Not implemented X87GetCurrST0");
     return (X86Config::X86MappedRegsId)(X86Config::ST0 + CurrTBTop);
@@ -246,18 +287,16 @@ void X86Translator::translate_fchs(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fcomp(GuestInst *Inst) {
-    FlushFPRValue("FT0", LoadGMRValue(FP64Ty, X87GetCurrSTI(1)), false);
-    FlushFPRValue("ST0", LoadGMRValue(FP64Ty, X87GetCurrST0()), false);
-    FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(UnaryFunTy, "helper_fcom_ST0_FT0", CPUEnv);
+    Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(1));
+    FP64CompareSW(LHS, RHS);
     X87FPR_Pop();
 }
 
 void X86Translator::translate_fcompp(GuestInst *Inst) {
-    FlushFPRValue("FT0", LoadGMRValue(FP64Ty, X87GetCurrSTI(1)), false);
-    FlushFPRValue("ST0", LoadGMRValue(FP64Ty, X87GetCurrST0()), false);
-    FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    CallFunc(UnaryFunTy, "helper_fcom_ST0_FT0", CPUEnv);
+    Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(1));
+    FP64CompareSW(LHS, RHS);
     X87FPR_Pop();
     X87FPR_Pop();
 }
@@ -268,14 +307,9 @@ void X86Translator::translate_fcomip(GuestInst *Inst) {
 
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     assert(SrcOpnd.isReg());
-    FunctionType *FUCOMITy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    Value *STI = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
-    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrSTI(0));
-    FlushFPRValue("FT0", STI, false);
-    FlushFPRValue("ST0", ST0, false);
-    FlushGMRValue(X86Config::EFLAG);
-    CallFunc(FUCOMITy, "helper_fcomi_ST0_FT0_cogbt", CPUEnv);
-    ReloadGMRValue(X86Config::EFLAG);
+    Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
+    Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(0));
+    FP64CompareEFLAG(LHS, RHS);
     X87FPR_Pop();
 }
 
@@ -285,18 +319,16 @@ void X86Translator::translate_fcomi(GuestInst *Inst) {
 
     X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
     assert(SrcOpnd.isReg());
-    FunctionType *FUCOMITy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    Value *STI = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
-    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrSTI(0));
-    FlushFPRValue("FT0", STI, false);
-    FlushFPRValue("ST0", ST0, false);
-    FlushGMRValue(X86Config::EFLAG);
-    CallFunc(FUCOMITy, "helper_fcomi_ST0_FT0_cogbt", CPUEnv);
-    ReloadGMRValue(X86Config::EFLAG);
+    Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
+    Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(0));
+    FP64CompareEFLAG(LHS, RHS);
 }
 
 void X86Translator::translate_fcom(GuestInst *Inst) {
-    GenFPUHelper(Inst, "fcom", DEST_IS_ST0);
+    X86InstHandler InstHdl(Inst);
+    Value *LHS = LoadGMRValue(FP64Ty, X87GetCurrSTI(1));
+    Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    FP64CompareSW(LHS, RHS);
 }
 
 void X86Translator::translate_fcos(GuestInst *Inst) {
@@ -385,11 +417,40 @@ void X86Translator::translate_ffree(GuestInst *Inst) {
 }
 
 void X86Translator::translate_ficom(GuestInst *Inst) {
-    GenFPUHelper(Inst, "fcom", DEST_IS_ST0 | MEM_VAL_IS_INT);
+    X86InstHandler InstHdl(Inst);
+    Value *LHS = nullptr;
+    Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    if (InstHdl.getOpndNum() == 1) {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+        if (SrcOpnd.getOpndSize() == 2 || SrcOpnd.getOpndSize() == 4) {
+            LHS = Builder.CreateSIToFP(MemVal, FP64Ty);
+        } else {
+            llvm_unreachable("ficom: Opnd Bitwidth\n");
+        }
+    } else {
+        llvm_unreachable("ficom Opnd num err\n");
+    }
+    FP64CompareSW(LHS, RHS);
 }
 
 void X86Translator::translate_ficomp(GuestInst *Inst) {
-    GenFPUHelper(Inst, "fcom", DEST_IS_ST0 | MEM_VAL_IS_INT | SHOULD_POP_ONCE);
+    X86InstHandler InstHdl(Inst);
+    Value *LHS = nullptr;
+    Value *RHS = LoadGMRValue(FP64Ty, X87GetCurrST0());
+    if (InstHdl.getOpndNum() == 1) {
+        X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+        Value *MemVal = LoadOperand(InstHdl.getOpnd(0));
+        if (SrcOpnd.getOpndSize() == 2 || SrcOpnd.getOpndSize() == 4) {
+            LHS = Builder.CreateSIToFP(MemVal, FP64Ty);
+        } else {
+            llvm_unreachable("ficom: Opnd Bitwidth\n");
+        }
+    } else {
+        llvm_unreachable("ficom Opnd num err\n");
+    }
+    FP64CompareSW(LHS, RHS);
+    X87FPR_Pop();
 }
 
 void X86Translator::translate_fincstp(GuestInst *Inst) { X87FPR_Pop(); }
@@ -1012,26 +1073,7 @@ void X86Translator::translate_ftst(GuestInst *Inst) {
     CallFunc(UnaryFunTy, "helper_fcom_ST0_FT0", CPUEnv);
 }
 
-void X86Translator::translate_fucomi(GuestInst *Inst) {
-    X86InstHandler InstHdl(Inst);
-    assert(InstHdl.getOpndNum() == 1);
-
-    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
-    assert(SrcOpnd.isReg());
-
-    // FunctionType *FMOVTy =
-    //     FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
-    FunctionType *FUCOMITy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    Value *STI = LoadGMRValue(FP64Ty, X87GetCurrSTI(SrcOpnd.GetFPRID()));
-    Value *ST0 = LoadGMRValue(FP64Ty, X87GetCurrSTI(0));
-    FlushFPRValue("FT0", STI, false);
-    FlushFPRValue("ST0", ST0, false);
-    FlushGMRValue(X86Config::EFLAG);
-
-    CallFunc(FUCOMITy, "helper_fucomi_ST0_FT0_cogbt", CPUEnv);
-    // CallFunc(FPOPTy, "helper_fpop", CPUEnv);
-    ReloadGMRValue(X86Config::EFLAG);
-}
+void X86Translator::translate_fucomi(GuestInst *Inst) { translate_fcomi(Inst); }
 
 void X86Translator::translate_fucomip(GuestInst *Inst) {
     translate_fucomi(Inst);
@@ -1039,25 +1081,19 @@ void X86Translator::translate_fucomip(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fucompp(GuestInst *Inst) {
-    assert(0 && "Untranslated instruction fucompp\n");
-    FunctionType *UnaryFunTy = FunctionType::get(VoidTy, Int8PtrTy, false);
-    FunctionType *Binary32FunTy =
-        FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
-    Value *SrcFPRID = ConstInt(Int32Ty, 1);
-    CallFunc(Binary32FunTy, "helper_fmov_FT0_STN", {CPUEnv, SrcFPRID});
-    CallFunc(UnaryFunTy, "helper_fucom_ST0_FT0", CPUEnv);
-    CallFunc(UnaryFunTy, "helper_fpop", CPUEnv);
-    CallFunc(UnaryFunTy, "helper_fpop", CPUEnv);
+    translate_fcompp(Inst);
 }
 
 void X86Translator::translate_fucomp(GuestInst *Inst) {
     assert(0 && "Untranslated instruction fucomp\n");
     GenFPUHelper(Inst, "fucom", DEST_IS_ST0 | SHOULD_POP_ONCE);
+    // translate_fcomp(Inst);
 }
 
 void X86Translator::translate_fucom(GuestInst *Inst) {
     assert(0 && "Untranslated instruction fucom\n");
     GenFPUHelper(Inst, "fucom", DEST_IS_ST0);
+    // translate_fcom(Inst);
 }
 
 void X86Translator::translate_wait(GuestInst *Inst) {

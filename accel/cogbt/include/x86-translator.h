@@ -107,6 +107,9 @@ class X86Translator final : public LLVMTranslator, public X86Config {
     void FlushGMRValue(X86MappedRegsId GMRId);
     void ReloadGMRValue(X86MappedRegsId GMRId);
     void FlushFpsttValue(Value *Fpstt);
+    Value *GetFpusPtr(void);
+    void FP64CompareSW(Value *LHS, Value *RHS);
+    void FP64CompareEFLAG(Value *LHS, Value *RHS);
 
     /// SyncGMRValue - Sync GMR value into GMRStates.
     /// GMRValue should be invalidated once branch.
