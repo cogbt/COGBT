@@ -496,8 +496,9 @@ void X86Translator::translate_movsxd(GuestInst *Inst) {
     StoreOperand(Dest, InstHdl.getOpnd(1));
 }
 void X86Translator::translate_movupd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movupd\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    StoreOperand(Src, InstHdl.getOpnd(1));
 }
 
 void X86Translator::translate_movaps(GuestInst *Inst) {
