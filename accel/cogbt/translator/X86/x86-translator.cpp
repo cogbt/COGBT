@@ -364,15 +364,19 @@ void X86Translator::GenPrologue() {
         Value *Ptr = Builder.CreateBitCast(Addr, Int64PtrTy);
         GuestVals[i] = Builder.CreateLoad(X86RegTyToLLVMTy(X86RegGPRType), Ptr);
     }
-    vector<Value *> GuestXMMVals(GetNumGXMMs());
-    for (int i = 0; i < GetNumGXMMs(); i++) {
-        int Off = GuestXMMOffset(i);
-        Value *Addr =
-            Builder.CreateGEP(Int8Ty, ENV, ConstantInt::get(Int64Ty, Off));
-        Value *Ptr = Builder.CreateBitCast(Addr, V2F64PtrTy);
-        GuestXMMVals[i] =
-            Builder.CreateLoad(X86RegTyToLLVMTy(X86RegXMMType), Ptr);
-    }
+
+    // FIXME: The xmm type is implemented using `helper_xxx` function, so it
+    // does not need to be written. This will be removed when the xmm type
+    // has fully implemented using register mapping.
+    /* vector<Value *> GuestXMMVals(GetNumGXMMs()); */
+    /* for (int i = 0; i < GetNumGXMMs(); i++) { */
+    /*     int Off = GuestXMMOffset(i); */
+    /*     Value *Addr = */
+    /*         Builder.CreateGEP(Int8Ty, ENV, ConstantInt::get(Int64Ty, Off)); */
+    /*     Value *Ptr = Builder.CreateBitCast(Addr, V2F64PtrTy); */
+    /*     GuestXMMVals[i] = */
+    /*         Builder.CreateLoad(X86RegTyToLLVMTy(X86RegXMMType), Ptr); */
+    /* } */
     vector<Value *> GuestFPRVals(GetNumFPRs());
     for (int i = 0; i < GetNumFPRs(); i++) {
         int Off = GuestFPROffset(i);
@@ -395,10 +399,10 @@ void X86Translator::GenPrologue() {
     SetPhysicalRegValue(HostRegNames[HostA1], CodeEntry, Int64Ty);
     SetPhysicalRegValue(HostRegNames[HostSP], NewSP, Int64Ty);
 
-    for (int i = 0; i < GetNumGXMMs(); i++) {
-        SetPhysicalRegValue(HostLSXRegNames[GXMMToHMR(i)], GuestXMMVals[i],
-                            X86RegTyToLLVMTy(X86RegXMMType));
-    }
+    /* for (int i = 0; i < GetNumGXMMs(); i++) { */
+    /*     SetPhysicalRegValue(HostLSXRegNames[GXMMToHMR(i)], GuestXMMVals[i], */
+    /*                         X86RegTyToLLVMTy(X86RegXMMType)); */
+    /* } */
     for (int i = 0; i < GetNumFPRs(); i++) {
         SetPhysicalRegValue(HostFPRegNames[GFPRToHMR(i)], GuestFPRVals[i],
                             X86RegTyToLLVMTy(X86RegFPRType));
@@ -565,10 +569,15 @@ void X86Translator::FlushGMRValue(X86MappedRegsId GMRId) {
     if (X86MappedRegsIdToRegTy(GMRId) == X86RegGPRType)
         Off = GMRId < X86Config::EFLAG ? GuestStateOffset(GMRId)
                                        : GuestEflagOffset();
-    else if (X86MappedRegsIdToRegTy(GMRId) == X86RegXMMType)
+    else if (X86MappedRegsIdToRegTy(GMRId) == X86RegXMMType) {
+        // FIXME: The xmm type is implemented using `helper_xxx` function, so it
+        // does not need to be written. This will be removed when the xmm type
+        // has fully implemented using register mapping.
         Off = GuestXMMOffset(GMRId - GetNumGPRs());
+        return;
+    }
     else if (X86MappedRegsIdToRegTy(GMRId) == X86RegFPRType)
-        Off = GuestFPROffset(GMRId - GetNumGXMMs() - GetNumGMRs());
+        Off = GuestFPROffset(GMRId - GetNumGXMMs() - GetNumGPRs());
     assert(Off >= 0 && "GMRId is not support");
 
     Value *Addr =
@@ -592,10 +601,15 @@ void X86Translator::ReloadGMRValue(X86MappedRegsId GMRId) {
     if (X86MappedRegsIdToRegTy(GMRId) == X86RegGPRType)
         Off = GMRId < X86Config::EFLAG ? GuestStateOffset(GMRId)
                                        : GuestEflagOffset();
-    else if (X86MappedRegsIdToRegTy(GMRId) == X86RegXMMType)
+    else if (X86MappedRegsIdToRegTy(GMRId) == X86RegXMMType) {
+        // FIXME: The xmm type is implemented using `helper_xxx` function, so it
+        // does not need to be written. This will be removed when the xmm type
+        // has fully implemented using register mapping.
         Off = GuestXMMOffset(GMRId - GetNumGPRs());
+        return;
+    }
     else if (X86MappedRegsIdToRegTy(GMRId) == X86RegFPRType)
-        Off = GuestFPROffset(GMRId - GetNumGXMMs() - GetNumGMRs());
+        Off = GuestFPROffset(GMRId - GetNumGXMMs() - GetNumGPRs());
     assert(Off >= 0 && "GMRId is not support");
 
     Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, Off));
