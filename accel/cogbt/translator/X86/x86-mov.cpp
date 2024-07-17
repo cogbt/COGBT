@@ -386,15 +386,23 @@ void X86Translator::translate_movhlps(GuestInst *Inst) {
 void X86Translator::translate_movhps(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     Value *Src = LoadOperand(InstHdl.getOpnd(0));
-    StoreOperand(Src, InstHdl.getOpnd(1));
+
+    X86OperandHandler OpndHdl(InstHdl.getOpnd(1));
+    assert(OpndHdl.isXMM());
+    int off = GuestXMMOffset(OpndHdl.GetXMMID());
+    Value *Addr = Builder.CreateGEP(Int8Ty, CPUEnv, ConstInt(Int64Ty, off));
+    Addr = Builder.CreateAdd(Addr, ConstInt(Int8Ty, 8));
+    Addr = Builder.CreateBitCast(Addr, Src->getType()->getPointerTo());
+    Builder.CreateStore(Src, Addr);
 }
 void X86Translator::translate_movlhps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction movlhps\n";
     exit(-1);
 }
 void X86Translator::translate_movlps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction movlps\n";
-    exit(-1);
+    X86InstHandler InstHdl(Inst);
+    Value *Src = LoadOperand(InstHdl.getOpnd(0));
+    StoreOperand(Src, InstHdl.getOpnd(1));
 }
 void X86Translator::translate_movmskpd(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);

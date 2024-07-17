@@ -284,15 +284,6 @@ void X86Translator::translate_xadd(GuestInst *Inst) {
     CalcEflag(Inst, Sum, Src, Dest);
 }
 
-void X86Translator::translate_mulpd(GuestInst *Inst) {
-    /* dbgs() << "Untranslated instruction mulpd\n"; */
-    CreateIllegalInstruction();
-}
-void X86Translator::translate_mulps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction mulps\n";
-    exit(-1);
-}
-
 void X86Translator::translate_div(GuestInst *Inst) {
     X86InstHandler InstHdl(Inst);
     Value *Divisor = LoadOperand(InstHdl.getOpnd(0));

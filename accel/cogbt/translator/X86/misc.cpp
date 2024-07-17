@@ -1848,8 +1848,7 @@ void X86Translator::translate_ud2b(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_unpckhpd(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction unpckhpd\n";
-    exit(-1);
+    GenMMXSSEHelper("helper_punpckhqdq", Inst);
 }
 void X86Translator::translate_unpckhps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction unpckhps\n";

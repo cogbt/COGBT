@@ -496,13 +496,67 @@ void X86Translator::translate_mulx(GuestInst *Inst) {
 }
 
 void X86Translator::translate_addpd(GuestInst *Inst) {
-    /* dbgs() << "Untranslated instruction addpd\n"; */
-    CreateIllegalInstruction();
+    // addpd xmm1, xmm2/m128
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *MemVal = nullptr;
+    // helper_Name_xxx function type.
+    FunctionType *FuncTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64PtrTy, Int64PtrTy}, false);
+
+    Value *SrcOff = nullptr, *SrcAddr = nullptr;
+    Value *DestOff = nullptr, *DestAddr = nullptr;
+    if (SrcOpnd.isMem())
+        MemVal = LoadOperand(InstHdl.getOpnd(0));
+    if (MemVal) {
+        FlushXMMT0(MemVal);
+        SrcOff = ConstInt(Int64Ty, GuestXMMT0Offset());
+    } else {
+        SrcOff = ConstInt(Int64Ty, GuestXMMOffset(SrcOpnd.GetXMMID()));
+    }
+
+    SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcOff);
+    SrcAddr = Builder.CreateBitCast(SrcAddr, Int64PtrTy);
+
+    DestOff = ConstInt(Int64Ty, GuestXMMOffset(DestOpnd.GetXMMID()));
+    DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestOff);
+    DestAddr = Builder.CreateBitCast(DestAddr, Int64PtrTy);
+
+    CallFunc(FuncTy, "helper_addpd", {CPUEnv, DestAddr, SrcAddr});
 }
 
 void X86Translator::translate_addps(GuestInst *Inst) {
-    dbgs() << "Untranslated instruction addps\n";
-    exit(-1);
+    // addps xmm1, xmm2/m128
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *MemVal = nullptr;
+    // helper_Name_xxx function type.
+    FunctionType *FuncTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64PtrTy, Int64PtrTy}, false);
+
+    Value *SrcOff = nullptr, *SrcAddr = nullptr;
+    Value *DestOff = nullptr, *DestAddr = nullptr;
+    if (SrcOpnd.isMem())
+        MemVal = LoadOperand(InstHdl.getOpnd(0));
+    if (MemVal) {
+        FlushXMMT0(MemVal);
+        SrcOff = ConstInt(Int64Ty, GuestXMMT0Offset());
+    } else {
+        SrcOff = ConstInt(Int64Ty, GuestXMMOffset(SrcOpnd.GetXMMID()));
+    }
+
+    SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcOff);
+    SrcAddr = Builder.CreateBitCast(SrcAddr, Int64PtrTy);
+
+    DestOff = ConstInt(Int64Ty, GuestXMMOffset(DestOpnd.GetXMMID()));
+    DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestOff);
+    DestAddr = Builder.CreateBitCast(DestAddr, Int64PtrTy);
+
+    CallFunc(FuncTy, "helper_addps", {CPUEnv, DestAddr, SrcAddr});
 }
 
 void X86Translator::translate_addss(GuestInst *Inst) {
@@ -890,6 +944,69 @@ void X86Translator::translate_xorps(GuestInst *Inst) {
     Value *SrcXMMID = ConstInt(Int64Ty, SrcXMM);
     Value *DestXMMID = ConstInt(Int64Ty, DestOpnd.GetXMMID());
     CallFunc(FuncTy, "helper_xorps", {CPUEnv, DestXMMID, SrcXMMID});
+}
+
+void X86Translator::translate_mulpd(GuestInst *Inst) {
+    // mulpd xmm1, xmm2/m128
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *MemVal = nullptr;
+    // helper_Name_xxx function type.
+    FunctionType *FuncTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64PtrTy, Int64PtrTy}, false);
+
+    Value *SrcOff = nullptr, *SrcAddr = nullptr;
+    Value *DestOff = nullptr, *DestAddr = nullptr;
+    if (SrcOpnd.isMem())
+        MemVal = LoadOperand(InstHdl.getOpnd(0));
+    if (MemVal) {
+        FlushXMMT0(MemVal);
+        SrcOff = ConstInt(Int64Ty, GuestXMMT0Offset());
+    } else {
+        SrcOff = ConstInt(Int64Ty, GuestXMMOffset(SrcOpnd.GetXMMID()));
+    }
+
+    SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcOff);
+    SrcAddr = Builder.CreateBitCast(SrcAddr, Int64PtrTy);
+
+    DestOff = ConstInt(Int64Ty, GuestXMMOffset(DestOpnd.GetXMMID()));
+    DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestOff);
+    DestAddr = Builder.CreateBitCast(DestAddr, Int64PtrTy);
+
+    CallFunc(FuncTy, "helper_mulpd", {CPUEnv, DestAddr, SrcAddr});
+}
+void X86Translator::translate_mulps(GuestInst *Inst) {
+    // mulps xmm1, xmm2/m128
+    X86InstHandler InstHdl(Inst);
+
+    X86OperandHandler SrcOpnd(InstHdl.getOpnd(0));
+    X86OperandHandler DestOpnd(InstHdl.getOpnd(1));
+    Value *MemVal = nullptr;
+    // helper_Name_xxx function type.
+    FunctionType *FuncTy =
+        FunctionType::get(VoidTy, {Int8PtrTy, Int64PtrTy, Int64PtrTy}, false);
+
+    Value *SrcOff = nullptr, *SrcAddr = nullptr;
+    Value *DestOff = nullptr, *DestAddr = nullptr;
+    if (SrcOpnd.isMem())
+        MemVal = LoadOperand(InstHdl.getOpnd(0));
+    if (MemVal) {
+        FlushXMMT0(MemVal);
+        SrcOff = ConstInt(Int64Ty, GuestXMMT0Offset());
+    } else {
+        SrcOff = ConstInt(Int64Ty, GuestXMMOffset(SrcOpnd.GetXMMID()));
+    }
+
+    SrcAddr = Builder.CreateGEP(Int8Ty, CPUEnv, SrcOff);
+    SrcAddr = Builder.CreateBitCast(SrcAddr, Int64PtrTy);
+
+    DestOff = ConstInt(Int64Ty, GuestXMMOffset(DestOpnd.GetXMMID()));
+    DestAddr = Builder.CreateGEP(Int8Ty, CPUEnv, DestOff);
+    DestAddr = Builder.CreateBitCast(DestAddr, Int64PtrTy);
+
+    CallFunc(FuncTy, "helper_mulps", {CPUEnv, DestAddr, SrcAddr});
 }
 
 void X86Translator::translate_andnpd(GuestInst *Inst) {
