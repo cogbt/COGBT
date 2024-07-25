@@ -18,6 +18,8 @@ TranslationUnit::~TranslationUnit() {
 
 GuestBlock *TranslationUnit::CreateAndAddGuestBlock() {
     GuestBlocks.emplace_back();
+    GuestBlocks.back().topin = 0;
+    GuestBlocks.back().topout = 0;
     return &GuestBlocks.back();
 }
 

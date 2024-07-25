@@ -552,6 +552,25 @@ void X86Translator::SyncAllGMRValue() {
     for (int GMRId = 0; GMRId < (int)GMRVals.size(); GMRId++) {
         SyncGMRValue(GMRId);
     }
+#ifndef COGBT_SOFTFPU
+    if (aotmode == TU_AOT) {
+        // x87 rotate
+        // It is necessary to first read all FPU values from LLVM stack before
+        // wrting to it. This is because writing to stack would populate the
+        // original values.
+        vector<Value *> GuestFPRVals(GetNumFPRs());
+        for (unsigned int i = 0; i < (unsigned int) GetNumFPRs(); i++) {
+            GuestFPRVals[i] = Builder.CreateLoad(X86RegTyToLLVMTy(X86RegFPRType),
+                    GetGMRStates(X86RegFPRType, i));
+        }
+        for (unsigned int i = 0; i < (unsigned int) GetNumFPRs(); i++) {
+            int temp = (i - CurrTBTop) & 7;
+            Builder.CreateStore(GuestFPRVals[i],
+                    GetGMRStates(X86RegFPRType, temp));
+        }
+        CurrTBTop = 0;
+    }
+#endif
 }
 
 void X86Translator::SyncGMRValue(int GMRId) {
@@ -1332,10 +1351,11 @@ void X86Translator::Translate() {
     }
 
     // FIXME: It is only used for tb mode and jit mode.
-    assert(TU->size() == 1);
+    /* assert(TU->size() == 1); */
     for (auto &block : *TU) {
         InitializeBlock(block);
         CurrTBTop = block.topin;
+        assert(CurrTBTop == 0);
 
         for (auto &inst : block) {
             CurrInst = &inst;
