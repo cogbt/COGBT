@@ -1855,8 +1855,7 @@ void X86Translator::translate_unpckhps(GuestInst *Inst) {
     exit(-1);
 }
 void X86Translator::translate_unpcklpd(GuestInst *Inst) {
-    /* dbgs() << "Untranslated instruction unpcklpd\n"; */
-    CreateIllegalInstruction();
+    GenMMXSSEHelper("helper_punpcklqdq", Inst);
 }
 void X86Translator::translate_unpcklps(GuestInst *Inst) {
     dbgs() << "Untranslated instruction unpcklps\n";
