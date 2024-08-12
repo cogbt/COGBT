@@ -1,26 +1,26 @@
-#include "qemu/osdep.h"
 #include "llvm-translator.h"
-#include "jit-eventlistener.h"
-#include "host-info.h"
+#include "cogbt.h"
 #include "emulator.h"
+#include "host-info.h"
+#include "jit-eventlistener.h"
 #include "memory-manager.h"
+#include "qemu/osdep.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
+#include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/DerivedTypes.h"
+#include "llvm/Support/Debug.h"
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/Host.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
-#include "llvm/Support/Host.h"
-#include "llvm/Support/FileSystem.h"
-#include "llvm/Support/Debug.h"
-#include "llvm/Transforms/Utils.h"
-#include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
-#include "cogbt.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Utils.h"
 #include <memory>
-#include <string>
 #include <sstream>
+#include <string>
 
 #ifdef CONFIG_CUSTOM_PASS_OPTIMIZATION
 #include "CogbtPass.h"
@@ -94,12 +94,13 @@ void LLVMTranslator::InitializeTypes() {
 };
 
 void LLVMTranslator::AttachLinkInfoToIR(Instruction *I, LIType Type,
-        unsigned int Val) {
+                                        unsigned int Val) {
     DISubprogram *DISP = I->getParent()->getParent()->getSubprogram();
     DILocation *DILoc = DILocation::get(Context, Val, Type, DISP);
     I->setDebugLoc(DILoc);
     /* if (!DIGV) { */
-    /*     DIGV = DIB->createGlobalVariableExpression(DISP, "linkslot", "linkslot", */
+    /*     DIGV = DIB->createGlobalVariableExpression(DISP, "linkslot",
+     * "linkslot", */
     /*             DIF, 1, DIB->createNullPtrType(), false); */
     /* } */
     /* I->setMetadata("dbg", DIGV); */
@@ -109,14 +110,15 @@ void LLVMTranslator::InitializeModule() {
     Mod.reset(new Module("cogbt", Context));
     RawMod = Mod.get();
 
-/* #ifdef CONFIG_HOST_X86 */
-/*     Mod->setTargetTriple("x86_64-pc-linux-gnu"); */
-/*     Mod->setDataLayout("e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-" */
-/*                        "n8:16:32:64-S128"); */
-/* #else */
+    /* #ifdef CONFIG_HOST_X86 */
+    /*     Mod->setTargetTriple("x86_64-pc-linux-gnu"); */
+    /*     Mod->setDataLayout("e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-"
+     */
+    /*                        "n8:16:32:64-S128"); */
+    /* #else */
     Mod->setTargetTriple("loongarch64-unknown-linux-gnu");
     Mod->setDataLayout("e-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128");
-/* #endif */
+    /* #endif */
     /* Mod->setTargetTriple(TargetTriple); */
     /* Mod->setDataLayout(TM->createDataLayout()); */
 
@@ -136,7 +138,8 @@ void LLVMTranslator::InitializeModule() {
     // InitializeFuncion.
     DIB.reset(new DIBuilder(*Mod));
     DIF = DIB->createFile("cogbt", "cogbt");
-    /* DIB->createCompileUnit(dwarf::DW_LANG_C99, DIF, "cogbt", false, "", 0); */
+    /* DIB->createCompileUnit(dwarf::DW_LANG_C99, DIF, "cogbt", false, "", 0);
+     */
     DIB->createCompileUnit(dwarf::DW_LANG_C99, DIF, "cogbt", false, "", 0,
                            StringRef(),
                            DICompileUnit::DebugEmissionKind::LineTablesOnly);
@@ -148,15 +151,16 @@ void LLVMTranslator::InitializeModule() {
     Mod->addModuleFlag(Module::ModFlagBehavior::Max, "Debug Info Version", 3);
 }
 
-BasicBlock* LLVMTranslator::GetBasicBlock(Function *Func, StringRef Name) {
+BasicBlock *LLVMTranslator::GetBasicBlock(Function *Func, StringRef Name) {
     for (BasicBlock &BB : *Func)
         if (BB.getName() == Name)
             return &BB;
     return nullptr;
 }
 
-BasicBlock* LLVMTranslator::GetOrInsertBasicBlock(Function *Func, StringRef Name,
-        BasicBlock *InsertBefore) {
+BasicBlock *LLVMTranslator::GetOrInsertBasicBlock(Function *Func,
+                                                  StringRef Name,
+                                                  BasicBlock *InsertBefore) {
     BasicBlock *BB = GetBasicBlock(Func, Name);
     if (!BB)
         BB = BasicBlock::Create(Context, Name, Func, InsertBefore);
@@ -175,8 +179,8 @@ void LLVMTranslator::InitializeBlock(GuestBlock &Block) {
         CurrBB = GetBasicBlock(TransFunc, Name);
         assert(CurrBB && "block does not exist.");
         if (PC == TU->GetTUEntry()) {
-            dyn_cast<BranchInst>(EntryBB->getTerminator())->setSuccessor(0,
-        CurrBB);
+            dyn_cast<BranchInst>(EntryBB->getTerminator())
+                ->setSuccessor(0, CurrBB);
         }
     } else {
         CurrBB = BasicBlock::Create(Context, Name, TransFunc, ExitBB);
@@ -186,7 +190,7 @@ void LLVMTranslator::InitializeBlock(GuestBlock &Block) {
     Builder.SetInsertPoint(CurrBB);
 }
 
-Value *LLVMTranslator::GetPhysicalRegValue(const char *RegName, Type* type) {
+Value *LLVMTranslator::GetPhysicalRegValue(const char *RegName, Type *type) {
     // Prepare inline asm type and inline constraints.
     FunctionType *InlineAsmTy = FunctionType::get(type, false);
     std::string Constraints(std::string("={") + RegName + "}");
@@ -198,7 +202,8 @@ Value *LLVMTranslator::GetPhysicalRegValue(const char *RegName, Type* type) {
     return HostRegValue;
 }
 
-void LLVMTranslator::SetPhysicalRegValue(const char *RegName, Value *RegValue, Type* type) {
+void LLVMTranslator::SetPhysicalRegValue(const char *RegName, Value *RegValue,
+                                         Type *type) {
     FunctionType *InlineAsmTy = FunctionType::get(VoidTy, type, false);
     std::string Constraints = std::string("{") + RegName + "}";
     InlineAsm *IA = InlineAsm::get(InlineAsmTy, "", Constraints, true);
@@ -206,13 +211,13 @@ void LLVMTranslator::SetPhysicalRegValue(const char *RegName, Value *RegValue, T
 }
 
 void LLVMTranslator::CreateIllegalInstruction() {
-#if 0
+#if 1
     FunctionType *InlineAsmTy = FunctionType::get(VoidTy, false);
     InlineAsm *IA = InlineAsm::get(InlineAsmTy, ".word 0", "", true);
     Builder.CreateCall(InlineAsmTy, IA);
 #endif
     printf("stderr, instruction is not transalted\n");
-    exit(-1);
+    // exit(-1);
 }
 
 void LLVMTranslator::TranslateFinalize() {
@@ -365,7 +370,6 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
             /* Mod->print(dbgs(), nullptr); */
             TransFunc->print(dbgs());
         }
-
     }
     // TODO: modify it
     if (aotmode == TB_AOT || aotmode == TU_AOT) {
@@ -382,8 +386,9 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
         Epilogue = (uintptr_t)FuncAddr;
         /* dbgs() << "Epilogue addr " << Epilogue << "\n"; //debug */
     }
-    //debug
-    /* fprintf(stderr, "After compiole, name epilogue is 0x%lx\n", EE->getAddressToGlobalIfAvailable("epilogue")); */
+    // debug
+    /* fprintf(stderr, "After compiole, name epilogue is 0x%lx\n",
+     * EE->getAddressToGlobalIfAvailable("epilogue")); */
     DeleteJIT(&Listener);
 
     if (DBG.DebugHostIns()) {
@@ -395,4 +400,3 @@ uint8_t *LLVMTranslator::Compile(bool UseOptmizer) {
     }
     return FuncAddr;
 }
-

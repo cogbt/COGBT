@@ -466,6 +466,7 @@ void X86Translator::translate_fldcw(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fldenv(GuestInst *Inst) {
+    CreateIllegalInstruction();
     dbgs() << "Untranslated instruction fldenv\n";
     exit(-1);
     X86InstHandler InstHdl(Inst);
@@ -511,6 +512,7 @@ void X86Translator::translate_fldpi(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fnclex(GuestInst *Inst) {
+    CreateIllegalInstruction();
     dbgs() << "Untranslated instruction fnclex\n";
     exit(-1);
 
@@ -660,6 +662,7 @@ void X86Translator::translate_fsincos(GuestInst *Inst) {
 }
 
 void X86Translator::translate_fnstenv(GuestInst *Inst) {
+    CreateIllegalInstruction();
     dbgs() << "Untranslated instruction fnstenv\n";
     exit(-1);
     X86InstHandler InstHdl(Inst);
